@@ -6,7 +6,7 @@ export default function Terms() {
   const handleAccept = () => {
     // Save acceptance
     localStorage.setItem("acceptedTerms", "true");
-    navigate("/admin/homepage");
+    navigate("/admin/adminhome");
   };
 
   const handleDecline = () => {
