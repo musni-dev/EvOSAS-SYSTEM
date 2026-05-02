@@ -1,4 +1,5 @@
-import React from "react";
+import { useEffect } from "react";
+import api from "../services/api";
 import { Link } from "react-router-dom";
 import QuickCard from "../components/QuickCard";
 import DCTbg from "../assets/dct.png";
@@ -7,6 +8,17 @@ import SSClogo from "../assets/ssc-logo.png";
 import { motion } from "framer-motion";
 
 const Home = () => {
+
+useEffect(() => {
+  api.get("/api/announcements")
+    .then(res => {
+      console.log("ANNOUNCEMENTS:", res.data);
+    })
+    .catch(err => {
+      console.log(err.message);
+    });
+}, []);
+
   return (
     <>
       {/* HERO SECTION */}
@@ -61,10 +73,10 @@ const Home = () => {
               </Link>
 
               <Link
-                to="/reports"
+                to="/announcements"
                 className="border-2 border-black text-black px-6 py-3 rounded-lg font-bold hover:bg-black hover:text-[#ff6699] transition"
               >
-                Submit Reports
+                Announcements
               </Link>
             </div>
           </motion.div>
@@ -80,35 +92,6 @@ const Home = () => {
           />
         </motion.div>
       </section>
-
-        {/* QUICK CARDS SECTION - WHITE BACKGROUND */}
-        <div className="text-center md:text-center "> 
-          <h1 className="text-4xl font-bold text-[#ff6699] pt-6 ">
-            How can we assist you today?
-          </h1>
-        
-        </div>
-       
-        <section className="bg-white py-16">
-          <div className="max-w-7xl mx-auto px-4 grid md:grid-cols-3 gap-6">
-            {[
-              { title: "Submit Reports", desc: "Disciplinary & Lost and Found", color: "bg-[#4d79ff]", to: "/reports" },
-              { title: "Announcements", desc: "Lost & Found updates", color: "bg-[#ff9966]", to: "/announcements" },
-              { title: "Evaluation", desc: "Give feedback on events", color: "bg-[#66cc99]", to: "/evaluation" },
-            ].map((card, i) => (
-              <motion.div
-                key={card.title}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.6, delay: i * 0.2 }}
-              >
-                <QuickCard {...card} />
-              </motion.div>
-            ))}
-          </div>
-          
-        </section>
 
         {/* VISION, MISSION & OBJECTIVES SECTION */}
         <section className="bg-gray-50 py-16">

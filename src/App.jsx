@@ -6,8 +6,6 @@ import Footer from "./components/Footer";
 import Home from "./pages/Home";
 import Announcements from "./pages/Announcements";
 import About from "./pages/About";
-import Reports from "./pages/Reports";
-import Evaluation from "./pages/Evaluation";
 import Login from "./pages/Login";
  
 // Admin Pages (FIXED FOLDER CASE)
@@ -51,8 +49,7 @@ function LayoutWrapper() {
           <Route path="/" element={<Home />} />
           <Route path="/announcements" element={<Announcements />} />
           <Route path="/about" element={<About />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/evaluation" element={<Evaluation />} />
+
 
           {/* LOGIN */}
           <Route
