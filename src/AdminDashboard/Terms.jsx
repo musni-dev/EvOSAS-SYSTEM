@@ -24,7 +24,7 @@ export default function Terms() {
       <div className="absolute inset-0 flex">
         
         {/* Sidebar */}
-        <div className="w-64 bg-black text-white hidden md:flex flex-col">
+        <div className="w-64 bg-white text-white hidden md:flex flex-col">
           <div className="p-6 text-2xl font-bold border-b border-gray-800">
             EvOSAS Admin
           </div>
