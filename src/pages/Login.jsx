@@ -50,18 +50,18 @@ export default function Login() {
   return (
     <div className="h-screen flex items-center justify-center bg-gray-200 overflow-hidden">
 
-      <div className="flex w-[590px] h-[580px] rounded-[40px] overflow-hidden shadow-2xl">
-
+        <div className="flex flex-col md:flex-row w-full md:w-[850px] h-auto md:h-[500px] rounded-3xl overflow-hidden shadow-2xl mx-auto">
         {/* LEFT LOGOS */}
-        <div className="w-1/4 bg-white flex flex-col items-center justify-center gap-6 rounded-l-[40px]">
-          <img src={dctLogo} alt="DCT Logo" className="w-28" />
-          <img src={osasLogo} alt="OSAS Logo" className="w-28" />
-          <img src={sscLogo} alt="SSC Logo" className="w-28" />
+         <div className="w-full md:w-1/3 bg-white flex flex-row md:flex-col items-center justify-center gap-6 py-6 md:py-10">
+          <img src={dctLogo} alt="DCT Logo" className="w-40" />
+          <img src={osasLogo} alt="OSAS Logo" className="w-40" />
+          <img src={sscLogo} alt="SSC Logo" className="w-40" />
         </div>
 
         {/* RIGHT LOGIN PANEL */}
         <div
-          className="w-3/4 relative bg-[#0b2540] text-white flex items-center justify-center rounded-r-[40px]"
+           className="w-full md:w-2/3 relative bg-[#0d284a] flex flex-col items-center justify-center py-8 md:py-0 px-6"
+   
           style={{
             backgroundImage: `url(${wolfBg})`,
             backgroundSize: "420px",
@@ -77,9 +77,10 @@ export default function Login() {
             onSubmit={handleLogin}
             className="relative z-20 w-full max-w-sm text-center space-y-4 px-10"
           >
-            <p className="text-sm md:text-base font-serif tracking-widest">
-              OSAS Portal System Log In
+            <p className="text-2xl sm:text-2xl md:text-3xl font-bold font-sans italic tracking-wider text-white mb-4 text-center">
+              OSAS Portal System
             </p>
+            
 
             {/* EMAIL */}
             <input
@@ -111,8 +112,7 @@ export default function Login() {
             </button>
           </form>
 
-          {/* SIDE DECOR */}
-          <div className="absolute left-0 top-0 h-full w-12 bg-white rounded-r-[80px]" />
+
         </div>
       </div>
     </div>
