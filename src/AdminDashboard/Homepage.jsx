@@ -1,4 +1,10 @@
 import { useState } from "react";
+import DisciplinaryPage from "./pages/DisciplinaryPage";
+import LostFoundPage from "./pages/LostFoundPage";
+import AttendancePage from "./pages/AttendancePage";
+import EventsPage from "./pages/EventsPage";
+import OrganizationsPage from "./pages/OrganizationsPage";
+import UsersPage from "./pages/UsersPage";
 
 const Icon = ({ name, size = 18 }) => {
    const icons = {
@@ -46,7 +52,7 @@ export default function Homepage() {
             onClick={() => setCollapsed(!collapsed)}
             className="p-2 rounded-lg hover:bg-gray-100 transition"
           >
-            <Icon name="menu" />
+            ☰
           </button>
         </div>
 
@@ -128,12 +134,12 @@ export default function Homepage() {
           )}
 
           {/* OTHER PAGES */}
-          {active !== "dashboard" && (
-            <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-10 text-gray-500 shadow-md border border-white">
-              <h1 className="text-xl font-semibold capitalize">{active} Management</h1>
-              <p className="text-sm mt-2">Content will be placed here.</p>
-            </div>
-          )}
+          {active === "disciplinary" && <DisciplinaryPage />}
+          {active === "lostfound" && <LostFoundPage />}
+          {active === "attendance" && <AttendancePage />}
+          {active === "events" && <EventsPage />}
+          {active === "orgs" && <OrganizationsPage />}
+          {active === "users" && <UsersPage />}
 
         </div>
       </div>
