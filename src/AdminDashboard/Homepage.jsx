@@ -87,13 +87,6 @@ export default function Homepage() {
           <h2 className="font-semibold capitalize text-gray-800">{active}</h2>
 
           <div className="flex items-center gap-3">
-
-            {/* search */}
-            <input
-              placeholder="Search..."
-              className="bg-gray-100 px-4 py-2 rounded-xl text-sm outline-none focus:ring-2 focus:ring-pink-300 w-56"
-            />
-
             {/* LOGOUT BUTTON */}
             <button
               onClick={() => {
