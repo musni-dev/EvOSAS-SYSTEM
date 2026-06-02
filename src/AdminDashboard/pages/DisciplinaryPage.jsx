@@ -7,8 +7,8 @@ import CaseRecords from "../Disciplinary/CaseRecords";
 export default function DisciplinaryPage() {
   const [showModal, setShowModal] = useState(false);
   const [activePage, setActivePage] = useState("main");
-
   const [cases, setCases] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   const [student, setStudent] = useState({
     studentId: "",
@@ -35,6 +35,23 @@ export default function DisciplinaryPage() {
       ...student,
       [e.target.name]: e.target.value,
     });
+  };
+
+
+ // ======================
+  // ACTION BUTTONS
+  // ======================
+
+  const handleEdit = (item) => {
+    console.log("Edit", item);
+  };
+
+  const handleView = (item) => {
+    console.log("View", item);
+  };
+
+  const handleDelete = (id) => {
+    console.log("Delete", id);
   };
 
 const handleSave = async () => {
@@ -117,9 +134,22 @@ useEffect(() => {
         cases={cases}
         setCases={setCases}
         setActivePage={setActivePage}
+        handleEdit={handleEdit}
+        handleView={handleView}
+        handleDelete={handleDelete}
       />
     );
   }
+
+
+const filteredCases = cases.filter((item) => {
+  const term = searchTerm.toLowerCase();
+
+  return (
+    item.name?.toLowerCase().includes(term) ||
+    item.studentId?.toLowerCase().includes(term)
+  );
+});
 
 
   return (
@@ -136,7 +166,7 @@ useEffect(() => {
         </p>
 
         {/* TOP BUTTONS */}
-        <div className="flex flex-wrap gap-4 mt-6">
+        <div className="flex flex-wrap gap-3 sm:gap-4">
 
           <button
             onClick={() => setShowModal(true)}
@@ -171,17 +201,19 @@ useEffect(() => {
       
 
       {/* TABLE */}
-      <div className="bg-white rounded-3xl shadow-md p-6 overflow-x-auto">
+      <div className="bg-white rounded-3xl shadow-md p-4 sm:p-6 overflow-x-auto">
 
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
           <h2 className="text-xl font-bold text-gray-700">
             Case Records
           </h2>
 
           <input
             type="text"
-            placeholder="Search..."
-            className="border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#ff6699]"
+            placeholder="Search by Last Name or Student ID..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full sm:w-96 border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#ff6699]"
           />
         </div>
 
@@ -198,7 +230,6 @@ useEffect(() => {
             <th className="p-4">Incident Type</th>
             <th className="p-4">Contact</th>
             <th className="p-4">Status</th>
-            <th className="p-4 rounded-r-xl">Actions</th>
 
           </tr>
         </thead>
@@ -215,7 +246,7 @@ useEffect(() => {
                 </td>
               </tr>
             ) : (
-              cases.map((item, index) => (
+              filteredCases.map((item, index) => (
                 <tr
                   key={index}
                   className="border-b hover:bg-pink-50 transition"
@@ -251,17 +282,8 @@ useEffect(() => {
                     </span>
                   </td>
 
-                  <td className="p-4 flex gap-2">
 
-                    <button className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm">
-                      Edit
-                    </button>
 
-                    <button className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm">
-                      Close
-                    </button>
-
-                  </td>
                 </tr>
               ))
             )}
@@ -274,7 +296,7 @@ useEffect(() => {
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
 
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-8 overflow-y-auto max-h-[95vh]">
+          <div className="bg-white rounded-3xl shadow-2xl w-full w-[95%] sm:max-w-4xl p-8 overflow-y-auto max-h-[95vh]">
 
             {/* HEADER */}
             <div className="flex justify-between items-center mb-6">
