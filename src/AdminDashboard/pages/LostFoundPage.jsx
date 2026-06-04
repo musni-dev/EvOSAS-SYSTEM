@@ -11,6 +11,7 @@ import {
   serverTimestamp,
 } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { color } from "framer-motion";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -78,8 +79,8 @@ const S = {
   statLabel: { fontSize: 12, color: "#6B7280", marginTop: 2, textTransform: "uppercase", letterSpacing: "0.04em" },
   controls: { display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 20, alignItems: "center" },
   searchBox: {
-    flex: 1, minWidth: 200, padding: "9px 14px 9px 38px",
-    border: "1px solid #E5E7EB", borderRadius: 10, fontSize: 14, outline: "none",
+    flex: 1, minWidth: 400, padding: "9px 14px 9px 38px",
+    border: "1px solid #ed00d8", borderRadius: 15, fontSize: 14, 
     background: "#F9FAFB",
   },
   searchWrap: { position: "relative", flex: 1, minWidth: 200 },
@@ -92,7 +93,7 @@ const S = {
   }),
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 },
   card: {
-    background: "#fff", border: "1px solid #E5E7EB", borderRadius: 14,
+    background: "#fff", border: "2px solid #eb34db", borderRadius: 20,
     overflow: "hidden", cursor: "pointer", transition: "box-shadow .15s, transform .15s",
   },
   cardImg: { width: "100%", height: 150, objectFit: "cover", display: "block", background: "#F3F4F6" },
@@ -100,7 +101,7 @@ const S = {
     height: 90, background: "linear-gradient(135deg,#FCE7F3,#DBEAFE)",
     display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28,
   },
-  cardBody: { padding: "14px 16px" },
+  cardBody: { padding: "14px 16px"  },
   cardTitle: { fontWeight: 700, fontSize: 15, margin: "8px 0 4px", color: "#111", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
   cardMeta: { fontSize: 12, color: "#6B7280", display: "flex", alignItems: "center", gap: 4 },
   overlay: {
@@ -108,7 +109,7 @@ const S = {
     display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50, padding: 16,
   },
   modal: {
-    background: "#fff", borderRadius: 16, width: "100%", maxWidth: 520,
+    background: "#fff", borderRadius: 16, width: "100%", maxWidth: 800,
     maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.15)",
   },
   modalHeader: {
@@ -116,16 +117,16 @@ const S = {
     padding: "18px 20px 14px", borderBottom: "1px solid #F3F4F6",
     position: "sticky", top: 0, background: "#fff", zIndex: 1,
   },
-  modalTitle: { fontWeight: 700, fontSize: 17, margin: 0 },
+  modalTitle: { fontWeight: 700, fontSize: 24, margin: 0, color: "#eb34db" },
   modalBody: { padding: "18px 20px" },
   modalFooter: { display: "flex", gap: 10, justifyContent: "flex-end", padding: "14px 20px", borderTop: "1px solid #F3F4F6" },
-  field: { marginBottom: 14 },
-  label: { display: "block", fontSize: 12, fontWeight: 600, color: "#6B7280", marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" },
-  input: { width: "100%", padding: "9px 12px", border: "1px solid #E5E7EB", borderRadius: 9, fontSize: 14, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
-  select: { width: "100%", padding: "9px 12px", border: "1px solid #E5E7EB", borderRadius: 9, fontSize: 14, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
-  textarea: { width: "100%", padding: "9px 12px", border: "1px solid #E5E7EB", borderRadius: 9, fontSize: 14, resize: "vertical", minHeight: 80, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
+  field: { marginBottom: 14, },
+  label: { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" },
+  input: { width: "100%", padding: "9px 12px", border: "1px solid #000000", borderRadius: 9, fontSize: 14, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
+  select: { width: "100%", padding: "9px 12px", border: "1px solid #000000", borderRadius: 9, fontSize: 14, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
+  textarea: { width: "100%", padding: "9px 12px", border: "1px solid #000000", borderRadius: 9, fontSize: 14, resize: "vertical", minHeight: 80, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
   emptyState: { gridColumn: "1/-1", textAlign: "center", padding: "48px 0", color: "#9CA3AF" },
-  closeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#9CA3AF", lineHeight: 1, padding: 4 },
+  closeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#ff0000", lineHeight: 1, padding: 4 },
   errorText: { fontSize: 12, color: "#EF4444", marginTop: 4 },
 };
 
@@ -472,11 +473,23 @@ export default function LostFoundPage() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div style={S.field}>
                   <label style={S.label}>Contact Number</label>
+
                   <input
+                    type="text"
                     name="contactNumber"
                     placeholder="09XXXXXXXXX"
                     value={form.contactNumber}
-                    onChange={handleChange}
+                    maxLength={11}
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "");
+
+                      setForm((prev) => ({
+                        ...prev,
+                        contactNumber: value,
+                      }));
+                    }}
                     style={S.input}
                   />
                 </div>
