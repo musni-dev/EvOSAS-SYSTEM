@@ -15,6 +15,7 @@ import {
 } from "firebase/firestore";
 import {
   CalendarDays,
+  Check,
   CheckCircle2,
   ChevronDown,
   Clock,
@@ -140,11 +141,13 @@ export default function AttendancePage() {
 
   const [sessions, setSessions] = useState([]);
   const [selectedSessionId, setSelectedSessionId] = useState("");
+  const [selectedSessionIds, setSelectedSessionIds] = useState([]);
   const [records, setRecords] = useState([]);
 
   const [search, setSearch] = useState("");
   const [filterPosition, setFilterPosition] = useState("");
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showSessionModal, setShowSessionModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
   const qrRef = useRef(null);
 
@@ -152,6 +155,15 @@ export default function AttendancePage() {
     () => sessions.find((s) => s.id === selectedSessionId),
     [sessions, selectedSessionId]
   );
+
+  const allSessionIds = useMemo(
+    () => sessions.map((session) => session.id),
+    [sessions]
+  );
+
+  const allSessionsSelected =
+    allSessionIds.length > 0 &&
+    selectedSessionIds.length === allSessionIds.length;
 
   const selectedSessionExpired = selectedSession
     ? isSessionExpired(selectedSession)
@@ -267,6 +279,36 @@ export default function AttendancePage() {
     await updateDoc(doc(db, "sessions", sessionId), { status: "ended" });
   }
 
+  async function deleteSessions(sessionIds) {
+    if (!sessionIds.length) return;
+
+    const batch = writeBatch(db);
+
+    for (const sessionId of sessionIds) {
+      const attendanceQuery = query(
+        collection(db, "attendance"),
+        where("sessionId", "==", sessionId)
+      );
+
+      const attendanceSnap = await getDocs(attendanceQuery);
+
+      attendanceSnap.forEach((recordDoc) => {
+        batch.delete(recordDoc.ref);
+      });
+
+      batch.delete(doc(db, "sessions", sessionId));
+    }
+
+    await batch.commit();
+
+    if (sessionIds.includes(selectedSessionId)) {
+      setSelectedSessionId("");
+      setRecords([]);
+    }
+
+    setSelectedSessionIds([]);
+  }
+
   async function handleDeleteSession(sessionId) {
     if (!sessionId) return;
 
@@ -276,25 +318,41 @@ export default function AttendancePage() {
 
     if (!ok) return;
 
-    const batch = writeBatch(db);
+    await deleteSessions([sessionId]);
+  }
 
-    const attendanceQuery = query(
-      collection(db, "attendance"),
-      where("sessionId", "==", sessionId)
+  async function handleDeleteSelectedSessions() {
+    if (!selectedSessionIds.length) return;
+
+    const ok = window.confirm(
+      `Delete ${selectedSessionIds.length} selected session/s? This will also delete their QR codes and attendance records.`
     );
 
-    const attendanceSnap = await getDocs(attendanceQuery);
+    if (!ok) return;
 
-    attendanceSnap.forEach((recordDoc) => {
-      batch.delete(recordDoc.ref);
-    });
+    await deleteSessions(selectedSessionIds);
+    setShowSessionModal(false);
+  }
 
-    batch.delete(doc(db, "sessions", sessionId));
+  function toggleSessionSelection(sessionId) {
+    setSelectedSessionIds((prev) =>
+      prev.includes(sessionId)
+        ? prev.filter((id) => id !== sessionId)
+        : [...prev, sessionId]
+    );
+  }
 
-    await batch.commit();
+  function handleToggleSelectAllSessions() {
+    if (allSessionsSelected) {
+      setSelectedSessionIds([]);
+    } else {
+      setSelectedSessionIds(allSessionIds);
+    }
+  }
 
-    setSelectedSessionId("");
-    setRecords([]);
+  function handleViewSession(sessionId) {
+    setSelectedSessionId(sessionId);
+    setShowSessionModal(false);
   }
 
   const handleDownloadQR = useCallback(() => {
@@ -452,29 +510,18 @@ export default function AttendancePage() {
                 <h2 className="text-sm font-semibold">QR Code</h2>
               </div>
 
-              <div className="relative mb-4">
-                <select
-                  value={selectedSessionId}
-                  onChange={(e) => setSelectedSessionId(e.target.value)}
-                  className="w-full appearance-none rounded-lg border border-pink-200 bg-white px-3 py-2 pr-8 text-sm outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+              <button
+                type="button"
+                onClick={() => setShowSessionModal(true)}
+                className="mb-4 flex w-full items-center justify-between rounded-lg border border-pink-200 bg-white px-3 py-2 text-left text-sm outline-none transition hover:bg-pink-50 focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+              >
+                <span
+                  className={selectedSession ? "text-gray-900" : "text-gray-400"}
                 >
-                  <option value="">Select session</option>
-                  {sessions.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.title} -{" "}
-                      {isSessionExpired(s)
-                        ? "Expired"
-                        : s.status === "active"
-                        ? "Active"
-                        : "Ended"}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown
-                  size={14}
-                  className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-              </div>
+                  {selectedSession ? selectedSession.title : "Choose session"}
+                </span>
+                <ChevronDown size={14} className="text-gray-400" />
+              </button>
 
               {selectedSession ? (
                 <div className="flex flex-col items-center gap-4">
@@ -556,41 +603,6 @@ export default function AttendancePage() {
                 </div>
               )}
             </div>
-
-            {sessions.length > 0 && (
-              <div className="rounded-xl bg-white p-5 shadow-sm border border-pink-100">
-                <h2 className="mb-3 text-sm font-semibold text-gray-700">
-                  Recent sessions
-                </h2>
-                <ul className="space-y-2">
-                  {sessions.slice(0, 5).map((s) => (
-                    <li
-                      key={s.id}
-                      onClick={() => setSelectedSessionId(s.id)}
-                      className={`flex cursor-pointer items-center justify-between rounded-lg px-3 py-2.5 transition ${
-                        s.id === selectedSessionId
-                          ? "bg-pink-50 border border-pink-200"
-                          : "hover:bg-gray-50 border border-transparent"
-                      }`}
-                    >
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-medium text-gray-900">
-                          {s.title}
-                        </p>
-                        <p className="text-xs text-gray-400">
-                          {formatEventDate(s.eventDate)} at{" "}
-                          {formatTime(s.eventTime)}
-                        </p>
-                      </div>
-                      <SessionBadge
-                        status={s.status}
-                        expired={isSessionExpired(s)}
-                      />
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
 
           <div className="rounded-xl bg-white shadow-sm border border-pink-100 overflow-hidden">
@@ -909,6 +921,153 @@ export default function AttendancePage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showSessionModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setShowSessionModal(false)}
+        >
+          <div
+            className="relative flex max-h-[85vh] w-full max-w-4xl flex-col rounded-2xl bg-white shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-pink-100 px-5 py-4">
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900">
+                  Select Attendance Session
+                </h2>
+                <p className="text-xs text-gray-500">
+                  Click a card to view its QR code. Select cards to delete.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowSessionModal(false)}
+                className="text-gray-400 transition hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-pink-100 px-5 py-3">
+              <p className="text-xs text-gray-500">
+                {selectedSessionIds.length} selected
+              </p>
+
+              <div className="flex items-center gap-2">
+                {sessions.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleToggleSelectAllSessions}
+                    className="flex items-center gap-1.5 rounded-lg border border-pink-200 px-3 py-1.5 text-xs font-medium text-pink-700 transition hover:bg-pink-50"
+                  >
+                    <Check size={13} />
+                    {allSessionsSelected ? "Clear all" : "Select all"}
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleDeleteSelectedSessions}
+                  disabled={!selectedSessionIds.length}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-200 px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Trash2 size={13} />
+                  Delete selected
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto p-5">
+              {sessions.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {sessions.map((session) => {
+                    const selectedForDelete = selectedSessionIds.includes(
+                      session.id
+                    );
+                    const activeForQR = selectedSessionId === session.id;
+                    const expired = isSessionExpired(session);
+
+                    return (
+                      <div
+                        key={session.id}
+                        className={`rounded-xl border bg-white p-4 shadow-sm transition ${
+                          activeForQR
+                            ? "border-pink-500 ring-2 ring-pink-100"
+                            : selectedForDelete
+                            ? "border-red-300 bg-red-50/40"
+                            : "border-pink-100 hover:border-pink-300 hover:bg-pink-50/40"
+                        }`}
+                      >
+                        <div className="mb-3 flex items-start justify-between gap-3">
+                          <button
+                            type="button"
+                            onClick={() => toggleSessionSelection(session.id)}
+                            className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md border-2 transition ${
+                              selectedForDelete
+                                ? "border-red-500 bg-red-500 text-white"
+                                : "border-pink-300 bg-white text-gray-300 hover:border-red-400 hover:text-red-400"
+                            }`}
+                            title="Select for delete"
+                          >
+                            {selectedForDelete ? (
+                              <Check size={15} strokeWidth={3} />
+                            ) : (
+                              <span className="h-2.5 w-2.5 rounded-sm border border-pink-300 bg-pink-50" />
+                            )}
+                          </button>
+
+                          <SessionBadge
+                            status={session.status}
+                            expired={expired}
+                          />
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => handleViewSession(session.id)}
+                          className="w-full text-left"
+                        >
+                          <p className="line-clamp-2 text-sm font-semibold text-gray-900">
+                            {session.title}
+                          </p>
+
+                          <p className="mt-2 text-xs text-gray-500">
+                            {formatEventDate(session.eventDate)} at{" "}
+                            {formatTime(session.eventTime)}
+                          </p>
+
+                          <p className="mt-1 text-xs text-red-500">
+                            QR ends at {formatTime(session.qrEndTime)}
+                          </p>
+
+                          <div className="mt-4 flex items-center gap-2 text-xs font-medium text-pink-700">
+                            <QrCode size={14} />
+                            View generated QR
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-14 text-center">
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
+                    <QrCode size={22} className="text-pink-300" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-500">
+                    No sessions created yet
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    Create a session first to generate QR codes.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
