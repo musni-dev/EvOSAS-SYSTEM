@@ -143,7 +143,7 @@ export default function Terms() {
 
               <p>
                 The system logs user activities for monitoring and security
-                purposes to ensure accountability within the administration.
+                purposes to ensure accountability within the administrat
               </p>
 
               <p>
