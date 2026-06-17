@@ -7,6 +7,12 @@ import Home from "./pages/Home";
 import Announcements from "./pages/Announcements";
 import About from "./pages/About";
 import Login from "./pages/Login";
+
+
+
+import SSCHomepage from "./ssc/homepage";
+import SDOHomepage from "./sdo/sdoHomepage";
+import SOCHomepage from "./soc/socHomepage";
  
 // Admin Pages (FIXED FOLDER CASE)
 import Terms from "./AdminDashboard/Terms";
@@ -38,6 +44,30 @@ function LayoutWrapper() {
     location.pathname.startsWith("/admin") ||
     location.pathname === "/terms";
 
+
+
+
+    const getHomeRoute = () => {
+  const role = localStorage.getItem("role");
+
+  switch (role) {
+    case "Administrator":
+      return "/admin/homepage";
+
+    case "SSC Officer":
+      return "/ssc/homepage";
+
+    case "Student Disciplinary Officer":
+      return "/sdo/homepage";
+
+    case "Student Organization Coordinator":
+      return "/soc/homepage";
+
+    default:
+      return "/";
+  }
+};
+
   return (
     <div className="flex flex-col min-h-screen">
       {!isAdminRoute && <Navbar />}
@@ -52,16 +82,16 @@ function LayoutWrapper() {
 
 
           {/* LOGIN */}
-          <Route
-            path="/login"
-            element={
-              isLoggedIn()
-                ? hasAcceptedTerms()
-                  ? <Navigate to="/admin/homepage" />
-                  : <Navigate to="/terms" />
-                : <Login />
-            }
-          />
+            <Route
+              path="/login"
+              element={
+                isLoggedIn()
+                  ? hasAcceptedTerms()
+                    ? <Navigate to={getHomeRoute()} />
+                    : <Navigate to="/terms" />
+                  : <Login />
+              }
+            />
 
           {/* TERMS */}
           <Route path="/terms" element={<TermsRoute />} />
@@ -69,13 +99,40 @@ function LayoutWrapper() {
           {/* ADMIN ROUTES */}
 
           <Route path="/admin/homepage" element={<ProtectedRoute><Homepage /></ProtectedRoute>} />
-          
+
+<Route
+  path="/ssc/homepage"
+  element={
+    <ProtectedRoute>
+      <SSCHomepage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/sdo/homepage"
+  element={
+    <ProtectedRoute>
+      <SDOHomepage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/soc/homepage"
+  element={
+    <ProtectedRoute>
+      <SOCHomepage />
+    </ProtectedRoute>
+  }
+/>
+
           
           {/* SMART FALLBACK */}
           <Route
             path="*"
             element={
-              <Navigate to={isLoggedIn() ? "/admin/homepage" : "/"} />
+              <Navigate to={isLoggedIn() ? getHomeRoute() : "/"} />
             }
           />
 

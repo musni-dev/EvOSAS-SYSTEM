@@ -2,12 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
-import { auth } from "../firebase/firebase";
+import { auth, db  } from "../firebase/firebase";
 
 import dctLogo from "../assets/dct-logo.png";
 import osasLogo from "../assets/osas-logo.png";
 import sscLogo from "../assets/ssc-logo.png";
 import wolfBg from "../assets/wolf.png";
+import { collection, getDocs } from "firebase/firestore";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -16,37 +17,102 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoading(true);
+const handleLogin = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    try {
-      // 🔥 Firebase login (REAL AUTH)
-      await signInWithEmailAndPassword(auth, email, password);
+  try {
+    // ==================================
+    // ADMIN LOGIN (Firebase Auth)
+    // ==================================
+    await signInWithEmailAndPassword(auth, email, password);
 
-      // save login state
-      localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("isLoggedIn", "true");
+    localStorage.setItem("role", "Administrator");
 
-      // notify app (for App.jsx state refresh)
-      window.dispatchEvent(new Event("authChanged"));
+    window.dispatchEvent(new Event("authChanged"));
 
-      // check terms acceptance
-      const accepted = localStorage.getItem("acceptedTerms");
+    const accepted = localStorage.getItem("acceptedTerms");
 
-      if (!accepted) {
-        navigate("/terms");
-      } else {
-        navigate("/admin/homepage");
-      }
-
-    } catch (error) {
-      console.log("Login error:", error.message);
-      alert("Invalid email or password");
+    if (!accepted) {
+      navigate("/terms");
+    } else {
+      navigate("/admin/homepage");
     }
 
-    setLoading(false);
-  };
+    return;
+  } catch (authError) {
+    console.log("Firebase Auth Failed:", authError.message);
 
+    try {
+      // ==================================
+      // USER LOGIN (Firestore)
+      // ==================================
+      const snapshot = await getDocs(collection(db, "users"));
+
+      console.log("Total Users:", snapshot.docs.length);
+
+      const foundUser = snapshot.docs.find((userDoc) => {
+        const data = userDoc.data();
+
+        console.log("Checking User:", data);
+
+        return (
+          String(data.username || "").toLowerCase().trim() ===
+            email.toLowerCase().trim() &&
+          String(data.password || "").trim() === password.trim() &&
+          data.status === "Active"
+        );
+      });
+
+      if (!foundUser) {
+        console.log("User Not Found");
+        alert("Invalid username or password");
+        return;
+      }
+
+      const userData = foundUser.data();
+
+      console.log("LOGIN SUCCESS:", userData);
+
+      localStorage.setItem("isLoggedIn", "true");
+      localStorage.setItem("role", userData.role);
+      localStorage.setItem("userData", JSON.stringify(userData));
+
+      window.dispatchEvent(new Event("authChanged"));
+
+      // ==================================
+      // ROLE REDIRECT
+      // ==================================
+      switch (userData.role) {
+        case "Administrator":
+          navigate("/admin/homepage");
+          break;
+
+        case "SSC Officer":
+          navigate("/ssc/homepage");
+          break;
+
+        case "Student Disciplinary Officer":
+          navigate("/sdo/homepage");
+          break;
+
+        case "Student Organization Coordinator":
+          navigate("/soc/homepage");
+          break;
+
+        default:
+          console.log("Unknown Role:", userData.role);
+          alert("Role not recognized.");
+      }
+    } catch (err) {
+      console.error("Firestore Login Error:", err);
+      alert("Login failed");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <div className="h-screen flex items-center justify-center bg-gray-200 overflow-hidden">
 
@@ -82,15 +148,15 @@ export default function Login() {
             </p>
             
 
-            {/* EMAIL */}
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-2 rounded-full bg-white/20 text-white placeholder-white/70 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400"
-              required
-            />
+            {/* EMAIL/USERNAME */}
+              <input
+                type="text"
+                placeholder="Email or Username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full px-4 py-2 rounded-full bg-white/20 text-white placeholder-white/70 border border-white/30 focus:outline-none focus:ring-2 focus:ring-blue-400"
+                required
+              />
 
             {/* PASSWORD */}
             <input
@@ -118,3 +184,5 @@ export default function Login() {
     </div>
   );
 }
+
+

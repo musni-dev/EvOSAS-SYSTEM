@@ -1,7 +1,11 @@
 import { useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 
+
 export default function EventEvaluationPage() {
+
+export default function EventsPage() {
+
   const [showForm, setShowForm] = useState(false);
 
   const [questions, setQuestions] = useState([
@@ -298,4 +302,5 @@ export default function EventEvaluationPage() {
       </div>
     </div>
   );
+}
 }
