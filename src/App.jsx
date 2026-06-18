@@ -1,4 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
@@ -8,17 +15,18 @@ import Announcements from "./pages/Announcements";
 import About from "./pages/About";
 import Login from "./pages/Login";
 
-
+// Admin / Role Pages
+import EvaluationResultsPage from "./AdminDashboard/pages/EvaluationResultsPage";
+import EvaluationFormPage from "./AdminDashboard/pages/EvaluationFormPage";
 
 import SSCHomepage from "./ssc/homepage";
 import SDOHomepage from "./sdo/sdoHomepage";
 import SOCHomepage from "./soc/socHomepage";
- 
-// Admin Pages (FIXED FOLDER CASE)
+
 import Terms from "./AdminDashboard/Terms";
 import Homepage from "./AdminDashboard/Homepage";
 
-/* AUTH CHECK */
+/* AUTH */
 const isLoggedIn = () => localStorage.getItem("isLoggedIn") === "true";
 const hasAcceptedTerms = () => localStorage.getItem("acceptedTerms") === "true";
 
@@ -29,7 +37,7 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-/* TERMS ROUTE GUARD */
+/* TERMS ROUTE */
 function TermsRoute() {
   if (!isLoggedIn()) return <Navigate to="/login" />;
   if (hasAcceptedTerms()) return <Navigate to="/admin/homepage" />;
@@ -40,37 +48,34 @@ function TermsRoute() {
 function LayoutWrapper() {
   const location = useLocation();
 
-  const isAdminRoute =
-    location.pathname.startsWith("/admin") ||
-    location.pathname === "/terms";
+  // ✅ PUBLIC ONLY ROUTES
+  const isPublicRoute =
+    location.pathname === "/" ||
+    location.pathname === "/announcements" ||
+    location.pathname === "/about";
 
+  const getHomeRoute = () => {
+    const role = localStorage.getItem("role");
 
-
-
-    const getHomeRoute = () => {
-  const role = localStorage.getItem("role");
-
-  switch (role) {
-    case "Administrator":
-      return "/admin/homepage";
-
-    case "SSC Officer":
-      return "/ssc/homepage";
-
-    case "Student Disciplinary Officer":
-      return "/sdo/homepage";
-
-    case "Student Organization Coordinator":
-      return "/soc/homepage";
-
-    default:
-      return "/";
-  }
-};
+    switch (role) {
+      case "Administrator":
+        return "/admin/homepage";
+      case "SSC Officer":
+        return "/ssc/homepage";
+      case "Student Disciplinary Officer":
+        return "/sdo/homepage";
+      case "Student Organization Coordinator":
+        return "/soc/homepage";
+      default:
+        return "/";
+    }
+  };
 
   return (
     <div className="flex flex-col min-h-screen">
-      {!isAdminRoute && <Navbar />}
+
+      {/* ✅ Navbar ONLY for public routes */}
+      {isPublicRoute && <Navbar />}
 
       <main className="flex-1">
         <Routes>
@@ -80,55 +85,63 @@ function LayoutWrapper() {
           <Route path="/announcements" element={<Announcements />} />
           <Route path="/about" element={<About />} />
 
-
           {/* LOGIN */}
-            <Route
-              path="/login"
-              element={
-                isLoggedIn()
-                  ? hasAcceptedTerms()
-                    ? <Navigate to={getHomeRoute()} />
-                    : <Navigate to="/terms" />
-                  : <Login />
-              }
-            />
+          <Route
+            path="/login"
+            element={
+              isLoggedIn()
+                ? hasAcceptedTerms()
+                  ? <Navigate to={getHomeRoute()} />
+                  : <Navigate to="/terms" />
+                : <Login />
+            }
+          />
 
           {/* TERMS */}
           <Route path="/terms" element={<TermsRoute />} />
 
-          {/* ADMIN ROUTES */}
+          {/* ADMIN / ROLE ROUTES */}
+          <Route
+            path="/admin/homepage"
+            element={
+              <ProtectedRoute>
+                <Homepage />
+              </ProtectedRoute>
+            }
+          />
 
-          <Route path="/admin/homepage" element={<ProtectedRoute><Homepage /></ProtectedRoute>} />
+          <Route
+            path="/ssc/homepage"
+            element={
+              <ProtectedRoute>
+                <SSCHomepage />
+              </ProtectedRoute>
+            }
+          />
 
-<Route
-  path="/ssc/homepage"
-  element={
-    <ProtectedRoute>
-      <SSCHomepage />
-    </ProtectedRoute>
-  }
-/>
+          <Route
+            path="/sdo/homepage"
+            element={
+              <ProtectedRoute>
+                <SDOHomepage />
+              </ProtectedRoute>
+            }
+          />
 
-<Route
-  path="/sdo/homepage"
-  element={
-    <ProtectedRoute>
-      <SDOHomepage />
-    </ProtectedRoute>
-  }
-/>
+          <Route
+            path="/soc/homepage"
+            element={
+              <ProtectedRoute>
+                <SOCHomepage />
+              </ProtectedRoute>
+            }
+          />
 
-<Route
-  path="/soc/homepage"
-  element={
-    <ProtectedRoute>
-      <SOCHomepage />
-    </ProtectedRoute>
-  }
-/>
+          {/* EVALUATION */}
+          <Route path="/evaluation/:eventId" element={<EvaluationFormPage />} />
+          <Route path="/evaluation/:id/results" element={<EvaluationResultsPage />} />
 
-          
-          {/* SMART FALLBACK */}
+          {/* FALLBACK */}
           <Route
             path="*"
             element={
@@ -139,18 +152,18 @@ function LayoutWrapper() {
         </Routes>
       </main>
 
-      {!isAdminRoute && <Footer />}
+      {/* ✅ Footer ONLY for public routes */}
+      {isPublicRoute && <Footer />}
+
     </div>
   );
 }
 
 /* APP */
-function App() {
+export default function App() {
   return (
     <Router>
       <LayoutWrapper />
     </Router>
   );
 }
-
-export default App;
