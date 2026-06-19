@@ -9,7 +9,13 @@ import osasLogo from "../assets/osas-logo.png";
 import sscLogo from "../assets/ssc-logo.png";
 import wolfBg from "../assets/wolf.png";
 
-import { collection, getDocs } from "firebase/firestore";
+import {
+  collection,
+  getDocs,
+  updateDoc,
+  doc,
+  serverTimestamp,
+} from "firebase/firestore";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -63,9 +69,19 @@ export default function Login() {
 
         const userData = foundUser.data();
 
+        await updateDoc(
+          doc(db, "users", foundUser.id),
+          {
+            lastLoginAt: serverTimestamp(),
+          }
+        );
+
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("role", userData.role);
         localStorage.setItem("userData", JSON.stringify(userData));
+
+
+
 
         window.dispatchEvent(new Event("authChanged"));
 

@@ -1,29 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  addDoc,
-  collection,
-  deleteDoc,
-  doc,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-} from "firebase/firestore";
-import {
-  Check,
-  ChevronLeft,
-  ChevronRight,
-  Edit3,
-  Plus,
-  Search,
-  ToggleLeft,
-  ToggleRight,
-  Trash2,
-  UserPlus,
-  X,
-} from "lucide-react";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, orderBy, query, serverTimestamp, updateDoc,} from "firebase/firestore";
+import { Check, ChevronLeft, ChevronRight, Edit3, Plus, Search, ToggleLeft, ToggleRight, Trash2, UserPlus, X,} from "lucide-react";
 import { db } from "../../firebase/firebase";
+import bcrypt from "bcryptjs";
 
 const USERS_COLLECTION = "users";
 const PAGE_SIZE = 8;
@@ -272,13 +251,11 @@ export default function UsersPage() {
   }
 
   function validateForm() {
-    if (!form.studentId.trim()) return "Student ID is required.";
     if (!form.firstName.trim()) return "First name is required.";
     if (!form.lastName.trim()) return "Last name is required.";
     if (!form.username.trim()) return "Username is required.";
     if (!form.password.trim()) return "Password is required.";
     if (!form.role) return "Assigned role is required.";
-    if (!form.position) return "Position is required.";
     return "";
   }
 
@@ -294,6 +271,10 @@ export default function UsersPage() {
     setSaving(true);
     setError("");
     setNotice("");
+    const hashedPassword = await bcrypt.hash(
+      form.password.trim(),
+      10
+    );
 
     const payload = {
       studentId: form.studentId.trim(),
@@ -302,7 +283,7 @@ export default function UsersPage() {
       lastName: form.lastName.trim(),
       position: form.position,
       username: form.username.trim().toLowerCase(),
-      password: form.password.trim(),
+      password: hashedPassword,
       role: form.role,
       status: form.status,
       updatedAt: serverTimestamp(),
@@ -412,7 +393,7 @@ export default function UsersPage() {
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Search by name, student ID, username, or password..."
+              placeholder="Search by name, student ID, or username"
               className="h-10 w-full rounded-md border border-pink-100 bg-pink-50/50 pl-9 pr-3 text-sm outline-none transition focus:border-pink-300 focus:bg-white focus:ring-2 focus:ring-pink-100"
             />
           </div>
@@ -450,7 +431,7 @@ export default function UsersPage() {
                   <th className="w-[15%] px-4 py-3">Position</th>
                   <th className="w-[18%] px-4 py-3">Role</th>
                   <th className="w-[12%] px-4 py-3">Status</th>
-                  <th className="w-[13%] px-4 py-3">Password</th>
+                  <th className="w-[12%] px-4 py-3">Last Login</th>
                   <th className="w-[12%] px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
@@ -470,9 +451,7 @@ export default function UsersPage() {
                             <p className="truncate text-xs text-slate-500">
                               {user.username} · {user.studentId}
                             </p>
-                            <p className="truncate text-xs text-slate-400">
-                              Default: {user.password || "Not set"}
-                            </p>
+
                           </div>
                         </div>
                       </td>
@@ -496,9 +475,9 @@ export default function UsersPage() {
                           {user.status}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-xs font-semibold text-pink-600">
-                        {user.password || "Not set"}
-                      </td>
+                        <td className="truncate text-xs text-pink-700">
+                          Last Login: {formatDate(user.lastLoginAt)}
+                        </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-1.5">
                           <IconButton label="Edit user" onClick={() => openEditModal(user)}>
@@ -563,12 +542,19 @@ export default function UsersPage() {
           </p>
           <div className="grid gap-3">
             <Field label="Student ID">
-              <input
-                value={form.studentId}
-                onChange={(event) => updateForm("studentId", event.target.value)}
-                placeholder="2024-00001"
-                className={formInputClass}
-              />
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.studentId}
+                  onChange={(event) =>
+                    updateForm(
+                      "studentId",
+                      event.target.value.replace(/\D/g, "")
+                    )
+                  }
+                  placeholder="123456789"
+                  className={formInputClass}
+                />
             </Field>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -629,14 +615,13 @@ export default function UsersPage() {
                     className={formInputClass}
                   />
                 </Field>
-                <Field label="Default password">
-                  <input
-                    value={form.password}
-                    onChange={(event) => updateForm("password", event.target.value)}
-                    placeholder="EvOSAS-0001"
-                    className={formInputClass}
-                  />
-                </Field>
+                    <Field label="Default password">
+                      <input
+                        value={form.password}
+                        readOnly
+                        className={`${formInputClass} cursor-not-allowed bg-slate-100`}
+                      />
+                    </Field>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-2">

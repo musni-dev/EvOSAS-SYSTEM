@@ -19,7 +19,7 @@ import Login from "./pages/Login";
 import EvaluationResultsPage from "./AdminDashboard/pages/EvaluationResultsPage";
 import EvaluationFormPage from "./AdminDashboard/pages/EvaluationFormPage";
 
-import SSCHomepage from "./ssc/homepage";
+import SSCHomepage from "./ssc/sscHomepage";
 import SDOHomepage from "./sdo/sdoHomepage";
 import SOCHomepage from "./soc/socHomepage";
 
