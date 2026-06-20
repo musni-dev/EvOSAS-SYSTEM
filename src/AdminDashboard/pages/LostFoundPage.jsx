@@ -10,7 +10,7 @@ import {
   onSnapshot,
   serverTimestamp,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, uploadBytes, getDownloadURL,  deleteObject } from "firebase/storage";
 import { color } from "framer-motion";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -43,15 +43,20 @@ const EMPTY_FORM = {
 // ── Sub-components ────────────────────────────────────────────────────────────
 function Badge({ label, config }) {
   return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: 5,
-      background: config.bg, color: config.color,
-      fontSize: 11, fontWeight: 700, letterSpacing: "0.04em",
-      padding: "3px 9px", borderRadius: 99, textTransform: "uppercase",
-    }}>
+    <span
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold uppercase tracking-wide"
+      style={{
+        backgroundColor: config.bg,
+        color: config.color,
+      }}
+    >
       {config.dot && (
-        <span style={{ width: 6, height: 6, borderRadius: "50%", background: config.dot, flexShrink: 0 }} />
+        <span
+          className="w-1.5 h-1.5 rounded-full shrink-0"
+          style={{ backgroundColor: config.dot }}
+        />
       )}
+
       {label}
     </span>
   );
@@ -186,14 +191,27 @@ export default function LostFoundPage() {
   const handleChange = (e) =>
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
 
-  const handleImage = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    setForm((f) => ({ ...f, imageFile: file }));
-    const reader = new FileReader();
-    reader.onload = (ev) => setImagePreview(ev.target.result);
-    reader.readAsDataURL(file);
-  };
+const handleImage = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const MAX_SIZE = 3 * 1024 * 1024; // 3MB
+
+  if (file.size > MAX_SIZE) {
+    alert("Image size must not exceed 3MB.");
+    e.target.value = "";
+    return;
+  }
+
+  setForm((f) => ({
+    ...f,
+    imageFile: file,
+  }));
+
+  const reader = new FileReader();
+  reader.onload = (ev) => setImagePreview(ev.target.result);
+  reader.readAsDataURL(file);
+};
 
   const validate = () => {
     const errs = {};
@@ -210,30 +228,32 @@ export default function LostFoundPage() {
 
     try {
       let imageUrl = null;
+      let imagePath = null;
 
-      // Firebase Storage upload
       if (form.imageFile) {
-        const storageRef = ref(
-          storage,
-          `lost_found/${Date.now()}_${form.imageFile.name}`
-        );
+        imagePath = `lost_found/${Date.now()}_${form.imageFile.name}`;
+
+        const storageRef = ref(storage, imagePath);
+
         await uploadBytes(storageRef, form.imageFile);
+
         imageUrl = await getDownloadURL(storageRef);
       }
 
       // Firestore: save document
-      await addDoc(collection(db, "lost_found"), {
-        reportType: form.reportType,
-        itemName: form.itemName.trim(),
-        category: form.category,
-        description: form.description.trim(),
-        location: form.location.trim(),
-        date: form.date,
-        status: form.status,
-        contactNumber: form.contactNumber.trim(),
-        imageUrl,
-        createdAt: serverTimestamp(),
-      });
+        await addDoc(collection(db, "lost_found"), {
+          reportType: form.reportType,
+          itemName: form.itemName.trim(),
+          category: form.category,
+          description: form.description.trim(),
+          location: form.location.trim(),
+          date: form.date,
+          status: form.status,
+          contactNumber: form.contactNumber.trim(),
+          imageUrl,
+          imagePath,
+          createdAt: serverTimestamp(),
+        });
 
       closeAdd();
     } catch (err) {
@@ -244,19 +264,35 @@ export default function LostFoundPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteTarget) return;
-    setDeleteLoading(true);
-    try {
-      await deleteDoc(doc(db, "lost_found", deleteTarget.id));
-      setDeleteTarget(null);
-    } catch (err) {
-      console.error("Error deleting:", err);
-      alert("Failed to delete. Please try again.");
-    } finally {
-      setDeleteLoading(false);
-    }
-  };
+    const handleDelete = async () => {
+      if (!deleteTarget) return;
+
+      setDeleteLoading(true);
+
+      try {
+        // Delete image from Storage
+        if (deleteTarget.imagePath) {
+          try {
+            const imageRef = ref(storage, deleteTarget.imagePath);
+            await deleteObject(imageRef);
+          } catch (storageErr) {
+            console.error("Storage delete error:", storageErr);
+          }
+        }
+
+        // Delete Firestore document
+        await deleteDoc(
+          doc(db, "lost_found", deleteTarget.id)
+        );
+
+        setDeleteTarget(null);
+      } catch (err) {
+        console.error("Error deleting:", err);
+        alert("Failed to delete. Please try again.");
+      } finally {
+        setDeleteLoading(false);
+      }
+    };
 
   const closeAdd = () => {
     setShowAddModal(false);
@@ -266,117 +302,207 @@ export default function LostFoundPage() {
   };
 
   // ── Render ────────────────────────────────────────────────────────────────
-  return (
-    <div style={S.page}>
+return (
+  <div className="max-w-7xl mx-auto p-4 md:p-6">
 
-      {/* Header */}
-      <div style={S.header}>
-        <div>
-          <h1 style={S.title}>Lost &amp; Found</h1>
-          <p style={S.subtitle}>Track and manage lost and found reports</p>
-        </div>
-        <button style={S.btn("primary")} onClick={() => setShowAddModal(true)}>
-          ＋ Add Report
-        </button>
+    {/* Header */}
+    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">
+          Lost &amp; Found
+        </h1>
+
+        <p className="text-sm text-gray-500 mt-1">
+          Track and manage lost and found reports
+        </p>
       </div>
 
-      {/* Stats */}
-      <div style={S.statsGrid}>
-        {[
-          { label: "Total Reports", value: stats.total, accent: "#6B7280" },
-          { label: "Lost",          value: stats.lost,  accent: "#EF4444" },
-          { label: "Found",         value: stats.found, accent: "#10B981" },
-          { label: "Claimed",       value: stats.claimed, accent: "#3B82F6" },
-        ].map(({ label, value, accent }) => (
-          <div key={label} style={S.statCard(accent)}>
-            <p style={S.statNum}>{loading ? "—" : value}</p>
-            <p style={S.statLabel}>{label}</p>
-          </div>
-        ))}
-      </div>
+      <button
+        onClick={() => setShowAddModal(true)}
+        className="bg-pink-500 hover:bg-pink-600 text-white px-5 py-2.5 rounded-xl font-semibold transition"
+      >
+        ＋ Add Report
+      </button>
+    </div>
 
-      {/* Search & Filters */}
-      <div style={S.controls}>
-        <div style={S.searchWrap}>
-          <span style={S.searchIcon}>🔍</span>
-          <input
-            style={S.searchBox}
-            placeholder="Search item, location, category…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        {["All", "Lost", "Found"].map((t) => (
-          <button key={t} style={S.pill(filterType === t)} onClick={() => setFilterType(t)}>
-            {t}
-          </button>
-        ))}
-        <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
-          style={{ ...S.select, width: "auto", minWidth: 130 }}
+    {/* Stats */}
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      {[
+        { label: "Total Reports", value: stats.total, accent: "#6B7280" },
+        { label: "Lost", value: stats.lost, accent: "#EF4444" },
+        { label: "Found", value: stats.found, accent: "#10B981" },
+        { label: "Claimed", value: stats.claimed, accent: "#3B82F6" },
+      ].map(({ label, value, accent }) => (
+        <div
+          key={label}
+          className="bg-white border border-gray-200 rounded-xl p-4"
+          style={{
+            borderLeft: `4px solid ${accent}`,
+          }}
         >
-          {["All", "Pending", "Claimed", "Resolved"].map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
+          <p className="text-2xl font-bold text-gray-900">
+            {loading ? "—" : value}
+          </p>
+
+          <p className="text-xs uppercase tracking-wider text-gray-500">
+            {label}
+          </p>
+        </div>
+      ))}
+    </div>
+
+    {/* Search & Filters */}
+    <div className="flex flex-col lg:flex-row gap-3 mb-6">
+      <div className="relative flex-1">
+        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+          🔍
+        </span>
+
+        <input
+          className="
+          w-full
+          pl-10
+          pr-4
+          py-3
+          border
+          border-fuchsia-500
+          rounded-2xl
+          bg-gray-50
+          text-sm
+          outline-none
+          focus:ring-2
+          focus:ring-pink-300
+        "
+          placeholder="Search item, location, category…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
       </div>
 
-      {/* Cards */}
-      <div style={S.grid}>
-        {loading ? (
-          <div style={S.emptyState}>
-            <div style={{ fontSize: 36 }}>⏳</div>
-            <p style={{ marginTop: 8 }}>Loading reports…</p>
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={S.emptyState}>
-            <div style={{ fontSize: 48 }}>🔍</div>
-            <p style={{ marginTop: 8 }}>No reports match your filters.</p>
-          </div>
-        ) : (
-          filtered.map((item) => (
-            <div
-              key={item.id}
-              style={S.card}
-              onClick={() => setViewItem(item)}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,.1)";
-                e.currentTarget.style.transform = "translateY(-2px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.boxShadow = "none";
-                e.currentTarget.style.transform = "none";
-              }}
-            >
-              {item.imageUrl ? (
-                <img src={item.imageUrl} alt={item.itemName} style={S.cardImg} />
-              ) : (
-                <div style={S.cardImgPlaceholder}>{EMOJI[item.category] || "📦"}</div>
-              )}
-              <div style={S.cardBody}>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <Badge label={item.reportType} config={TYPE_CONFIG[item.reportType]} />
-                  <Badge label={item.status} config={STATUS_CONFIG[item.status] || STATUS_CONFIG.Pending} />
-                </div>
-                <p style={S.cardTitle}>{item.itemName}</p>
-                <p style={S.cardMeta}>📍 {item.location}</p>
-                <p style={{ ...S.cardMeta, marginTop: 2 }}>🗓 {item.date || "—"}</p>
-                {item.category && (
-                  <p style={{ ...S.cardMeta, marginTop: 6 }}>
-                    <span style={{
-                      background: "#F3F4F6", padding: "2px 8px", borderRadius: 99,
-                      fontSize: 11, fontWeight: 600, color: "#4B5563",
-                    }}>
-                      {item.category}
-                    </span>
-                  </p>
-                )}
+      {["All", "Lost", "Found"].map((t) => (
+        <button
+          key={t}
+          onClick={() => setFilterType(t)}
+          className={`px-4 py-2 rounded-full text-sm font-semibold border transition
+          ${
+            filterType === t
+              ? "bg-pink-500 border-pink-500 text-white"
+              : "border-gray-300 text-gray-600 bg-white"
+          }`}
+        >
+          {t}
+        </button>
+      ))}
+
+      <select
+        value={filterStatus}
+        onChange={(e) => setFilterStatus(e.target.value)}
+        className="
+        border
+        border-gray-300
+        rounded-xl
+        px-4
+        py-2
+        text-sm
+        bg-white
+        min-w-[130px]
+      "
+      >
+        {["All", "Pending", "Claimed", "Resolved"].map((s) => (
+          <option key={s}>{s}</option>
+        ))}
+      </select>
+    </div>
+
+    {/* Cards */}
+    <div
+      className="
+      grid
+      grid-cols-1
+      sm:grid-cols-2
+      lg:grid-cols-3
+      xl:grid-cols-4
+      gap-4
+    "
+    >
+      {loading ? (
+        <div className="col-span-full text-center py-12 text-gray-400">
+          <div className="text-4xl">⏳</div>
+          <p className="mt-2">Loading reports…</p>
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="col-span-full text-center py-12 text-gray-400">
+          <div className="text-5xl">🔍</div>
+          <p className="mt-2">No reports match your filters.</p>
+        </div>
+      ) : (
+        filtered.map((item) => (
+          <div
+            key={item.id}
+            onClick={() => setViewItem(item)}
+            className="
+            bg-white
+            border-2
+            border-fuchsia-500
+            rounded-2xl
+            overflow-hidden
+            cursor-pointer
+            transition-all
+            hover:shadow-lg
+            hover:-translate-y-1
+          "
+          >
+            {item.imageUrl ? (
+              <img
+                src={item.imageUrl}
+                alt={item.itemName}
+                className="w-full h-40 object-cover"
+              />
+            ) : (
+              <div className="h-40 flex items-center justify-center bg-gradient-to-br from-pink-100 to-blue-100 text-4xl">
+                {EMOJI[item.category] || "📦"}
               </div>
+            )}
+
+            <div className="p-4">
+              <div className="flex flex-wrap gap-2">
+                <Badge
+                  label={item.reportType}
+                  config={TYPE_CONFIG[item.reportType]}
+                />
+
+                <Badge
+                  label={item.status}
+                  config={
+                    STATUS_CONFIG[item.status] || STATUS_CONFIG.Pending
+                  }
+                />
+              </div>
+
+              <p className="font-bold text-gray-900 truncate mt-2">
+                {item.itemName}
+              </p>
+
+              <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                📍 {item.location}
+              </p>
+
+              <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                🗓 {item.date || "—"}
+              </p>
+
+              {item.category && (
+                <div className="mt-2">
+                  <span className="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-1 rounded-full">
+                    {item.category}
+                  </span>
+                </div>
+              )}
             </div>
-          ))
-        )}
-      </div>
+          </div>
+        ))
+      )}
+    </div>
 
       {/* ── Add Report Modal ─────────────────────────────────────────────────── */}
       {showAddModal && (

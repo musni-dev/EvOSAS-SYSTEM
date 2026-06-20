@@ -22,7 +22,7 @@ const Home = () => {
     <>
       {/* HERO SECTION */}
       <section
-        className="relative py-16 sm:py-20 md:py-24 text-white text-center overflow-hidden"
+        className="relative py-16 sm:py-20 md:py-44 text-white text-center overflow-hidden"
         style={{
           backgroundImage: `url(${DCTbg})`,
           backgroundSize: "cover",

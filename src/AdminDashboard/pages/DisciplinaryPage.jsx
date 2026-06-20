@@ -166,7 +166,7 @@ const filteredCases = cases.filter((item) => {
         </p>
 
         {/* TOP BUTTONS */}
-        <div className="flex flex-wrap gap-3 sm:gap-4">
+        <div className="flex flex-wrap gap-3 sm:gap-4 mt-8">
 
           <button
             onClick={() => setShowModal(true)}
@@ -177,21 +177,21 @@ const filteredCases = cases.filter((item) => {
 
          <button
           onClick={() => setActivePage("records")}
-          className="bg-blue-500 hover:bg-blue-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
+          className="bg-[#ff6699] hover:bg-[#ff4f8b] transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
         >
           Case Records
         </button>
 
          <button
             onClick={() => setActivePage("pending")}
-            className="bg-green-500 hover:bg-green-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
+            className="bg-[#ff6699] hover:bg-[#ff4f8b] transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
           >
             Pending Approval
           </button>
 
         <button
           onClick={() => setActivePage("main")}
-          className="bg-orange-500 hover:bg-orange-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
+          className="bg-[#ff6699] hover:bg-[#ff4f8b] transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
         >
           Back to Main
         </button>

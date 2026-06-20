@@ -1,44 +1,10 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import jsQR from "jsqr";
-import {
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  updateDoc,
-  doc,
-  serverTimestamp,
-  Timestamp,
-} from "firebase/firestore";
-import {
-  ScanLine,
-  Camera,
-  AlertCircle,
-  ArrowLeft,
-  RefreshCw,
-  CheckCircle2,
-  XCircle,
-  Clock,
-  Calendar,
-  Home,
-  QrCode,
-} from "lucide-react";
+import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp,} from "firebase/firestore";
+import { ScanLine, Camera, AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Home, QrCode,} from "lucide-react";
 import { db, auth } from "../firebase/firebase"; // adjust path to your firebase config
+import { signOut } from "firebase/auth";
 
-/**
- * SscHomepage
- * Single-file SSC Officer experience:
- *  - "home"    : dashboard with a "Scan Attendance" button
- *  - "scan"    : opens device camera, decodes the event QR code (jsQR)
- *  - "confirm" : writes/updates the Firestore "attendance" doc, shows result
- *
- * Expected QR payload (JSON string encoded in the QR):
- * { "eventId": "EVT-2026-001", "eventName": "General Assembly", "type": "timeIn" | "timeOut" }
- *
- * Firestore collection: "attendance"
- * Doc shape: { officerId, eventId, eventName, date, timeIn, timeOut, isDeleted, createdAt }
- */
 export default function sscHomepage() {
   const [view, setView] = useState("home"); // "home" | "scan" | "confirm"
   const [scanResult, setScanResult] = useState(null); // decoded payload passed to confirm view
@@ -85,9 +51,26 @@ export default function sscHomepage() {
 function HomeView({ onScanPress }) {
   const officerName = auth.currentUser?.displayName || "Officer";
 
+  const handleLogout = async () => {
+  try {
+      await signOut(auth);
+      window.location.href = "/";
+    } catch (err) {
+      console.error("Logout error:", err);
+    }
+  };
   return (
     <div className="min-h-screen w-full flex flex-col px-4 py-6 sm:py-10">
       <div className="w-full max-w-sm sm:max-w-md mx-auto flex-1 flex flex-col">
+
+        <div className="w-full flex justify-end mb-4">
+          <button
+            onClick={handleLogout}
+            className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold"
+          >
+            Logout
+          </button>
+        </div>
         {/* Greeting */}
         <div className="mb-8 sm:mb-12 text-center">
           <p className="text-sm text-gray-500">Welcome back,</p>

@@ -83,8 +83,8 @@ const About = () => {
             EvOSAS is the <strong>Evolution of the Office of Student Affairs and Services</strong>,
             a web-based management system developed to centralize student services at
             the Dominican College of Tarlac. It allows students, OSAS staff, and SSC officers
-            to manage reports, announcements, disciplinary cases, lost and found items,
-            attendance tracking, and event evaluations, all in one seamless platform.
+            to manage reports, Disciplinary Cases, Lost-and-Found Items,
+            SSC Attendance Monitoring, Events evaluation, and Student Organizations Files, all in one seamless platform.
           </p>
         </motion.div>
       </section>
