@@ -1,33 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import {
-  addDoc,
-  collection,
-  doc,
-  getDocs,
-  onSnapshot,
-  orderBy,
-  query,
-  serverTimestamp,
-  updateDoc,
-  where,
-  writeBatch,
-} from "firebase/firestore";
-import {
-  CalendarDays,
-  Check,
-  CheckCircle2,
-  ChevronDown,
-  Clock,
-  Download,
-  GraduationCap,
-  Plus,
-  QrCode,
-  Search,
-  StopCircle,
-  Trash2,
-  Users,
-  X,
+  addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch,} from "firebase/firestore";
+import { CalendarDays, Check, CheckCircle2, ChevronDown, Clock, Download, GraduationCap, Plus, QrCode, Search, StopCircle, Trash2, Users, X,
 } from "lucide-react";
 import { db } from "../../firebase/firebase";
 

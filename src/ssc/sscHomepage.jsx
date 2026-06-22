@@ -3,7 +3,9 @@ import jsQR from "jsqr";
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp,} from "firebase/firestore";
 import { ScanLine, Camera, AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Home, QrCode,} from "lucide-react";
 import { db, auth } from "../firebase/firebase"; // adjust path to your firebase config
-import { signOut } from "firebase/auth";
+import { signOut,onAuthStateChanged } from "firebase/auth";
+
+
 
 export default function sscHomepage() {
   const [view, setView] = useState("home"); // "home" | "scan" | "confirm"
@@ -51,14 +53,20 @@ export default function sscHomepage() {
 function HomeView({ onScanPress }) {
   const officerName = auth.currentUser?.displayName || "Officer";
 
-  const handleLogout = async () => {
+const handleLogout = async () => {
   try {
-      await signOut(auth);
-      window.location.href = "/";
-    } catch (err) {
-      console.error("Logout error:", err);
-    }
-  };
+    await signOut(auth);
+
+    localStorage.clear();
+    sessionStorage.clear();
+
+    window.location.href = "/";
+  } catch (err) {
+    console.error("Logout error:", err);
+  }
+};
+
+
   return (
     <div className="min-h-screen w-full flex flex-col px-4 py-6 sm:py-10">
       <div className="w-full max-w-sm sm:max-w-md mx-auto flex-1 flex flex-col">
@@ -134,34 +142,34 @@ function ScanView({ onBack, onDecoded }) {
     }
   }, []);
 
-  const handleDecodedRaw = useCallback(
-    (raw) => {
-      setScanning(false);
-      stopCamera();
+const handleDecodedRaw = useCallback(
+  (raw) => {
+    setScanning(false);
+    stopCamera();
 
-      let payload;
-      try {
-        payload = JSON.parse(raw);
-      } catch {
-        setScanError("This QR code isn't a valid attendance code.");
-        setScanning(true);
-        return;
-      }
+    let payload;
 
-      if (!payload.eventId || !payload.type) {
-        setScanError("This QR code is missing required attendance info.");
-        setScanning(true);
-        return;
-      }
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      // fallback if plain string QR
+      payload = { sessionId: raw };
+    }
 
-      onDecoded({
-        eventId: payload.eventId,
-        eventName: payload.eventName || "Unnamed Event",
-        type: payload.type, // "timeIn" or "timeOut"
-      });
-    },
-    [onDecoded, stopCamera]
-  );
+    const sessionId = payload.sessionId;
+
+    if (!sessionId) {
+      setScanError("Invalid QR code. No session ID found.");
+      setScanning(true);
+      return;
+    }
+
+    onDecoded({
+      sessionId,
+    });
+  },
+  [onDecoded, stopCamera]
+);
 
   const tick = useCallback(() => {
     const video = videoRef.current;
@@ -220,6 +228,20 @@ function ScanView({ onBack, onDecoded }) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, [tick, permissionState, scanning]);
+
+  useEffect(() => {
+  const unsub = onAuthStateChanged(auth, (user) => {
+    if (!user) {
+      setStatus("error");
+      setMessage("Not logged in.");
+      return;
+    }
+
+    recordAttendance(user);
+  });
+
+  return () => unsub();
+}, []);
 
   return (
     <div className="min-h-screen w-full bg-gray-950 flex flex-col">
@@ -334,84 +356,55 @@ function ConfirmView({ payload, onScanAgain, onDone }) {
   }, []);
 
   const recordAttendance = async () => {
-    const { eventId, eventName, type } = payload;
-    const officerId = auth.currentUser?.uid;
-    const todayStr = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const { sessionId } = payload;
+  const user = auth.currentUser;
 
-    if (!officerId) {
-      setStatus("error");
-      setMessage("You're not signed in. Please log in again.");
+  if (!user) {
+    setStatus("error");
+    setMessage("Not logged in.");
+    return;
+  }
+
+  try {
+    const attendanceRef = collection(db, "attendance");
+
+    const q = query(
+      attendanceRef,
+      where("sessionId", "==", sessionId),
+      where("studentId", "==", user.uid)
+    );
+
+    const existingSnap = await getDocs(q);
+
+    // TIME IN
+    if (!existingSnap.empty && !existingSnap.docs[0].data().timeOut) {
+      setStatus("already");
+      setMessage("Already timed in.");
       return;
     }
 
-    try {
-      const attendanceRef = collection(db, "attendance");
-      const q = query(
-        attendanceRef,
-        where("officerId", "==", officerId),
-        where("eventId", "==", eventId),
-        where("date", "==", todayStr)
-      );
-      const existingSnap = await getDocs(q);
+    const newRecord = {
+   sessionId: payload.sessionId,
+  studentId: payload.studentId,
+  studentName: payload.studentName,
+  position: payload.position,
 
-      if (type === "timeIn") {
-        if (!existingSnap.empty) {
-          const existing = existingSnap.docs[0].data();
-          setStatus("already");
-          setMessage("You've already timed in for this event today.");
-          setRecord({ ...existing, eventName });
-          return;
-        }
+  timeIn: serverTimestamp(),
+  timeOut: null,
+  createdAt: serverTimestamp(),
+    };
 
-        const newDoc = {
-          officerId,
-          eventId,
-          eventName,
-          date: todayStr,
-          timeIn: serverTimestamp(),
-          timeOut: null,
-          isDeleted: false,
-          createdAt: serverTimestamp(),
-        };
-        await addDoc(attendanceRef, newDoc);
+    await addDoc(attendanceRef, newRecord);
 
-        setStatus("success");
-        setMessage("Time-in recorded successfully.");
-        setRecord({ ...newDoc, timeIn: Timestamp.now() });
-      } else if (type === "timeOut") {
-        if (existingSnap.empty) {
-          setStatus("error");
-          setMessage("No time-in record found for this event today. Please time in first.");
-          return;
-        }
-
-        const existingDocSnap = existingSnap.docs[0];
-        const existingData = existingDocSnap.data();
-
-        if (existingData.timeOut) {
-          setStatus("already");
-          setMessage("You've already timed out for this event today.");
-          setRecord({ ...existingData, eventName });
-          return;
-        }
-
-        await updateDoc(doc(db, "attendance", existingDocSnap.id), {
-          timeOut: serverTimestamp(),
-        });
-
-        setStatus("success");
-        setMessage("Time-out recorded successfully.");
-        setRecord({ ...existingData, eventName, timeOut: Timestamp.now() });
-      } else {
-        setStatus("error");
-        setMessage("Unrecognized scan type.");
-      }
-    } catch (err) {
-      console.error(err);
-      setStatus("error");
-      setMessage("Something went wrong while recording your attendance. Please try again.");
-    }
-  };
+    setStatus("success");
+    setMessage("Time-in recorded successfully.");
+    setRecord({ ...newRecord, timeIn: Timestamp.now() });
+  } catch (err) {
+    console.error(err);
+    setStatus("error");
+    setMessage("Failed to record attendance.");
+  }
+};
 
   const formatTime = (ts) => {
     if (!ts) return "—";

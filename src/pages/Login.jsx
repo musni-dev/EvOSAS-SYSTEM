@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../firebase/firebase";
+import bcrypt from "bcryptjs";
 
 import dctLogo from "../assets/dct-logo.png";
 import osasLogo from "../assets/osas-logo.png";
@@ -51,16 +52,15 @@ export default function Login() {
       try {
         const snapshot = await getDocs(collection(db, "users"));
 
-        const foundUser = snapshot.docs.find((userDoc) => {
-          const data = userDoc.data();
+          const foundUser = snapshot.docs.find((userDoc) => {
+            const data = userDoc.data();
 
-          return (
-            String(data.username || "").toLowerCase().trim() ===
-              email.toLowerCase().trim() &&
-            String(data.password || "").trim() === password.trim() &&
-            data.status === "Active"
-          );
-        });
+            return (
+              String(data.username || "").toLowerCase().trim() ===
+                email.toLowerCase().trim() &&
+              data.status === "Active"
+            );
+          });
 
         if (!foundUser) {
           alert("Invalid username or password");
@@ -69,6 +69,15 @@ export default function Login() {
 
         const userData = foundUser.data();
 
+        const passwordMatch = await bcrypt.compare(
+          password.trim(),
+          userData.password
+        );
+
+        if (!passwordMatch) {
+          alert("Invalid username or password");
+          return;
+        }
         await updateDoc(
           doc(db, "users", foundUser.id),
           {

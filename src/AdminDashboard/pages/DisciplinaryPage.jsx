@@ -170,28 +170,28 @@ const filteredCases = cases.filter((item) => {
 
           <button
             onClick={() => setShowModal(true)}
-            className="bg-[#ff6699] hover:bg-[#ff4f8b] transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
+            className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
           >
             + Add Case
           </button>
 
          <button
           onClick={() => setActivePage("records")}
-          className="bg-[#ff6699] hover:bg-[#ff4f8b] transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
+          className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
         >
           Case Records
         </button>
 
          <button
             onClick={() => setActivePage("pending")}
-            className="bg-[#ff6699] hover:bg-[#ff4f8b] transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
+            className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
           >
             Pending Approval
           </button>
 
         <button
           onClick={() => setActivePage("main")}
-          className="bg-[#ff6699] hover:bg-[#ff4f8b] transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
+          className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
         >
           Back to Main
         </button>

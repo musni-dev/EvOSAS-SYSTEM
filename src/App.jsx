@@ -23,6 +23,8 @@ import SSCHomepage from "./ssc/sscHomepage";
 import SDOHomepage from "./sdo/sdoHomepage";
 import SOCHomepage from "./soc/socHomepage";
 
+import ScanAttendancePage from "./AdminDashboard/pages/ScanAttendancePage";
+
 import Terms from "./AdminDashboard/Terms";
 import Homepage from "./AdminDashboard/Homepage";
 
@@ -136,6 +138,12 @@ function LayoutWrapper() {
               </ProtectedRoute>
             }
           />
+
+          <Route
+            path="/scan-attendance"
+            element={<ScanAttendancePage />}
+          />
+
 
           {/* EVALUATION */}
           <Route path="/evaluation/:eventId" element={<EvaluationFormPage />} />
