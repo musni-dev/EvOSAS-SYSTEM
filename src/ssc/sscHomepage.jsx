@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import jsQR from "jsqr";
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp,} from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, updateDoc, getDoc, doc, serverTimestamp, Timestamp,} from "firebase/firestore";
 import { ScanLine, Camera, AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Home, QrCode,} from "lucide-react";
 import { db, auth } from "../firebase/firebase"; // adjust path to your firebase config
 import { signOut,onAuthStateChanged } from "firebase/auth";
@@ -143,7 +143,7 @@ function ScanView({ onBack, onDecoded }) {
   }, []);
 
 const handleDecodedRaw = useCallback(
-  (raw) => {
+  async (raw) => {
     setScanning(false);
     stopCamera();
 
@@ -152,21 +152,45 @@ const handleDecodedRaw = useCallback(
     try {
       payload = JSON.parse(raw);
     } catch {
-      // fallback if plain string QR
       payload = { sessionId: raw };
     }
 
     const sessionId = payload.sessionId;
 
     if (!sessionId) {
-      setScanError("Invalid QR code. No session ID found.");
+      setScanError("Invalid QR code.");
       setScanning(true);
       return;
     }
 
-    onDecoded({
-      sessionId,
-    });
+    // 🔥 CHECK SESSION FROM FIRESTORE
+    const sessionRef = doc(db, "sessions", sessionId);
+    const snap = await getDoc(sessionRef);
+
+    if (!snap.exists()) {
+      setScanError("Session not found.");
+      setScanning(true);
+      return;
+    }
+
+    const session = snap.data();
+
+    if (session.status !== "active") {
+      setScanError("Session already ended.");
+      setScanning(true);
+      return;
+    }
+
+    const endDateTime = new Date(`${session.eventDate}T${session.qrEndTime}`);
+
+    if (new Date() > endDateTime) {
+      setScanError("QR Code expired.");
+      setScanning(true);
+      return;
+    }
+
+    // ✅ PASS ONLY VALID
+    onDecoded({ sessionId });
   },
   [onDecoded, stopCamera]
 );
@@ -229,19 +253,7 @@ const handleDecodedRaw = useCallback(
     };
   }, [tick, permissionState, scanning]);
 
-  useEffect(() => {
-  const unsub = onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      setStatus("error");
-      setMessage("Not logged in.");
-      return;
-    }
 
-    recordAttendance(user);
-  });
-
-  return () => unsub();
-}, []);
 
   return (
     <div className="min-h-screen w-full bg-gray-950 flex flex-col">
@@ -355,9 +367,10 @@ function ConfirmView({ payload, onScanAgain, onDone }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const recordAttendance = async () => {
+ const recordAttendance = async () => {
   const { sessionId } = payload;
-  const user = auth.currentUser;
+
+  const user = JSON.parse(localStorage.getItem("userData"));
 
   if (!user) {
     setStatus("error");
@@ -371,34 +384,51 @@ function ConfirmView({ payload, onScanAgain, onDone }) {
     const q = query(
       attendanceRef,
       where("sessionId", "==", sessionId),
-      where("studentId", "==", user.uid)
+      where("studentId", "==", user.studentId)
     );
 
-    const existingSnap = await getDocs(q);
+    const snap = await getDocs(q);
 
-    // TIME IN
-    if (!existingSnap.empty && !existingSnap.docs[0].data().timeOut) {
-      setStatus("already");
-      setMessage("Already timed in.");
+    // =========================
+    // CASE 1: NO RECORD → TIME IN
+    // =========================
+    if (snap.empty) {
+      const newRecord = {
+        sessionId,
+        studentId: user.studentId,
+        studentName: `${user.firstName} ${user.lastName}`,
+        position: user.position,
+        role: user.role,
+        timeIn: serverTimestamp(),
+        timeOut: null,
+        createdAt: serverTimestamp(),
+      };
+
+      await addDoc(attendanceRef, newRecord);
+
+      setStatus("success");
+      setMessage("Time-in recorded successfully.");
       return;
     }
 
-    const newRecord = {
-   sessionId: payload.sessionId,
-  studentId: payload.studentId,
-  studentName: payload.studentName,
-  position: payload.position,
+    // =========================
+    // CASE 2: EXISTING RECORD → TIME OUT
+    // =========================
+    const docRef = snap.docs[0].ref;
+    const data = snap.docs[0].data();
 
-  timeIn: serverTimestamp(),
-  timeOut: null,
-  createdAt: serverTimestamp(),
-    };
+    if (data.timeOut) {
+      setStatus("already");
+      setMessage("Already timed out.");
+      return;
+    }
 
-    await addDoc(attendanceRef, newRecord);
+    await updateDoc(docRef, {
+      timeOut: serverTimestamp(),
+    });
 
     setStatus("success");
-    setMessage("Time-in recorded successfully.");
-    setRecord({ ...newRecord, timeIn: Timestamp.now() });
+    setMessage("Time-out recorded successfully.");
   } catch (err) {
     console.error(err);
     setStatus("error");

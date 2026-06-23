@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
-import {
-  addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch,} from "firebase/firestore";
+import {  addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch,} from "firebase/firestore";
 import { CalendarDays, Check, CheckCircle2, ChevronDown, Clock, Download, GraduationCap, Plus, QrCode, Search, StopCircle, Trash2, Users, X,
 } from "lucide-react";
 import { db } from "../../firebase/firebase";
@@ -144,12 +143,14 @@ export default function AttendancePage() {
     ? isSessionExpired(selectedSession)
     : false;
 
-  const qrValue =
-    selectedSession &&
-    selectedSession.status === "active" &&
-    !selectedSessionExpired
-      ? `${window.location.origin}/scan-attendance?sessionId=${selectedSession.id}`
-      : "";
+const qrValue =
+  selectedSession &&
+  selectedSession.status === "active" &&
+  !selectedSessionExpired
+    ? JSON.stringify({
+        sessionId: selectedSession.id,
+      })
+    : "";
 
   const positions = useMemo(
     () => [...new Set(records.map((r) => r.position).filter(Boolean))].sort(),
@@ -202,24 +203,36 @@ export default function AttendancePage() {
     return unsub;
   }, [selectedSessionId]);
 
-  useEffect(() => {
-    if (!selectedSessionId) {
-      setRecords([]);
-      return;
+useEffect(() => {
+  if (!selectedSessionId) {
+    setRecords([]);
+    return;
+  }
+
+  const q = query(
+    collection(db, "attendance"),
+    where("sessionId", "==", selectedSessionId)
+  );
+
+  const unsub = onSnapshot(
+    q,
+    (snap) => {
+      const data = snap.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+
+      console.log("🔥 Realtime attendance:", data);
+
+      setRecords(data);
+    },
+    (error) => {
+      console.error("Firestore error:", error);
     }
+  );
 
-    const q = query(
-      collection(db, "attendance"),
-      where("sessionId", "==", selectedSessionId),
-      orderBy("timeIn", "desc")
-    );
-
-    const unsub = onSnapshot(q, (snap) => {
-      setRecords(snap.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
-    });
-
-    return unsub;
-  }, [selectedSessionId]);
+  return () => unsub();
+}, [selectedSessionId]);
 
   async function handleCreateSession(e) {
     e.preventDefault();
@@ -482,20 +495,20 @@ export default function AttendancePage() {
             <div className="rounded-xl bg-white p-5 shadow-sm border border-pink-100">
               <div className="mb-4 flex items-center gap-2 text-pink-700">
                 <QrCode size={18} />
-                <h2 className="text-sm font-semibold">QR Code</h2>
+                <h2 className="text-sm font-semibold">QR Code (Click the QR Code) </h2>
               </div>
 
               <button
                 type="button"
                 onClick={() => setShowSessionModal(true)}
-                className="mb-4 flex w-full items-center justify-between rounded-lg border border-pink-200 bg-white px-3 py-2 text-left text-sm outline-none transition hover:bg-pink-50 focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                className="mb-4 flex w-full items-center justify-between rounded-lg border border-pink-700 bg-white px-3 py-2 text-left text-sm outline-none transition hover:bg-pink-50 focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
               >
                 <span
-                  className={selectedSession ? "text-gray-900" : "text-gray-400"}
+                  className={selectedSession ? "text-black" : "text-gray-400"}
                 >
                   {selectedSession ? selectedSession.title : "Choose session"}
                 </span>
-                <ChevronDown size={14} className="text-gray-400" />
+                <ChevronDown size={14} className="text-pink-700" />
               </button>
 
               {selectedSession ? (
@@ -525,7 +538,7 @@ export default function AttendancePage() {
                     <p className="text-sm font-semibold text-gray-900">
                       {selectedSession.title}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs  mt-0.5">
                       <Clock size={11} className="inline mr-1 -mt-0.5" />
                       {formatEventDate(selectedSession.eventDate)} at{" "}
                       {formatTime(selectedSession.eventTime)}
@@ -677,7 +690,7 @@ export default function AttendancePage() {
                       key={record.id}
                       className="border-b border-gray-50 transition hover:bg-pink-50/40"
                     >
-                      <td className="px-5 py-3 text-gray-500 font-mono text-xs">
+                      <td className="px-5 py-3 font-mono text-xs font-bold">
                         {record.studentId || "-"}
                       </td>
 
@@ -702,16 +715,16 @@ export default function AttendancePage() {
                         </div>
                       </td>
 
-                      <td className="px-5 py-3 text-gray-500 text-xs">
+                      <td className="px-5 py-3  text-xs">
                         <div className="flex items-center gap-1">
-                          <Clock size={11} className="text-gray-400" />
+                          <Clock size={11} className="text-black" />
                           {formatTimestamp(record.timeIn || record.timestamp)}
                         </div>
                       </td>
 
-                      <td className="px-5 py-3 text-gray-500 text-xs">
+                      <td className="px-5 py-3  text-xs">
                         <div className="flex items-center gap-1">
-                          <Clock size={11} className="text-gray-400" />
+                          <Clock size={11} className="text-black" />
                           {formatTimestamp(record.timeOut)}
                         </div>
                       </td>
@@ -725,10 +738,10 @@ export default function AttendancePage() {
                           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-50">
                             <Users size={22} className="text-pink-300" />
                           </div>
-                          <p className="text-sm font-medium text-gray-500">
+                          <p className="text-sm font-medium text-black">
                             No attendance records yet
                           </p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-black">
                             Students will appear here after scanning the QR code.
                           </p>
                         </div>
@@ -739,7 +752,7 @@ export default function AttendancePage() {
                   {records.length > 0 && filteredRecords.length === 0 && (
                     <tr>
                       <td colSpan={5} className="px-5 py-10 text-center">
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-black">
                           No results for{" "}
                           <span className="font-medium">{search}</span>
                         </p>
@@ -761,13 +774,13 @@ export default function AttendancePage() {
 
             {filteredRecords.length > 0 && (
               <div className="border-t border-pink-100 bg-pink-50/40 px-5 py-2.5">
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-black">
                   Showing{" "}
-                  <span className="font-medium text-gray-600">
+                  <span className="font-medium text-pink-600">
                     {filteredRecords.length}
                   </span>{" "}
                   of{" "}
-                  <span className="font-medium text-gray-600">
+                  <span className="font-medium text-pink-600">
                     {records.length}
                   </span>{" "}
                   records
@@ -914,7 +927,7 @@ export default function AttendancePage() {
                 <h2 className="text-sm font-semibold text-gray-900">
                   Select Attendance Session
                 </h2>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-pink-500">
                   Click a card to view its QR code. Select cards to delete.
                 </p>
               </div>
@@ -929,7 +942,7 @@ export default function AttendancePage() {
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-pink-100 px-5 py-3">
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-black">
                 {selectedSessionIds.length} selected
               </p>
 
@@ -1011,7 +1024,7 @@ export default function AttendancePage() {
                             {session.title}
                           </p>
 
-                          <p className="mt-2 text-xs text-gray-500">
+                          <p className="mt-2 text-xs text-black">
                             {formatEventDate(session.eventDate)} at{" "}
                             {formatTime(session.eventTime)}
                           </p>
@@ -1078,7 +1091,7 @@ export default function AttendancePage() {
                 <p className="font-semibold text-gray-900">
                   {selectedSession.title}
                 </p>
-                <p className="text-sm text-gray-500 mt-0.5">
+                <p className="text-sm mt-0.5">
                   {formatEventDate(selectedSession.eventDate)} at{" "}
                   {formatTime(selectedSession.eventTime)}
                 </p>
