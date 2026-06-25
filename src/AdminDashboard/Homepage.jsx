@@ -5,6 +5,7 @@ import AttendancePage from "./pages/AttendancePage";
 import EventsPage from "./pages/EventsPage";
 import OrganizationsPage from "./pages/OrganizationsPage";
 import UsersPage from "./pages/UsersPage";
+import DashboardPage from "./pages/DashboardPage";
 
 const Icon = ({ name, size = 18 }) => {
   const icons = {
@@ -123,26 +124,8 @@ export default function Homepage() {
           </button>
         </div>
 
-        <div className="flex-1 p-6 overflow-auto">
-          {active === "dashboard" && (
-            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {[
-                { label: "Students", value: "3,842" },
-                { label: "Cases", value: "47" },
-                { label: "Lost Items", value: "23" },
-                { label: "Events", value: "11" },
-              ].map((c, i) => (
-                <div
-                  key={i}
-                  className="bg-white/70 backdrop-blur-xl border border-white rounded-2xl p-5 shadow-md hover:scale-[1.02] transition"
-                >
-                  <p className="text-gray-400 text-sm">{c.label}</p>
-                  <p className="text-2xl font-bold text-gray-800">{c.value}</p>
-                </div>
-              ))}
-            </div>
-          )}
-
+        
+          {active === "dashboard" && <DashboardPage />}
           {active === "disciplinary" && <DisciplinaryPage />}
           {active === "lostfound" && <LostFoundPage />}
           {active === "attendance" && <AttendancePage />}
@@ -151,6 +134,6 @@ export default function Homepage() {
           {active === "users" && <UsersPage />}
         </div>
       </div>
-    </div>
+    
   );
 }
