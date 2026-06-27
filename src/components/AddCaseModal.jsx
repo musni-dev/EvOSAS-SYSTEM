@@ -1,16 +1,8 @@
 import { useState, useEffect } from "react";
-import { collection, addDoc, serverTimestamp, getDocs } from "firebase/firestore";
-import { db } from "../../firebase/firebase";
-import PendingApprovalPage from "../Disciplinary/PendingApprovalPage";
-import CaseRecords from "../Disciplinary/CaseRecords";
+import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "../firebase/firebase";
 
-export default function DisciplinaryPage() {
-  const [showModal, setShowModal] = useState(false);
-  const [activePage, setActivePage] = useState("main");
-  const [cases, setCases] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  
-
+export default function AddCaseModal({ show, onClose, cases, setCases }) {
   const [student, setStudent] = useState({
     studentId: "",
     name: "",
@@ -19,67 +11,35 @@ export default function DisciplinaryPage() {
     section: "",
     incidentDate: "",
     location: "",
-    contactNumber: "", 
+    contactNumber: "",
     incidentType: "",
     otherIncident: "",
     offense: "",
     sanctions: "",
     decision: "",
-    
   });
 
-  // CASE NUMBER
-const [caseNumber, setCaseNumber] = useState("");
+  const [caseNumber, setCaseNumber] = useState("");
 
-useEffect(() => {
-  if (cases) {
-    const getNextCaseNumber = (cases) => {
-      if (!cases || cases.length === 0) {
-        return "CASE-0000001";
-      }
+  // AUTO CASE NUMBER (same logic mo)
+  useEffect(() => {
+    const maxNumber = cases?.length
+      ? Math.max(
+          ...cases.map((c) =>
+            parseInt(c.caseNumber?.replace("CASE-", "") || "0", 10)
+          )
+        )
+      : 0;
 
-      const maxNumber = Math.max(
-        ...cases.map((c) => {
-          const num = c.caseNumber?.replace("CASE-", "");
-          return parseInt(num || "0", 10);
-        })
-      );
-
-      const next = maxNumber + 1;
-
-      return `CASE-${String(next).padStart(7, "0")}`;
-    };
-
-    setCaseNumber(getNextCaseNumber(cases));
-  }
-}, [cases]);
+    const next = maxNumber + 1;
+    setCaseNumber(`CASE-${String(next).padStart(7, "0")}`);
+  }, [cases]);
 
   const handleChange = (e) => {
-    setStudent({
-      ...student,
-      [e.target.name]: e.target.value,
-    });
+    setStudent({ ...student, [e.target.name]: e.target.value });
   };
 
-
- // ======================
-  // ACTION BUTTONS
-  // ======================
-
-  const handleEdit = (item) => {
-    console.log("Edit", item);
-  };
-
-  const handleView = (item) => {
-    console.log("View", item);
-  };
-
-  const handleDelete = (id) => {
-    console.log("Delete", id);
-  };
-
-const handleSave = async () => {
-  try {
+  const handleSave = async () => {
     const newCase = {
       ...student,
       caseNumber,
@@ -91,8 +51,8 @@ const handleSave = async () => {
 
     setCases([...cases, { ...newCase, id: docRef.id }]);
 
-    alert("Disciplinary Case Saved!");
-    setShowModal(false);
+    alert("Case Saved!");
+    onClose();
 
     setStudent({
       studentId: "",
@@ -109,214 +69,15 @@ const handleSave = async () => {
       sanctions: "",
       decision: "",
     });
-
-  } catch (error) {
-    console.error("SAVE ERROR:", error);
-    alert(error.message);
-  }
-};
-
-useEffect(() => {
-  const fetchCases = async () => {
-    try {
-      const querySnapshot = await getDocs(collection(db, "cases"));
-
-      const data = querySnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      setCases(data);
-    } catch (error) {
-      console.error("FETCH ERROR:", error);
-    }
   };
 
-  fetchCases();
-}, []);
-
-
-   // =========================
-  // PENDING APPROVAL PAGE
-  // =========================
-  if (activePage === "pending") {
-    return (
-      <PendingApprovalPage
-        cases={cases}
-        setCases={setCases}
-        setActivePage={setActivePage}
-      />
-    );
-  }
-
-     // =========================
-  // Case Records PAGE
-  // =========================
-  if (activePage === "records") {
-    return (
-      <CaseRecords
-        cases={cases}
-        setCases={setCases}
-        setActivePage={setActivePage}
-        handleEdit={handleEdit}
-        handleView={handleView}
-        handleDelete={handleDelete}
-      />
-    );
-  }
-
-
-const filteredCases = cases.filter((item) => {
-  const term = searchTerm.toLowerCase();
+  if (!show) return null;
 
   return (
-    item.name?.toLowerCase().includes(term) ||
-    item.studentId?.toLowerCase().includes(term)
-  );
-});
+    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl p-8 overflow-y-auto max-h-[95vh]">
 
-
-  return (
-    <div className="h-screen overflow-hidden flex flex-col space-y-6 bg-pink-50/60 p-6">
-
-      {/* HEADER */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-md border border-white">
-        <h1 className="text-3xl font-bold text-gray-800">
-          Disciplinary Management
-        </h1>
-
-        <p className="text-gray-500 mt-2">
-          Manage disciplinary records, sanctions, and case resolutions.
-        </p>
-
-        {/* TOP BUTTONS */}
-        <div className="flex flex-wrap gap-3 sm:gap-4 mt-8">
-
-          <button
-            onClick={() => setShowModal(true)}
-            className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
-          >
-            + Add Case
-          </button>
-
-         <button
-          onClick={() => setActivePage("records")}
-          className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
-        >
-          Case Records
-        </button>
-
-         <button
-            onClick={() => setActivePage("pending")}
-            className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
-          >
-            Pending Approval
-          </button>
-
-        </div>
-      </div>
-
-      
-
-      {/* TABLE */}
-      <div className="bg-white rounded-3xl shadow-md p-4 sm:p-6 overflow-x-auto">
-
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-          <h2 className="text-xl font-bold text-gray-700">
-            Case Records
-          </h2>
-
-          <input
-            type="text"
-            placeholder="Search by Last Name or Student ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full sm:w-96 border rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-[#ff6699]"
-          />
-        </div>
-
-        <table className="w-full text-left border-collapse">
-
-           <thead>
-          <tr className="bg-gray-100 text-gray-700">
-
-            <th className="p-4 rounded-l-xl">Case Number</th>
-            <th className="p-4">Student ID</th>
-            <th className="p-4">Name</th>
-            <th className="p-4">Program</th>
-            <th className="p-4">Year & Section</th>
-            <th className="p-4">Incident Type</th>
-            <th className="p-4">Contact</th>
-            <th className="p-4">Status</th>
-
-          </tr>
-        </thead>
-
-          <tbody>
-
-            {cases.length === 0 ? (
-              <tr>
-                <td
-                  colSpan="8"
-                  className="text-center p-6 text-gray-400"
-                >
-                  No disciplinary records yet.
-                </td>
-              </tr>
-            ) : (
-              filteredCases.map((item, index) => (
-                <tr
-                  key={index}
-                  className="border-b hover:bg-pink-50 transition"
-                >
-
-                  <td className="p-4 font-semibold text-[#ff6699]">
-                    {item.caseNumber}
-                  </td>
-
-                  <td className="p-4">{item.studentId}</td>
-
-                  <td className="p-4">{item.name}</td>
-
-                  <td className="p-4">{item.program}</td>
-
-                  <td className="p-4">
-                    {item.yearLevel} - {item.section}
-                  </td>
-
-                  <td className="p-4">
-                    {item.incidentType === "Other"
-                      ? item.otherIncident
-                      : item.incidentType}
-                  </td>
-
-                  <td className="p-4">
-                  {item.contactNumber || "N/A"}
-                  </td>
-
-                  <td className="p-4">
-                    <span className="bg-yellow-100 text-yellow-700 px-3 py-1 rounded-full text-sm font-medium">
-                      {item.status}
-                    </span>
-                  </td>
-
-
-
-                </tr>
-              ))
-            )}
-
-          </tbody>
-        </table>
-      </div>
-
-      {/* MODAL */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-
-          <div className="bg-white rounded-3xl shadow-2xl w-full w-[95%] sm:max-w-4xl p-8 overflow-y-auto max-h-[95vh]">
-
-            {/* HEADER */}
+       {/* HEADER */}
             <div className="flex justify-between items-center mb-6">
 
               <div>
@@ -663,10 +424,7 @@ const filteredCases = cases.filter((item) => {
             </div>
 
           </div>
-        </div>
-      )}
-
-      
+        
     </div>
   );
 }

@@ -21,14 +21,7 @@ export default function EventsPage() {
 
   const [questions, setQuestions] = useState([
     "The event was well organized.",
-    "The speakers/resource persons were knowledgeable.",
-    "The event objectives were clearly achieved.",
     "The venue and facilities were satisfactory.",
-    "The event schedule was properly managed.",
-    "I gained valuable knowledge from this event.",
-    "I would recommend this event to other students.",
-    "The event activities were engaging.",
-    "The event met my expectations.",
     "Overall, I am satisfied with this event.",
   ]);
 
@@ -156,8 +149,8 @@ const handleDelete = async (id) => {
   };
 
   return (
-    <div className="space-y-6">
-
+    <div className="h-screen overflow-hidden flex flex-col space-y-6 bg-gray-50 p-6">
+       <div className="flex-1 overflow-y-auto space-y-6">
       {/* HEADER */}
       <div className="bg-white/70 backdrop-blur-xl rounded-2xl p-8 shadow-md border border-white">
         <h1 className="text-3xl font-bold text-gray-800">
@@ -194,80 +187,101 @@ const handleDelete = async (id) => {
         </div>
       </div>
 
-      {/* FORM */}
-      {showForm && (
-        <div className="bg-white rounded-2xl p-6 shadow border">
+     {/* FORM MODAL */}
+{showForm && (
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
 
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">
-              Event Evaluation Form
-            </h2>
+    {/* MODAL BOX */}
+    <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-2xl p-6 shadow-xl">
 
-            <button
-              onClick={addQuestion}
-              className="px-4 py-2 bg-green-500 text-white rounded-lg"
-            >
-              + Add Question
-            </button>
-          </div>
 
-          <div className="grid md:grid-cols-2 gap-4 mb-6">
+      {/* HEADER */}
+      <div className="flex justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">
+          Event Evaluation Form
+        </h2>
+
+        <button
+          onClick={addQuestion}
+          className="px-4 py-2 bg-green-500 text-white rounded-lg"
+        >
+          + Add Question
+        </button>
+      </div>
+
+      {/* EVENT DETAILS */}
+      <div className="grid md:grid-cols-2 gap-4 mb-6">
+        <input
+          value={eventName}
+          onChange={(e) => setEventName(e.target.value)}
+          placeholder="Event Name"
+          className="border p-3 rounded-lg w-full"
+        />
+
+        <input
+          type="date"
+          value={eventDate}
+          onChange={(e) => setEventDate(e.target.value)}
+          className="border p-3 rounded-lg w-full"
+        />
+      </div>
+
+      {/* QUESTIONS */}
+      <div className="space-y-4">
+        {questions.map((q, i) => (
+          <div key={i} className="border p-4 rounded-xl bg-gray-50">
+
             <input
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
-              placeholder="Event Name"
-              className="border p-3 rounded-lg"
+              value={q}
+              onChange={(e) => handleQuestionChange(i, e.target.value)}
+              className="border p-2 w-full rounded"
             />
 
-            <input
-              type="date"
-              value={eventDate}
-              onChange={(e) => setEventDate(e.target.value)}
-              className="border p-3 rounded-lg"
-            />
-          </div>
-
-          <div className="space-y-4">
-            {questions.map((q, i) => (
-              <div key={i} className="border p-4 rounded-xl bg-gray-50">
-
-                <input
-                  value={q}
-                  onChange={(e) => handleQuestionChange(i, e.target.value)}
-                  className="border p-2 w-full rounded"
-                />
-
-                <button
-                  onClick={() => deleteQuestion(i)}
-                  className="text-red-500 text-sm mt-2"
-                >
-                  Delete
-                </button>
-
-                <div className="flex gap-4 flex-wrap mt-2">
-                  {ratings.map((r) => (
-                    <label key={r} className="text-sm">
-                      <input type="radio" name={`q-${i}`} /> {r}
-                    </label>
-                  ))}
-                </div>
-
-              </div>
-            ))}
-          </div>
-
-          <div className="mt-6 flex justify-end">
             <button
-              onClick={saveEvaluation}
-              disabled={saving}
-              className="px-6 py-3 bg-pink-500 text-white rounded-xl"
+              onClick={() => deleteQuestion(i)}
+              className= " px-1 py-1 bg-red-700 text-white text-sm mt-2 rounded-lg"
             >
-              {saving ? "Saving..." : "Save Evaluation Form"}
+              Delete Question
             </button>
+
+            <div className="flex gap-4 flex-wrap mt-2">
+              {ratings.map((r) => (
+                <label key={r} className="text-sm flex items-center gap-1">
+                  <input type="radio" name={`q-${i}`} /> {r}
+                </label>
+              ))}
+            </div>
+
           </div>
+        ))}
+      </div>
+
+      {/* FOOTER ACTIONS */}
+        <div className="mt-6 flex justify-end gap-3 border-t pt-4">
+
+          {/* CLOSE BUTTON */}
+          <button
+            type="button"
+            onClick={() => setShowForm(false)}
+            className="px-6 py-3 rounded-xl border bg-red-700 border-gray-300 text-white hover:bg-red-600"
+          >
+            Close
+          </button>
+
+          {/* SAVE BUTTON */}
+          <button
+            onClick={saveEvaluation}
+            disabled={saving}
+            className="px-6 py-3 bg-pink-500 text-white rounded-xl hover:bg-pink-600 disabled:opacity-50"
+          >
+            {saving ? "Saving..." : "Save Evaluation Form"}
+          </button>
+
         </div>
-      )}
 
+    </div>
+  </div>
+)}
       {/* TABLE */}
       <div className="bg-white rounded-2xl p-6 shadow border">
         <h2 className="text-xl font-semibold mb-4">
@@ -418,6 +432,7 @@ const handleDelete = async (id) => {
               </div>
             </div>
           )}
+     </div>
     </div>
   );
 }

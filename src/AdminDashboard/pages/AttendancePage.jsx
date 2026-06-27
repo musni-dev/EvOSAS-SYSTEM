@@ -432,7 +432,7 @@ useEffect(() => {
   }
 
   return (
-    <div className="min-h-screen bg-pink-50/60">
+    <div className="h-screen overflow-hidden bg-pink-50/60 flex flex-col">
       <header className="sticky top-0 z-20 border-b border-pink-100 bg-white/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8">
           <div className="flex items-center gap-3">
@@ -458,7 +458,8 @@ useEffect(() => {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 md:px-8">
+      <main className="mx-auto flex-1 max-w-7xl overflow-hidden px-4 py-6 md:px-8 w-full">
+  <div className="h-full space-y-6 overflow-y-auto">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <StatCard icon={Users} label="Total records" value={stats.total} />
           <StatCard
@@ -797,6 +798,7 @@ useEffect(() => {
               </div>
             )}
           </div>
+        </div>
         </div>
       </main>
 

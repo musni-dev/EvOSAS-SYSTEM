@@ -5,6 +5,7 @@ import {
   addDoc,
   deleteDoc,
   doc,
+  updateDoc,
   query,
   orderBy,
   onSnapshot,
@@ -151,6 +152,19 @@ export default function LostFoundPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const fileRef = useRef(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [editingItem, setEditingItem] = useState(null);
+  const [newStatus, setNewStatus] = useState("");
+  const [editingStatus, setEditingStatus] = useState(false);
+
+
+
+  useEffect(() => {
+  if (viewItem) {
+    setNewStatus(viewItem.status);
+    setEditingStatus(false);
+  }
+}, [viewItem]);
+
 
   // ── Firestore: real-time listener ─────────────────────────────────────────
   useEffect(() => {
@@ -303,12 +317,12 @@ const handleImage = (e) => {
 
   // ── Render ────────────────────────────────────────────────────────────────
 return (
-  <div className="w-full px-4 md:px-6 lg:px-8">
+  <div className="h-screen overflow-hidden w-full px-4 md:px-6 lg:px-8 flex flex-col">
 
     {/* Header */}
     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6 mt-4 md:mt-6 lg:mt-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-pink-600">
           Lost &amp; Found
         </h1>
 
@@ -414,17 +428,19 @@ return (
       </select>
     </div>
 
-    {/* Cards */}
-    <div
-      className="
-      grid
-      grid-cols-1
-      sm:grid-cols-2
-      lg:grid-cols-3
-      xl:grid-cols-4
-      gap-4
-    "
-    >
+   {/* Cards */}
+<div className="flex-1 overflow-y-auto">
+  <div
+    className="
+    grid
+    grid-cols-1
+    sm:grid-cols-2
+    lg:grid-cols-3
+    xl:grid-cols-4
+    gap-4
+    pb-6
+  "
+  >
       {loading ? (
         <div className="col-span-full text-center py-12 text-gray-400">
           <div className="text-4xl">⏳</div>
@@ -498,11 +514,14 @@ return (
                   </span>
                 </div>
               )}
+
+              
             </div>
           </div>
         ))
       )}
-    </div>
+  </div>
+</div>
 
       {/* ── Add Report Modal ─────────────────────────────────────────────────── */}
       {showAddModal && (
@@ -683,81 +702,240 @@ return (
         </div>
       )}
 
-      {/* ── View Modal ───────────────────────────────────────────────────────── */}
-      {viewItem && (
-        <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && setViewItem(null)}>
-          <div style={{ ...S.modal, maxWidth: 480 }}>
-            <div style={S.modalHeader}>
-              <h2 style={{ ...S.modalTitle, fontSize: 16 }}>Report Details</h2>
-              <button style={S.closeBtn} onClick={() => setViewItem(null)}>✕</button>
-            </div>
+     {/* ── View Modal ───────────────────────────────────────────────────────── */}
+{viewItem && (
+  <div
+    style={S.overlay}
+    onClick={(e) =>
+      e.target === e.currentTarget && setViewItem(null)
+    }
+  >
+    <div style={{ ...S.modal, maxWidth: 480 }}>
+      
+      {/* HEADER */}
+      <div style={S.modalHeader}>
+        <h2 style={{ ...S.modalTitle, fontSize: 16 }}>
+          Report Details
+        </h2>
+        <button
+          style={S.closeBtn}
+          onClick={() => setViewItem(null)}
+        >
+          ✕
+        </button>
+      </div>
 
-            {viewItem.imageUrl ? (
-              <img
-                src={viewItem.imageUrl}
-                alt={viewItem.itemName}
-                style={{ width: "100%", maxHeight: 220, objectFit: "cover" }}
-              />
-            ) : (
-              <div style={{ ...S.cardImgPlaceholder, height: 100, fontSize: 48 }}>
-                {EMOJI[viewItem.category] || "📦"}
-              </div>
-            )}
-
-            <div style={S.modalBody}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-                <Badge label={viewItem.reportType} config={TYPE_CONFIG[viewItem.reportType]} />
-                <Badge label={viewItem.status} config={STATUS_CONFIG[viewItem.status] || STATUS_CONFIG.Pending} />
-                {viewItem.category && (
-                  <span style={{
-                    fontSize: 11, fontWeight: 600, background: "#F3F4F6", color: "#4B5563",
-                    padding: "3px 10px", borderRadius: 99, textTransform: "uppercase", letterSpacing: "0.04em",
-                  }}>
-                    {viewItem.category}
-                  </span>
-                )}
-              </div>
-
-              <h3 style={{ fontWeight: 700, fontSize: 18, margin: "0 0 10px", color: "#111" }}>
-                {viewItem.itemName}
-              </h3>
-
-              {viewItem.description && (
-                <p style={{ fontSize: 14, color: "#4B5563", margin: "0 0 14px", lineHeight: 1.6 }}>
-                  {viewItem.description}
-                </p>
-              )}
-
-              <div style={{ borderTop: "1px solid #F3F4F6", paddingTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                {[
-                  ["📍 Location", viewItem.location],
-                  ["🗓 Date", viewItem.date],
-                  ["📞 Contact", viewItem.contactNumber],
-                ].map(([k, v]) =>
-                  v ? (
-                    <div key={k} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-                      <span style={{ color: "#9CA3AF" }}>{k}</span>
-                      <span style={{ fontWeight: 600, color: "#374151" }}>{v}</span>
-                    </div>
-                  ) : null
-                )}
-              </div>
-            </div>
-
-            <div style={S.modalFooter}>
-              <button
-                style={S.btn("danger")}
-                onClick={() => { setDeleteTarget(viewItem); setViewItem(null); }}
-              >
-                🗑 Delete
-              </button>
-              <button style={S.btn("secondary")} onClick={() => setViewItem(null)}>
-                Close
-              </button>
-            </div>
-          </div>
+      {/* IMAGE */}
+      {viewItem.imageUrl ? (
+        <img
+          src={viewItem.imageUrl}
+          alt={viewItem.itemName}
+          style={{
+            width: "100%",
+            maxHeight: 220,
+            objectFit: "cover",
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            ...S.cardImgPlaceholder,
+            height: 100,
+            fontSize: 48,
+          }}
+        >
+          {EMOJI[viewItem.category] || "📦"}
         </div>
       )}
+
+      {/* BODY */}
+      <div style={S.modalBody}>
+        
+        {/* BADGES ROW */}
+        <div
+          style={{
+            display: "flex",
+            gap: 8,
+            marginBottom: 12,
+            flexWrap: "wrap",
+            alignItems: "center",
+          }}
+        >
+          {/* REPORT TYPE */}
+          <Badge
+            label={viewItem.reportType}
+            config={TYPE_CONFIG[viewItem.reportType]}
+          />
+
+          {/* STATUS (EDITABLE) */}
+          {editingStatus ? (
+            <select
+              value={newStatus}
+              onChange={async (e) => {
+                const value = e.target.value;
+                setNewStatus(value);
+
+                await updateDoc(
+                  doc(db, "lost_found", viewItem.id),
+                  { status: value }
+                );
+
+                setViewItem((prev) => ({
+                  ...prev,
+                  status: value,
+                }));
+
+                setEditingStatus(false);
+              }}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "4px 10px",
+                borderRadius: 999,
+                border: "1px solid #ddd",
+              }}
+            >
+              <option value="Pending">Pending</option>
+              <option value="Claimed">Claimed</option>
+              <option value="Returned">Returned</option>
+              <option value="Resolved">Resolved</option>
+            </select>
+          ) : (
+            <span
+              onClick={() => setEditingStatus(true)}
+              style={{ cursor: "pointer" }}
+            >
+              <Badge
+                label={viewItem.status}
+                config={
+                  STATUS_CONFIG[viewItem.status] ||
+                  STATUS_CONFIG.Pending
+                }
+              />
+            </span>
+          )}
+
+          {/* CATEGORY */}
+          {viewItem.category && (
+            <span
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                background: "#F3F4F6",
+                color: "#4B5563",
+                padding: "3px 10px",
+                borderRadius: 99,
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+              }}
+            >
+              {viewItem.category}
+            </span>
+          )}
+        </div>
+
+        {/* TITLE */}
+        <h3
+          style={{
+            fontWeight: 700,
+            fontSize: 18,
+            margin: "0 0 10px",
+            color: "#111",
+          }}
+        >
+          {viewItem.itemName}
+        </h3>
+
+        {/* DESCRIPTION */}
+        {viewItem.description && (
+          <p
+            style={{
+              fontSize: 14,
+              color: "#4B5563",
+              margin: "0 0 14px",
+              lineHeight: 1.6,
+            }}
+          >
+            {viewItem.description}
+          </p>
+        )}
+
+        {/* INFO */}
+        <div
+          style={{
+            borderTop: "1px solid #F3F4F6",
+            paddingTop: 12,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
+          {[
+            ["📍 Location", viewItem.location],
+            ["🗓 Date", viewItem.date],
+            ["📞 Contact", viewItem.contactNumber],
+          ].map(([k, v]) =>
+            v ? (
+              <div
+                key={k}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: 13,
+                }}
+              >
+                <span style={{ color: "#9CA3AF" }}>{k}</span>
+                <span style={{ fontWeight: 600, color: "#374151" }}>
+                  {v}
+                </span>
+              </div>
+            ) : null
+          )}
+        </div>
+      </div>
+
+      {/* FOOTER */}
+      <div
+        style={{
+          ...S.modalFooter,
+          justifyContent: "space-between",
+        }}
+      >
+        {/* LEFT: EDIT BUTTON */}
+        <button
+          style={{
+            ...S.btn("secondary"),
+            background: "#f3f4f6",
+            color: "#374151",
+          }}
+          onClick={() => setEditingStatus(true)}
+        >
+          ✏ Edit Status
+        </button>
+
+        {/* RIGHT: ACTIONS */}
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            style={S.btn("danger")}
+            onClick={() => {
+              setDeleteTarget(viewItem);
+              setViewItem(null);
+            }}
+          >
+            🗑 Delete
+          </button>
+
+          <button
+            style={S.btn("secondary")}
+            onClick={() => setViewItem(null)}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* ── Delete Confirm Modal ──────────────────────────────────────────────── */}
       {deleteTarget && (

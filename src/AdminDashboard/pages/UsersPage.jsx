@@ -5,7 +5,7 @@ import { db } from "../../firebase/firebase";
 import bcrypt from "bcryptjs";
 
 const USERS_COLLECTION = "users";
-const PAGE_SIZE = 8;
+const PAGE_SIZE = 4;
 
 const emptyForm = {
   studentId: "",
@@ -344,12 +344,11 @@ export default function UsersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-pink-50/60 px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
+    <main className="h-screen overflow-hidden bg-pink-50/60 px-4 py-6 text-slate-900 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-pink-500">EvOSAS</p>
-            <h1 className="text-2xl font-bold text-slate-950">User Management</h1>
+            <h1 className="text-2xl font-bold text-pink-600">User Management</h1>
             <p className="mt-1 text-sm text-slate-500">
               Manage system users, roles, positions, and account access.
             </p>

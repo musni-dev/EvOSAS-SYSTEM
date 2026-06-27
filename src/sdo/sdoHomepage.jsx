@@ -5,6 +5,8 @@ import { collection, onSnapshot } from "firebase/firestore";
 import SDOLayout from "./SDOLayout";
 import CaseRecords from "../AdminDashboard/Disciplinary/CaseRecords";
 import LostFoundPage from "../AdminDashboard/pages/LostFoundPage";
+import SDOAddCase from "./SDOAddCase";
+import SDOSettings from "./SDOSettings";
 
 export default function SDOHomepage() {
   const [activePage, setActivePage] = useState("dashboard");
@@ -51,21 +53,31 @@ export default function SDOHomepage() {
       setActivePage={setActivePage}
       handleLogout={handleLogout}
     >
+      {/* ================= ADD CASE PAGE ================= */}
+      {activePage === "add-case" && (
+        <SDOAddCase setActivePage={setActivePage} />
+      )}
+
       {/* ================= DASHBOARD ================= */}
       {activePage === "dashboard" && (
         <div>
           <div className="flex items-start justify-between mb-6">
             <div>
-              <h1 className="text-xl font-medium text-gray-900">Student Disciplinary Officer</h1>
-              <p className="text-sm text-gray-500">All active records at a glance</p>
+              <h1 className="text-xl font-medium text-gray-900">
+                Student Disciplinary Officer
+              </h1>
+              <p className="text-sm text-gray-500">
+                All active records at a glance
+              </p>
             </div>
-            <span className="text-xs text-pink-500 bg-white  px-3 py-1 rounded-lg">
+
+            <span className="text-xs text-pink-500 bg-white px-3 py-1 rounded-lg">
               {today}
             </span>
           </div>
 
           {/* CASE STATS */}
-          <div className="grid grid-cols-2 borde sm:grid-cols-4 gap-3 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <Stat label="Total cases" value={stats.totalCases} />
             <Stat label="Pending" value={stats.pending} />
             <Stat label="Approved" value={stats.approved} />
@@ -80,10 +92,17 @@ export default function SDOHomepage() {
 
           {/* QUICK ACCESS */}
           <div className="bg-white border rounded-xl p-5">
-            <button onClick={() => setActivePage("cases")} className="mr-3 px-4 py-2 bg-black text-white rounded">
+            <button
+              onClick={() => setActivePage("cases")}
+              className="mr-3 px-4 py-2 bg-black text-white rounded"
+            >
               Open Cases
             </button>
-            <button onClick={() => setActivePage("lostfound")} className="px-4 py-2 border rounded">
+
+            <button
+              onClick={() => setActivePage("lostfound")}
+              className="px-4 py-2 border rounded"
+            >
               Lost & Found
             </button>
           </div>
@@ -99,11 +118,19 @@ export default function SDOHomepage() {
       {activePage === "lostfound" && (
         <LostFoundPage setActivePage={setActivePage} isSDO={true} />
       )}
+
+
+      {activePage === "settings" && (
+        <SDOSettings />
+      )}
+
     </SDOLayout>
+
+    
   );
 }
 
-/* small UI helpers */
+/* helpers */
 function Stat({ label, value }) {
   return (
     <div className="bg-white border rounded-xl p-4">

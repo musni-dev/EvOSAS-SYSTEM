@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 import { collection, onSnapshot, query,  orderBy,  limit, getDocs, } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
 
-export default function DashboardPage() {
+export default function DashboardPage({ darkMode }) {
 
-const [stats, setStats] = useState({ totalCases: 0, lost: 0, found: 0, users: 0,});
+const [stats, setStats] = useState({ totalCases: 0, lost: 0, found: 0, users: 0, todayCases: 0,   lostThisWeek: 0, foundThisWeek: 0, usersThisMonth: 0,});
 
 const [dailyReports, setDailyReports] = useState([]);
 const [pieData, setPieData] = useState([]);
@@ -55,46 +55,93 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  const unsubCases = onSnapshot(
-    collection(db, "cases"),
-    (snapshot) => {
-      setStats((prev) => ({
-        ...prev,
-        totalCases: snapshot.size,
-      }));
-    }
-  );
+const unsubCases = onSnapshot(
+  collection(db, "cases"),
+  (snapshot) => {
+    const today = new Date().toDateString();
 
-  const unsubLostFound = onSnapshot(
-    collection(db, "lost_found"),
-    (snapshot) => {
-      const reports = snapshot.docs.map((doc) => doc.data());
+    const todayCount = snapshot.docs.filter((doc) => {
+      const data = doc.data();
+      if (!data.createdAt) return false;
 
-      const lost = reports.filter(
-        (item) => item.reportType === "Lost"
-      ).length;
+      return (
+        data.createdAt.toDate().toDateString() === today
+      );
+    }).length;
 
-      const found = reports.filter(
-        (item) => item.reportType === "Found"
-      ).length;
+    setStats((prev) => ({
+      ...prev,
+      totalCases: snapshot.size,
+      todayCases: todayCount,
+    }));
+  }
+);
 
-      setStats((prev) => ({
-        ...prev,
-        lost,
-        found,
-      }));
-    }
-  );
+const unsubLostFound = onSnapshot(
+  collection(db, "lost_found"),
+  (snapshot) => {
+    const reports = snapshot.docs.map((doc) => doc.data());
 
-  const unsubUsers = onSnapshot(
-    collection(db, "users"),
-    (snapshot) => {
-      setStats((prev) => ({
-        ...prev,
-        users: snapshot.size,
-      }));
-    }
-  );
+    const now = new Date();
+
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(now.getDate() - 7);
+
+    const lost = reports.filter(
+      (item) => item.reportType === "Lost"
+    ).length;
+
+    const found = reports.filter(
+      (item) => item.reportType === "Found"
+    ).length;
+
+    const lostThisWeek = reports.filter((item) => {
+      if (item.reportType !== "Lost" || !item.createdAt) return false;
+
+      return item.createdAt.toDate() >= oneWeekAgo;
+    }).length;
+
+    const foundThisWeek = reports.filter((item) => {
+      if (item.reportType !== "Found" || !item.createdAt) return false;
+
+      return item.createdAt.toDate() >= oneWeekAgo;
+    }).length;
+
+    setStats((prev) => ({
+      ...prev,
+      lost,
+      found,
+      lostThisWeek,
+      foundThisWeek,
+    }));
+  }
+);
+
+const unsubUsers = onSnapshot(
+  collection(db, "users"),
+  (snapshot) => {
+    const now = new Date();
+
+    const usersThisMonth = snapshot.docs.filter((doc) => {
+      const data = doc.data();
+
+      if (!data.createdAt) return false;
+
+      const created = data.createdAt.toDate();
+
+      return (
+        created.getMonth() === now.getMonth() &&
+        created.getFullYear() === now.getFullYear()
+      );
+    }).length;
+
+    setStats((prev) => ({
+      ...prev,
+      users: snapshot.size,
+      usersThisMonth,
+    }));
+  }
+);
 
   return () => {
     unsubCases();
@@ -161,8 +208,9 @@ useEffect(() => {
 
       const lostData = lostSnap.docs.map((doc) => ({
         id: doc.id,
-        category: doc.data().reportType,
-        reporter: doc.data().itemName,
+        reportType: doc.data().reportType,
+        itemname: doc.data().itemName,
+        status: doc.data().status,
         date: doc.data().createdAt?.toDate()?.toLocaleDateString(),
       }));
 
@@ -250,7 +298,7 @@ useEffect(() => {
       // sort latest first
       activityList.sort((a, b) => b.time - a.time);
 
-      setActivities(activityList.slice(0, 8));
+      setActivities(activityList.slice(0, 5));
     } catch (err) {
       console.error(err);
     }
@@ -258,6 +306,8 @@ useEffect(() => {
 
   fetchActivities();
 }, []);
+
+
 
 function timeAgo(date) {
   if (!date) return "Unknown";
@@ -285,7 +335,13 @@ function timeAgo(date) {
  
 
   return (
-    <div className="flex-1 overflow-auto bg-[#121212] p-6">
+    <div
+        className={`flex-1 overflow-auto p-6 transition-all duration-300 ${
+          darkMode
+            ? "bg-[#0f172a] text-white"
+            : "bg-gray-100 text-gray-900"
+        }`}
+      >
       {/* HEADER */}
       <div className="flex flex-col lg:flex-row justify-between gap-4 mb-8">
         <div>
@@ -298,7 +354,11 @@ function timeAgo(date) {
           </p>
         </div>
 
-        <div className="bg-white border-2 border-pink-300 px-5 py-3 rounded-2xl shadow">
+        <div className={`px-5 py-3 rounded-2xl shadow border-2 ${
+          darkMode
+            ? "bg-gray-900 border-gray-700 text-white"
+            : "bg-white border-pink-300"
+        }`}>
           <span className="text-pink-600 font-semibold">
             {new Date().toLocaleDateString()}
           </span>
@@ -310,30 +370,58 @@ function timeAgo(date) {
         <div className="bg-pink-600 text-white rounded-3xl p-6 border-2 border-pink-400">
           <p className="text-sm opacity-90">Case Reports</p>
           <h2 className="text-5xl font-bold mt-3">{stats.totalCases}</h2>
-          <p className="mt-2 text-sm">+12 Today</p>
+              <p className="mt-2 text-sm opacity-90">
+              {stats.todayCases
+                ? `+${stats.todayCases} Today`
+                : "No updates today"}
+            </p>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 border-2 border-pink-200">
+        <div
+          className={`rounded-3xl p-6 border-2 ${
+            darkMode
+              ? "bg-gray-900 border-gray-700 text-white"
+              : "bg-white border-pink-200"
+          }`}
+        >
           <p className="text-gray-500">Lost Items</p>
           <h2 className="text-5xl font-bold text-pink-600 mt-3">{stats.lost}</h2>
           <p className="text-green-500 text-sm mt-2">
-            +5 this week
+            {stats.lostThisWeek > 0
+              ? `+${stats.lostThisWeek} this week`
+              : "No reports this week"}
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 border-2 border-pink-200">
+        <div
+          className={`rounded-3xl p-6 border-2 ${
+            darkMode
+              ? "bg-gray-900 border-gray-700 text-white"
+              : "bg-white border-pink-200"
+          }`}
+        >
           <p className="text-gray-500">Found Items</p>
           <h2 className="text-5xl font-bold text-pink-600 mt-3">{stats.found}</h2>
           <p className="text-green-500 text-sm mt-2">
-            +8 this week
+           {stats.foundThisWeek > 0
+            ? `+${stats.foundThisWeek} this week`
+            : "No reports this week"}
           </p>
         </div>
 
-        <div className="bg-white rounded-3xl p-6 border-2 border-pink-200">
+        <div
+          className={`rounded-3xl p-6 border-2 ${
+            darkMode
+              ? "bg-gray-900 border-gray-700 text-white"
+              : "bg-white border-pink-200"
+          }`}
+        >
           <p className="text-gray-500">Users</p>
           <h2 className="text-5xl font-bold text-pink-600 mt-3">{stats.users}</h2>
           <p className="text-green-500 text-sm mt-2">
-            +23 this month
+            {stats.usersThisMonth > 0
+              ? `+${stats.usersThisMonth} this month`
+              : "No new users this month"}
           </p>
         </div>
       </div>
@@ -341,7 +429,13 @@ function timeAgo(date) {
       {/* CHARTS */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
         {/* BAR CHART */}
-        <div className="xl:col-span-2 bg-white rounded-3xl border-2 border-pink-200 p-6 shadow">
+        <div
+          className={`xl:col-span-2 rounded-3xl border-2 p-6 shadow ${
+            darkMode
+              ? "bg-gray-900 border-gray-700 text-white"
+              : "bg-white border-pink-200"
+          }`}
+        >
           <h2 className="text-xl font-bold text-pink-600 mb-4">
             Report Items Per Day
           </h2>
@@ -363,7 +457,13 @@ function timeAgo(date) {
         </div>
 
         {/* PIE CHART */}
-                <div className="bg-white rounded-3xl border-2 border-pink-200 p-6 shadow">
+                <div
+                  className={`rounded-3xl border-2 p-6 shadow transition-all duration-300 ${
+                    darkMode
+                      ? "bg-gray-900 border-gray-700 text-white"
+                      : "bg-white border-pink-200"
+                  }`}
+                >
                 <h2 className="text-xl font-bold text-pink-600 mb-4">
                     User Distribution
                 </h2>
@@ -411,9 +511,15 @@ function timeAgo(date) {
       {/* TABLE + ACTIVITY */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* TABLE */}
-        <div className="xl:col-span-2 bg-white rounded-3xl border-2 border-pink-200 p-6 shadow">
+        <div
+          className={`xl:col-span-2 rounded-3xl border-2 p-6 shadow transition-all duration-300 ${
+            darkMode
+              ? "bg-gray-900 border-gray-700 text-white"
+              : "bg-white border-pink-200"
+          }`}
+        >
           <h2 className="text-xl font-bold text-pink-600 mb-5">
-            Recent Reports
+            Recent Reports Lost and Found
           </h2>
 
           <div className="overflow-x-auto">
@@ -425,11 +531,16 @@ function timeAgo(date) {
                   </th>
 
                   <th className="text-left py-3 text-pink-600">
-                    Category
+                    Lost/Found
                   </th>
 
                   <th className="text-left py-3 text-pink-600">
-                    Reporter
+                    Item Name
+                  </th>
+
+                  
+                   <th className="text-left py-3 text-pink-600">
+                    Status
                   </th>
 
                   <th className="text-left py-3 text-pink-600">
@@ -441,17 +552,33 @@ function timeAgo(date) {
               <tbody>
                     {recentReports.length > 0 ? (
                         recentReports.map((report) => (
-                        <tr
-                            key={report.id}
-                            className="border-b border-pink-100 hover:bg-pink-50"
-                        >
-                            <td className="py-4">{report.id.slice(0, 8)}</td>
+                              <tr
+                                key={report.id}
+                                className={`border-b transition-colors duration-200 ${
+                                  darkMode
+                                    ? "border-gray-700 hover:bg-gray-800"
+                                    : "border-pink-100 hover:bg-pink-50"
+                                }`}
+                              >
+                                <td className={darkMode ? "py-4 text-white" : "py-4"}>
+                                  {report.id.slice(0, 5)}
+                                </td>
 
-                            <td>{report.category}</td>
+                                <td className={darkMode ? "text-gray-200" : ""}>
+                                  {report.reportType}
+                                </td>
 
-                            <td>{report.reporter}</td>
+                                <td className={darkMode ? "text-gray-200" : ""}>
+                                  {report.itemname}
+                                </td>
 
-                            <td>{report.date}</td>
+                                 <td className={darkMode ? "text-gray-200" : ""}>
+                                  {report.status}
+                                </td>
+
+                                <td className={darkMode ? "text-gray-300" : ""}>
+                                  {report.date}
+                                </td>
                         </tr>
                         ))
                     ) : (
@@ -470,7 +597,13 @@ function timeAgo(date) {
         </div>
 
         {/* ACTIVITY */}
-        <div className="bg-white rounded-3xl border-2 border-pink-200 p-6 shadow">
+        <div
+          className={`rounded-3xl border-2 p-6 shadow transition-all duration-300 ${
+            darkMode
+              ? "bg-gray-900 border-gray-700 text-white"
+              : "bg-white border-pink-200"
+          }`}
+        >
             <h2 className="text-xl font-bold text-pink-600 mb-5">
                 Recent Activity
             </h2>
@@ -482,13 +615,21 @@ function timeAgo(date) {
                     key={index}
                     className="border-l-4 border-pink-500 pl-4"
                     >
-                    <p className="font-medium text-gray-800">
+                      <p
+                        className={`font-medium ${
+                          darkMode ? "text-white" : "text-gray-800"
+                        }`}
+                      >
                         {activity.title}
-                    </p>
+                      </p>
 
-                    <p className="text-sm text-gray-500">
-                        {timeAgo(activity.time)}
-                    </p>
+                        <p
+                          className={`text-sm ${
+                            darkMode ? "text-gray-400" : "text-gray-500"
+                          }`}
+                        >
+                          {timeAgo(activity.time)}
+                        </p>
                     </div>
                 ))
                 ) : (
