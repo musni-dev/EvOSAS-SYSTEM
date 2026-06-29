@@ -2,18 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { db } from "../../firebase/firebase";
 
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  increment,
-  serverTimestamp,
-  collection,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import { doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, collection, query, where, getDocs,} from "firebase/firestore";
 
 export default function EvaluationFormPage() {
   const { eventId } = useParams();

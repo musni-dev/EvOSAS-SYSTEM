@@ -4,7 +4,6 @@ import DCTlogo from "../assets/dct-logo.png";
 
 const NAV_ITEMS = [
   { label: "Home", path: "/" },
-  { label: "Announcements", path: "/announcements" },
   { label: "About", path: "/about" },
  
 ];

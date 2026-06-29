@@ -194,13 +194,13 @@ useEffect(() => {
 
         
           {active === "dashboard" && <DashboardPage darkMode={darkMode} />}
-          {active === "disciplinary" && <DisciplinaryPage />}
-          {active === "lostfound" && <LostFoundPage />}
-          {active === "attendance" && <AttendancePage />}
-          {active === "events" && <EventsPage />}
-          {active === "orgs" && <OrganizationsPage />}
-          {active === "users" && <UsersPage />}
-          {active === "audittrail" && <AuditTrailPage />}
+          {active === "disciplinary" && <DisciplinaryPage darkMode={darkMode} />}
+          {active === "lostfound" && <LostFoundPage darkMode={darkMode} />}
+          {active === "attendance" && <AttendancePage darkMode={darkMode} />}
+          {active === "events" && <EventsPage darkMode={darkMode} />}
+          {active === "orgs" && <OrganizationsPage darkMode={darkMode} />}
+          {active === "users" && <UsersPage darkMode={darkMode} />}
+          {active === "audittrail" && <AuditTrailPage darkMode={darkMode} />}
         </div>
       </div>
     

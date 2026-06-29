@@ -549,12 +549,6 @@ useEffect(() => {
                     </p>
                   </div>
 
-                  <input
-                    readOnly
-                    value={qrValue || "QR code is no longer available"}
-                    className="w-full rounded-lg border border-pink-100 bg-pink-50 px-3 py-2 text-xs text-gray-500 select-all cursor-text"
-                  />
-
                   <div className="flex w-full gap-2">
                     <button
                       onClick={handleDownloadQR}

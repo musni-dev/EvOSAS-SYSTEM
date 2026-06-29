@@ -70,10 +70,10 @@ const Home = () => {
               </Link>
 
               <Link
-                to="/announcements"
+                to="/login"
                 className="border-2 border-black text-black px-5 py-2 sm:px-6 sm:py-3 rounded-lg font-bold hover:bg-black hover:text-[#ff6699] transition text-sm sm:text-base"
               >
-                Announcements
+                Login
               </Link>
             </div>
           </motion.div>

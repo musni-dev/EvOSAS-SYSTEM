@@ -11,9 +11,9 @@ import Footer from "./components/Footer";
 
 // Public Pages
 import Home from "./pages/Home";
-import Announcements from "./pages/Announcements";
 import About from "./pages/About";
 import Login from "./pages/Login";
+import ForgotPassword from "./pages/ForgotPassword";
 
 // Admin / Role Pages
 import EvaluationResultsPage from "./AdminDashboard/pages/EvaluationResultsPage";
@@ -53,7 +53,6 @@ function LayoutWrapper() {
   // ✅ PUBLIC ONLY ROUTES
   const isPublicRoute =
     location.pathname === "/" ||
-    location.pathname === "/announcements" ||
     location.pathname === "/about";
 
   const getHomeRoute = () => {
@@ -84,8 +83,8 @@ function LayoutWrapper() {
 
           {/* PUBLIC ROUTES */}
           <Route path="/" element={<Home />} />
-          <Route path="/announcements" element={<Announcements />} />
           <Route path="/about" element={<About />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
 
           {/* LOGIN */}
           <Route

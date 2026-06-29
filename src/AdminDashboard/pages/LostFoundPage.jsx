@@ -1,16 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { db, storage } from "../../firebase/firebase";
-import {
-  collection,
-  addDoc,
-  deleteDoc,
-  doc,
-  updateDoc,
-  query,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-} from "firebase/firestore";
+import { collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot, serverTimestamp,} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL,  deleteObject } from "firebase/storage";
 import { color } from "framer-motion";
 
@@ -23,7 +13,6 @@ const CATEGORIES = [
 const STATUS_CONFIG = {
   Pending:  { bg: "#FEF3C7", color: "#92400E", dot: "#D97706" },
   Claimed:  { bg: "#D1FAE5", color: "#065F46", dot: "#059669" },
-  Resolved: { bg: "#DBEAFE", color: "#1E40AF", dot: "#3B82F6" },
 };
 
 const TYPE_CONFIG = {
@@ -157,11 +146,51 @@ export default function LostFoundPage() {
   const [editingStatus, setEditingStatus] = useState(false);
 
 
+const [editing, setEditing] = useState({
+  reportType: false,
+  status: false,
+  name: false,
+  description: false,
+  category: false,
+  location: false,
+  date: false,
+  contact: false,
+});
 
-  useEffect(() => {
+const [editValue, setEditValue] = useState({
+  reportType: "",
+  status: "",
+  name: "",
+  description: "",
+  category: "",
+  location: "",
+  date: "",
+  contact: "",
+});
+
+ useEffect(() => {
   if (viewItem) {
-    setNewStatus(viewItem.status);
-    setEditingStatus(false);
+    setEditValue({
+      reportType: viewItem.reportType || "Lost",
+      status: viewItem.status || "Pending",
+      name: viewItem.itemName || "",
+      description: viewItem.description || "",
+      category: viewItem.category || "",
+      location: viewItem.location || "",
+      date: viewItem.date || "",
+      contact: viewItem.contactNumber || "",
+    });
+
+    setEditing({
+      reportType: false,
+      status: false,
+      name: false,
+      description: false,
+      category: false,
+      location: false,
+      date: false,
+      contact: false,
+    });
   }
 }, [viewItem]);
 
@@ -227,12 +256,64 @@ const handleImage = (e) => {
   reader.readAsDataURL(file);
 };
 
-  const validate = () => {
-    const errs = {};
-    if (!form.itemName.trim()) errs.itemName = "Item name is required.";
-    if (!form.location.trim()) errs.location = "Location is required.";
-    return errs;
-  };
+const validate = () => {
+  const errs = {};
+
+  // Required fields
+  if (!form.itemName.trim())
+    errs.itemName = "Item name is required.";
+
+  if (!form.category)
+    errs.category = "Category is required.";
+
+  if (!form.description.trim())
+    errs.description = "Description is required.";
+
+  if (!form.location.trim())
+    errs.location = "Location is required.";
+
+  if (!form.date)
+    errs.date = "Date is required.";
+
+  // Item Name: letters & spaces only
+  if (
+    form.itemName &&
+    !/^[A-Za-z\s]+$/.test(form.itemName)
+  ) {
+    errs.itemName =
+      "Item name must contain letters only.";
+  }
+
+  // Location: letters & spaces only
+  if (
+    form.location &&
+    !/^[A-Za-z\s]+$/.test(form.location)
+  ) {
+    errs.location =
+      "Location must contain letters only.";
+  }
+
+  // Contact Number (optional)
+  if (
+    form.contactNumber &&
+    !/^09\d{9}$/.test(form.contactNumber)
+  ) {
+    errs.contactNumber =
+      "Enter a valid 11-digit mobile number.";
+  }
+
+  // No future dates
+  if (form.date) {
+    const today = new Date().toISOString().split("T")[0];
+
+    if (form.date > today) {
+      errs.date =
+        "Future dates are not allowed.";
+    }
+  }
+
+  return errs;
+};
 
   const handleAdd = async () => {
     const errs = validate();
@@ -308,6 +389,27 @@ const handleImage = (e) => {
       }
     };
 
+
+    const updateField = async (field, firestoreField) => {
+  const value = editValue[field];
+
+  await updateDoc(
+    doc(db, "lost_found", viewItem.id),
+    {
+      [firestoreField]: value,
+    }
+  );
+
+  setViewItem((prev) => ({
+    ...prev,
+    [firestoreField]: value,
+  }));
+
+  setEditing((prev) => ({
+    ...prev,
+    [field]: false,
+  }));
+};
   const closeAdd = () => {
     setShowAddModal(false);
     setForm(EMPTY_FORM);
@@ -422,7 +524,7 @@ return (
         min-w-[130px]
       "
       >
-        {["All", "Pending", "Claimed", "Resolved"].map((s) => (
+        {["All", "Pending", "Claimed"].map((s) => (
           <option key={s}>{s}</option>
         ))}
       </select>
@@ -565,12 +667,28 @@ return (
               <div style={S.field}>
                 <label style={S.label}>Item Name *</label>
                 <input
-                  name="itemName"
-                  placeholder="e.g. iPhone 15 Pro"
-                  value={form.itemName}
-                  onChange={handleChange}
-                  style={{ ...S.input, borderColor: errors.itemName ? "#EF4444" : "#E5E7EB" }}
-                />
+                    name="itemName"
+                    value={form.itemName}
+                    maxLength={40}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^A-Za-z\s]/g, "");
+
+                      setForm((prev) => ({
+                        ...prev,
+                        itemName: value,
+                      }));
+                    }}
+                    style={{
+                      ...S.input,
+                      borderColor: errors.itemName
+                        ? "#EF4444"
+                        : "#E5E7EB",
+                    }}
+                  />
+
+                  {errors.itemName && (
+                    <p style={S.errorText}>{errors.itemName}</p>
+                  )}
                 {errors.itemName && <p style={S.errorText}>{errors.itemName}</p>}
               </div>
 
@@ -580,7 +698,12 @@ return (
                 <select name="category" value={form.category} onChange={handleChange} style={S.select}>
                   <option value="">Select category…</option>
                   {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
+                  
                 </select>
+                {errors.category && (
+                    <p style={S.errorText}>{errors.category}</p>
+                  )}
+
               </div>
 
               {/* Description */}
@@ -599,18 +722,49 @@ return (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div style={S.field}>
                   <label style={S.label}>Location *</label>
-                  <input
-                    name="location"
-                    placeholder="Where?"
-                    value={form.location}
-                    onChange={handleChange}
-                    style={{ ...S.input, borderColor: errors.location ? "#EF4444" : "#E5E7EB" }}
-                  />
-                  {errors.location && <p style={S.errorText}>{errors.location}</p>}
+                    <input
+                      name="location"
+                      value={form.location}
+                      maxLength={50}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^A-Za-z\s]/g, "");
+
+                        setForm((prev) => ({
+                          ...prev,
+                          location: value,
+                        }));
+                      }}
+                      style={{
+                        ...S.input,
+                        borderColor: errors.location
+                          ? "#EF4444"
+                          : "#E5E7EB",
+                      }}
+                    />
+
+                    {errors.location && (
+                      <p style={S.errorText}>{errors.location}</p>
+                    )}
                 </div>
                 <div style={S.field}>
                   <label style={S.label}>Date</label>
-                  <input type="date" name="date" value={form.date} onChange={handleChange} style={S.input} />
+                  <input
+                      type="date"
+                      name="date"
+                      value={form.date}
+                      max={new Date().toISOString().split("T")[0]}
+                      onChange={handleChange}
+                      style={{
+                        ...S.input,
+                        borderColor: errors.date
+                          ? "#EF4444"
+                          : "#E5E7EB",
+                      }}
+                    />
+
+                    {errors.date && (
+                      <p style={S.errorText}>{errors.date}</p>
+                    )}
                 </div>
               </div>
 
@@ -643,7 +797,6 @@ return (
                   <select name="status" value={form.status} onChange={handleChange} style={S.select}>
                     <option>Pending</option>
                     <option>Claimed</option>
-                    <option>Resolved</option>
                   </select>
                 </div>
               </div>
@@ -761,11 +914,61 @@ return (
             alignItems: "center",
           }}
         >
-          {/* REPORT TYPE */}
-          <Badge
-            label={viewItem.reportType}
-            config={TYPE_CONFIG[viewItem.reportType]}
-          />
+          {/* REPORT TYPE (EDITABLE) */}
+          {editing.reportType ? (
+            <select
+              value={editValue.reportType}
+              onChange={async (e) => {
+                const value = e.target.value;
+
+                setEditValue((prev) => ({
+                  ...prev,
+                  reportType: value,
+                }));
+
+                await updateDoc(doc(db, "lost_found", viewItem.id), {
+                  reportType: value,
+                });
+
+                setViewItem((prev) => ({
+                  ...prev,
+                  reportType: value,
+                }));
+
+                setEditing((prev) => ({
+                  ...prev,
+                  reportType: false,
+                }));
+              }}
+              style={{
+                fontSize: 11,
+                fontWeight: 600,
+                padding: "4px 10px",
+                borderRadius: 999,
+                border: "1px solid #ddd",
+                color: "#111827",
+                background: "#fff",
+              }}
+            >
+              <option value="Lost">Lost</option>
+              <option value="Found">Found</option>
+            </select>
+          ) : (
+            <span
+              onClick={() =>
+                setEditing((prev) => ({
+                  ...prev,
+                  reportType: true,
+                }))
+              }
+              style={{ cursor: "pointer" }}
+            >
+              <Badge
+                label={viewItem.reportType}
+                config={TYPE_CONFIG[viewItem.reportType]}
+              />
+            </span>
+          )}
 
           {/* STATUS (EDITABLE) */}
           {editingStatus ? (
@@ -797,8 +1000,8 @@ return (
             >
               <option value="Pending">Pending</option>
               <option value="Claimed">Claimed</option>
-              <option value="Returned">Returned</option>
-              <option value="Resolved">Resolved</option>
+
+
             </select>
           ) : (
             <span
@@ -815,83 +1018,347 @@ return (
             </span>
           )}
 
-          {/* CATEGORY */}
-          {viewItem.category && (
-            <span
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                background: "#F3F4F6",
-                color: "#4B5563",
-                padding: "3px 10px",
-                borderRadius: 99,
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-              }}
-            >
-              {viewItem.category}
-            </span>
-          )}
+      {/* CATEGORY (EDITABLE) */}
+        {editing.category ? (
+          <select
+            value={editValue.category}
+            onChange={async (e) => {
+              const value = e.target.value;
+
+              setEditValue((prev) => ({
+                ...prev,
+                category: value,
+              }));
+
+              await updateDoc(doc(db, "lost_found", viewItem.id), {
+                category: value,
+              });
+
+              setViewItem((prev) => ({
+                ...prev,
+                category: value,
+              }));
+
+              setEditing((prev) => ({
+                ...prev,
+                category: false,
+              }));
+            }}
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              padding: "4px 10px",
+              borderRadius: 999,
+              border: "1px solid #ddd",
+              color: "#111827",
+              background: "#fff",
+            }}
+          >
+            {CATEGORIES.map((cat) => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span
+            onClick={() =>
+              setEditing((prev) => ({
+                ...prev,
+                category: true,
+              }))
+            }
+            style={{
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 600,
+              background: "#F3F4F6",
+              color: "#111827",
+              padding: "3px 10px",
+              borderRadius: 99,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+            }}
+          >
+            {viewItem.category}
+          </span>
+        )}
         </div>
 
         {/* TITLE */}
-        <h3
-          style={{
-            fontWeight: 700,
-            fontSize: 18,
-            margin: "0 0 10px",
-            color: "#111",
-          }}
-        >
-          {viewItem.itemName}
-        </h3>
+          {editing.name ? (
+            <input
+              value={editValue.name}
+              onChange={(e) =>
+                setEditValue((prev) => ({
+                  ...prev,
+                  name: e.target.value,
+                }))
+              }
+              onBlur={async () => {
+                await updateDoc(doc(db, "lost_found", viewItem.id), {
+                  itemName: editValue.name,
+                });
+
+                setViewItem((prev) => ({
+                  ...prev,
+                  itemName: editValue.name,
+                }));
+
+                setEditing((prev) => ({
+                  ...prev,
+                  name: false,
+                }));
+              }}
+              autoFocus
+              style={{
+                width: "100%",
+                fontSize: 18,
+                fontWeight: 700,
+                color: "#111827",
+                border: "1px solid #D1D5DB",
+                borderRadius: 8,
+                padding: "8px",
+              }}
+            />
+          ) : (
+            <h3
+              onClick={() =>
+                setEditing((prev) => ({
+                  ...prev,
+                  name: true,
+                }))
+              }
+              style={{
+                fontWeight: 700,
+                fontSize: 18,
+                margin: "0 0 10px",
+                color: "#111827",
+                cursor: "pointer",
+              }}
+            >
+              {viewItem.itemName}
+            </h3>
+          )}
 
         {/* DESCRIPTION */}
-        {viewItem.description && (
-          <p
-            style={{
-              fontSize: 14,
-              color: "#4B5563",
-              margin: "0 0 14px",
-              lineHeight: 1.6,
-            }}
-          >
-            {viewItem.description}
-          </p>
-        )}
+          {editing.description ? (
+            <textarea
+              value={editValue.description}
+              onChange={(e) =>
+                setEditValue((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              onBlur={async () => {
+                await updateDoc(doc(db, "lost_found", viewItem.id), {
+                  description: editValue.description,
+                });
+
+                setViewItem((prev) => ({
+                  ...prev,
+                  description: editValue.description,
+                }));
+
+                setEditing((prev) => ({
+                  ...prev,
+                  description: false,
+                }));
+              }}
+              autoFocus
+              style={{
+                width: "100%",
+                minHeight: 80,
+                border: "1px solid #D1D5DB",
+                borderRadius: 8,
+                padding: 8,
+                color: "#111827",
+              }}
+            />
+          ) : (
+            <p
+              onClick={() =>
+                setEditing((prev) => ({
+                  ...prev,
+                  description: true,
+                }))
+              }
+              style={{
+                fontSize: 14,
+                color: "#374151",
+                margin: "0 0 14px",
+                lineHeight: 1.6,
+                cursor: "pointer",
+              }}
+            >
+              {viewItem.description || "No description"}
+            </p>
+          )}
 
         {/* INFO */}
         <div
-          style={{
-            borderTop: "1px solid #F3F4F6",
-            paddingTop: 12,
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
-          {[
-            ["📍 Location", viewItem.location],
-            ["🗓 Date", viewItem.date],
-            ["📞 Contact", viewItem.contactNumber],
-          ].map(([k, v]) =>
-            v ? (
-              <div
-                key={k}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: 13,
-                }}
-              >
-                <span style={{ color: "#9CA3AF" }}>{k}</span>
-                <span style={{ fontWeight: 600, color: "#374151" }}>
-                  {v}
-                </span>
-              </div>
-            ) : null
-          )}
-        </div>
+  style={{
+    borderTop: "1px solid #F3F4F6",
+    paddingTop: 12,
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+  }}
+>
+
+  {/* Location */}
+  <div>
+    <span style={{ color: "#000000", fontSize: 13 }}>📍 Location</span>
+
+    {editing.location ? (
+      <input
+        value={editValue.location}
+        onChange={(e) =>
+          setEditValue((p) => ({
+            ...p,
+            location: e.target.value,
+          }))
+        }
+        onBlur={async () => {
+          await updateDoc(doc(db, "lost_found", viewItem.id), {
+            location: editValue.location,
+          });
+
+          setViewItem((p) => ({
+            ...p,
+            location: editValue.location,
+          }));
+
+          setEditing((p) => ({
+            ...p,
+            location: false,
+          }));
+        }}
+        autoFocus
+        style={S.input}
+      />
+    ) : (
+      <div
+        onClick={() =>
+          setEditing((p) => ({
+            ...p,
+            location: true,
+          }))
+        }
+        style={{
+          color: "#111827",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        {viewItem.location}
+      </div>
+    )}
+  </div>
+
+  {/* Date */}
+  <div>
+    <span style={{ color: "#000000", fontSize: 13 }}>🗓 Date</span>
+
+    {editing.date ? (
+      <input
+        type="date"
+        value={editValue.date}
+        onChange={(e) =>
+          setEditValue((p) => ({
+            ...p,
+            date: e.target.value,
+          }))
+        }
+        onBlur={async () => {
+          await updateDoc(doc(db, "lost_found", viewItem.id), {
+            date: editValue.date,
+          });
+
+          setViewItem((p) => ({
+            ...p,
+            date: editValue.date,
+          }));
+
+          setEditing((p) => ({
+            ...p,
+            date: false,
+          }));
+        }}
+        autoFocus
+        style={S.input}
+      />
+    ) : (
+      <div
+        onClick={() =>
+          setEditing((p) => ({
+            ...p,
+            date: true,
+          }))
+        }
+        style={{
+          color: "#111827",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        {viewItem.date}
+      </div>
+    )}
+  </div>
+
+  {/* Contact */}
+  <div>
+    <span style={{ color: "#000000", fontSize: 13 }}>📞 Contact</span>
+
+    {editing.contact ? (
+      <input
+        value={editValue.contact}
+        onChange={(e) =>
+          setEditValue((p) => ({
+            ...p,
+            contact: e.target.value,
+          }))
+        }
+        onBlur={async () => {
+          await updateDoc(doc(db, "lost_found", viewItem.id), {
+            contactNumber: editValue.contact,
+          });
+
+          setViewItem((p) => ({
+            ...p,
+            contactNumber: editValue.contact,
+          }));
+
+          setEditing((p) => ({
+            ...p,
+            contact: false,
+          }));
+        }}
+        autoFocus
+        style={S.input}
+      />
+    ) : (
+      <div
+        onClick={() =>
+          setEditing((p) => ({
+            ...p,
+            contact: true,
+          }))
+        }
+        style={{
+          color: "#111827",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        {viewItem.contactNumber}
+      </div>
+    )}
+  </div>
+
+</div>
       </div>
 
       {/* FOOTER */}
@@ -910,7 +1377,7 @@ return (
           }}
           onClick={() => setEditingStatus(true)}
         >
-          ✏ Edit Status
+          
         </button>
 
         {/* RIGHT: ACTIONS */}
