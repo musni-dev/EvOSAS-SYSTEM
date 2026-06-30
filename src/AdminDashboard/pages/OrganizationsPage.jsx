@@ -1,14 +1,8 @@
 import { useState, useEffect } from "react";
 import { db } from "../../firebase/firebase";
-import {
-  collection,
-  onSnapshot,
-  query,
-  orderBy,
-  doc,
-  updateDoc,
-  deleteDoc,
-} from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc,} from "firebase/firestore";
+import { FaEye, FaTrash, FaClipboardCheck,} from "react-icons/fa";
+
 
 const STATUS_CONFIG = {
   Pending: {
@@ -302,19 +296,19 @@ export default function OrganizationsPage() {
                                     rel="noopener noreferrer"
                                     className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition"
                                   >
-                                    View
+                                    <FaEye />
                                   </a>
                                   <button
                                     onClick={() => openModal(item)}
                                     className="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition"
                                   >
-                                    Review
+                                    <FaClipboardCheck />
                                   </button>
                                   <button
                                     onClick={() => setDeleteConfirm(item)}
                                     className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-1.5 rounded-lg text-xs font-semibold transition"
                                   >
-                                    Delete
+                                    <FaTrash />
                                   </button>
                                 </div>
                               </td>

@@ -336,30 +336,30 @@ function timeAgo(date) {
 
   return (
     <div
-        className={`flex-1 overflow-auto p-6 transition-all duration-300 ${
+        className={`flex-1 overflow-auto p-5 sm:p-8 transition-colors duration-300 ${
           darkMode
-            ? "bg-[#0f172a] text-white"
-            : "bg-gray-100 text-gray-900"
+            ? "bg-[#0b1120] text-white"
+            : "bg-slate-50 text-gray-900"
         }`}
       >
       {/* HEADER */}
-      <div className="flex flex-col lg:flex-row justify-between gap-4 mb-8">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-4xl font-bold text-pink-500">
+          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
             EVOSAS Dashboard
           </h1>
 
-          <p className="text-gray-400 mt-2">
+          <p className={`mt-2 text-sm sm:text-base ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
             Monitor reports, attendance, events and analytics.
           </p>
         </div>
 
-        <div className={`px-5 py-3 rounded-2xl shadow border-2 ${
+        <div className={`px-5 py-2.5 rounded-2xl shadow-sm border transition-all duration-200 ${
           darkMode
-            ? "bg-gray-900 border-gray-700 text-white"
-            : "bg-white border-pink-300"
+            ? "bg-gray-900/60 border-gray-800 backdrop-blur"
+            : "bg-white border-pink-100"
         }`}>
-          <span className="text-pink-600 font-semibold">
+          <span className="text-pink-600 font-semibold text-sm tracking-wide">
             {new Date().toLocaleDateString()}
           </span>
         </div>
@@ -367,9 +367,9 @@ function timeAgo(date) {
 
       {/* STAT CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
-        <div className="bg-pink-600 text-white rounded-3xl p-6 border-2 border-pink-400">
-          <p className="text-sm opacity-90">Case Reports</p>
-          <h2 className="text-5xl font-bold mt-3">{stats.totalCases}</h2>
+        <div className="relative overflow-hidden bg-gradient-to-br from-pink-600 to-rose-500 text-white rounded-3xl p-6 shadow-lg shadow-pink-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/30 hover:-translate-y-0.5">
+          <p className="text-sm font-medium opacity-90 tracking-wide">Case Reports</p>
+          <h2 className="text-4xl sm:text-5xl font-bold mt-3">{stats.totalCases}</h2>
               <p className="mt-2 text-sm opacity-90">
               {stats.todayCases
                 ? `+${stats.todayCases} Today`
@@ -378,15 +378,15 @@ function timeAgo(date) {
         </div>
 
         <div
-          className={`rounded-3xl p-6 border-2 ${
+          className={`rounded-3xl p-6 border shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
             darkMode
-              ? "bg-gray-900 border-gray-700 text-white"
-              : "bg-white border-pink-200"
+              ? "bg-gray-900/60 border-gray-800 text-white"
+              : "bg-white border-gray-100"
           }`}
         >
-          <p className="text-gray-500">Lost Items</p>
-          <h2 className="text-5xl font-bold text-pink-600 mt-3">{stats.lost}</h2>
-          <p className="text-green-500 text-sm mt-2">
+          <p className={`text-sm font-medium tracking-wide ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Lost Items</p>
+          <h2 className="text-4xl sm:text-5xl font-bold text-pink-600 mt-3">{stats.lost}</h2>
+          <p className="text-emerald-500 text-sm mt-2 font-medium">
             {stats.lostThisWeek > 0
               ? `+${stats.lostThisWeek} this week`
               : "No reports this week"}
@@ -394,15 +394,15 @@ function timeAgo(date) {
         </div>
 
         <div
-          className={`rounded-3xl p-6 border-2 ${
+          className={`rounded-3xl p-6 border shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
             darkMode
-              ? "bg-gray-900 border-gray-700 text-white"
-              : "bg-white border-pink-200"
+              ? "bg-gray-900/60 border-gray-800 text-white"
+              : "bg-white border-gray-100"
           }`}
         >
-          <p className="text-gray-500">Found Items</p>
-          <h2 className="text-5xl font-bold text-pink-600 mt-3">{stats.found}</h2>
-          <p className="text-green-500 text-sm mt-2">
+          <p className={`text-sm font-medium tracking-wide ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Found Items</p>
+          <h2 className="text-4xl sm:text-5xl font-bold text-pink-600 mt-3">{stats.found}</h2>
+          <p className="text-emerald-500 text-sm mt-2 font-medium">
            {stats.foundThisWeek > 0
             ? `+${stats.foundThisWeek} this week`
             : "No reports this week"}
@@ -410,15 +410,15 @@ function timeAgo(date) {
         </div>
 
         <div
-          className={`rounded-3xl p-6 border-2 ${
+          className={`rounded-3xl p-6 border shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md ${
             darkMode
-              ? "bg-gray-900 border-gray-700 text-white"
-              : "bg-white border-pink-200"
+              ? "bg-gray-900/60 border-gray-800 text-white"
+              : "bg-white border-gray-100"
           }`}
         >
-          <p className="text-gray-500">Users</p>
-          <h2 className="text-5xl font-bold text-pink-600 mt-3">{stats.users}</h2>
-          <p className="text-green-500 text-sm mt-2">
+          <p className={`text-sm font-medium tracking-wide ${darkMode ? "text-gray-400" : "text-gray-500"}`}>Users</p>
+          <h2 className="text-4xl sm:text-5xl font-bold text-pink-600 mt-3">{stats.users}</h2>
+          <p className="text-emerald-500 text-sm mt-2 font-medium">
             {stats.usersThisMonth > 0
               ? `+${stats.usersThisMonth} this month`
               : "No new users this month"}
@@ -430,27 +430,40 @@ function timeAgo(date) {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-8">
         {/* BAR CHART */}
         <div
-          className={`xl:col-span-2 rounded-3xl border-2 p-6 shadow ${
+          className={`xl:col-span-2 rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-md ${
             darkMode
-              ? "bg-gray-900 border-gray-700 text-white"
-              : "bg-white border-pink-200"
+              ? "bg-gray-900/60 border-gray-800 text-white"
+              : "bg-white border-gray-100"
           }`}
         >
-          <h2 className="text-xl font-bold text-pink-600 mb-4">
+          <h2 className="text-lg font-bold text-pink-600 mb-1">
             Report Items Per Day
           </h2>
+          <p className={`text-xs mb-4 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+            Weekly distribution of lost &amp; found submissions
+          </p>
 
           <ResponsiveContainer width="100%" height={350}>
             <BarChart data={dailyReports}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="day" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? "#1f2937" : "#f1f5f9"} />
+              <XAxis dataKey="day" stroke={darkMode ? "#9ca3af" : "#6b7280"} fontSize={12} tickLine={false} axisLine={false} />
+              <YAxis stroke={darkMode ? "#9ca3af" : "#6b7280"} fontSize={12} tickLine={false} axisLine={false} />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: "12px",
+                  border: "none",
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                  background: darkMode ? "#111827" : "#ffffff",
+                  color: darkMode ? "#fff" : "#111827",
+                }}
+                cursor={{ fill: darkMode ? "rgba(236,72,153,0.06)" : "rgba(236,72,153,0.06)" }}
+              />
 
               <Bar
                 dataKey="reports"
                 fill="#ec4899"
                 radius={[10, 10, 0, 0]}
+                maxBarSize={48}
               />
             </BarChart>
           </ResponsiveContainer>
@@ -458,51 +471,66 @@ function timeAgo(date) {
 
         {/* PIE CHART */}
                 <div
-                  className={`rounded-3xl border-2 p-6 shadow transition-all duration-300 ${
+                  className={`rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-md ${
                     darkMode
-                      ? "bg-gray-900 border-gray-700 text-white"
-                      : "bg-white border-pink-200"
+                      ? "bg-gray-900/60 border-gray-800 text-white"
+                      : "bg-white border-gray-100"
                   }`}
                 >
-                <h2 className="text-xl font-bold text-pink-600 mb-4">
+                <h2 className="text-lg font-bold text-pink-600 mb-1">
                     User Distribution
                 </h2>
+                <p className={`text-xs mb-4 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                    Breakdown by account status
+                </p>
 
-                <ResponsiveContainer width="100%" height={350}>
+                <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                     <Pie
                         data={pieData}
                         dataKey="value"
                         nameKey="name"
-                        outerRadius={120}
+                        outerRadius={110}
+                        innerRadius={60}
+                        paddingAngle={3}
                         label
                     >
                         {pieData.map((entry, index) => (
                         <Cell
                             key={index}
                             fill={COLORS[index % COLORS.length]}
+                            stroke={darkMode ? "#111827" : "#ffffff"}
+                            strokeWidth={2}
                         />
                         ))}
                     </Pie>
 
-                    <Tooltip />
+                    <Tooltip
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "none",
+                        boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
+                        background: darkMode ? "#111827" : "#ffffff",
+                        color: darkMode ? "#fff" : "#111827",
+                      }}
+                    />
                     </PieChart>
                 </ResponsiveContainer>
 
-                <div className="mt-4 flex justify-center gap-6 text-sm">
+                <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs font-medium">
                     <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-pink-500"></div>
-                    Total Users
+                    <div className="w-2.5 h-2.5 rounded-full bg-pink-500"></div>
+                    <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Total Users</span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
-                    Active
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
+                    <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Active</span>
                     </div>
 
                     <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
-                    Inactive
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                    <span className={darkMode ? "text-gray-300" : "text-gray-600"}>Inactive</span>
                     </div>
                 </div>
                 </div>
@@ -512,38 +540,38 @@ function timeAgo(date) {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* TABLE */}
         <div
-          className={`xl:col-span-2 rounded-3xl border-2 p-6 shadow transition-all duration-300 ${
+          className={`xl:col-span-2 rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-md ${
             darkMode
-              ? "bg-gray-900 border-gray-700 text-white"
-              : "bg-white border-pink-200"
+              ? "bg-gray-900/60 border-gray-800 text-white"
+              : "bg-white border-gray-100"
           }`}
         >
-          <h2 className="text-xl font-bold text-pink-600 mb-5">
+          <h2 className="text-lg font-bold text-pink-600 mb-5">
             Recent Reports Lost and Found
           </h2>
 
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-auto -mx-2">
+            <table className="w-full text-sm border-separate border-spacing-0">
               <thead>
-                <tr className="border-b border-pink-200">
-                  <th className="text-left py-3 text-pink-600">
+                <tr>
+                  <th className={`text-left py-3 px-2 font-semibold text-xs uppercase tracking-wider sticky top-0 ${darkMode ? "text-gray-400 bg-gray-900/60" : "text-gray-500 bg-white"}`}>
                     Report ID
                   </th>
 
-                  <th className="text-left py-3 text-pink-600">
+                  <th className={`text-left py-3 px-2 font-semibold text-xs uppercase tracking-wider sticky top-0 ${darkMode ? "text-gray-400 bg-gray-900/60" : "text-gray-500 bg-white"}`}>
                     Lost/Found
                   </th>
 
-                  <th className="text-left py-3 text-pink-600">
+                  <th className={`text-left py-3 px-2 font-semibold text-xs uppercase tracking-wider sticky top-0 ${darkMode ? "text-gray-400 bg-gray-900/60" : "text-gray-500 bg-white"}`}>
                     Item Name
                   </th>
 
                   
-                   <th className="text-left py-3 text-pink-600">
+                   <th className={`text-left py-3 px-2 font-semibold text-xs uppercase tracking-wider sticky top-0 ${darkMode ? "text-gray-400 bg-gray-900/60" : "text-gray-500 bg-white"}`}>
                     Status
                   </th>
 
-                  <th className="text-left py-3 text-pink-600">
+                  <th className={`text-left py-3 px-2 font-semibold text-xs uppercase tracking-wider sticky top-0 ${darkMode ? "text-gray-400 bg-gray-900/60" : "text-gray-500 bg-white"}`}>
                     Date
                   </th>
                 </tr>
@@ -551,32 +579,38 @@ function timeAgo(date) {
 
               <tbody>
                     {recentReports.length > 0 ? (
-                        recentReports.map((report) => (
+                        recentReports.map((report, idx) => (
                               <tr
                                 key={report.id}
-                                className={`border-b transition-colors duration-200 ${
+                                className={`transition-colors duration-150 ${
                                   darkMode
-                                    ? "border-gray-700 hover:bg-gray-800"
-                                    : "border-pink-100 hover:bg-pink-50"
-                                }`}
+                                    ? idx % 2 === 0 ? "bg-gray-900/30" : "bg-transparent"
+                                    : idx % 2 === 0 ? "bg-gray-50/60" : "bg-transparent"
+                                } ${darkMode ? "hover:bg-gray-800" : "hover:bg-pink-50"}`}
                               >
-                                <td className={darkMode ? "py-4 text-white" : "py-4"}>
+                                <td className={`py-3.5 px-2 rounded-l-xl font-mono text-xs ${darkMode ? "text-gray-200" : "text-gray-700"}`}>
                                   {report.id.slice(0, 5)}
                                 </td>
 
-                                <td className={darkMode ? "text-gray-200" : ""}>
-                                  {report.reportType}
+                                <td className={`py-3.5 px-2 ${darkMode ? "text-gray-200" : "text-gray-700"}`}>
+                                  <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
+                                    report.reportType === "Lost"
+                                      ? darkMode ? "bg-red-500/10 text-red-400" : "bg-red-50 text-red-600"
+                                      : darkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-600"
+                                  }`}>
+                                    {report.reportType}
+                                  </span>
                                 </td>
 
-                                <td className={darkMode ? "text-gray-200" : ""}>
+                                <td className={`py-3.5 px-2 font-medium ${darkMode ? "text-gray-200" : "text-gray-800"}`}>
                                   {report.itemname}
                                 </td>
 
-                                 <td className={darkMode ? "text-gray-200" : ""}>
+                                 <td className={`py-3.5 px-2 ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
                                   {report.status}
                                 </td>
 
-                                <td className={darkMode ? "text-gray-300" : ""}>
+                                <td className={`py-3.5 px-2 rounded-r-xl ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                                   {report.date}
                                 </td>
                         </tr>
@@ -585,9 +619,14 @@ function timeAgo(date) {
                         <tr>
                         <td
                             colSpan="4"
-                            className="text-center py-6 text-gray-400"
+                            className="text-center py-12"
                         >
-                            No reports found
+                          <div className="flex flex-col items-center gap-2">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+                              <span className="text-lg">📋</span>
+                            </div>
+                            <p className="text-gray-400 text-sm">No reports found</p>
+                          </div>
                         </td>
                         </tr>
                     )}
@@ -598,25 +637,28 @@ function timeAgo(date) {
 
         {/* ACTIVITY */}
         <div
-          className={`rounded-3xl border-2 p-6 shadow transition-all duration-300 ${
+          className={`rounded-3xl border p-6 shadow-sm transition-all duration-300 hover:shadow-md ${
             darkMode
-              ? "bg-gray-900 border-gray-700 text-white"
-              : "bg-white border-pink-200"
+              ? "bg-gray-900/60 border-gray-800 text-white"
+              : "bg-white border-gray-100"
           }`}
         >
-            <h2 className="text-xl font-bold text-pink-600 mb-5">
+            <h2 className="text-lg font-bold text-pink-600 mb-5">
                 Recent Activity
             </h2>
 
-            <div className="space-y-5">
+            <div className="space-y-4">
                 {activities.length > 0 ? (
                 activities.map((activity, index) => (
                     <div
                     key={index}
-                    className="border-l-4 border-pink-500 pl-4"
+                    className={`relative pl-4 pb-1 border-l-2 border-pink-500 transition-colors duration-200 ${
+                      darkMode ? "hover:border-pink-400" : "hover:border-pink-600"
+                    }`}
                     >
+                      <span className="absolute -left-[5px] top-1 w-2 h-2 rounded-full bg-pink-500"></span>
                       <p
-                        className={`font-medium ${
+                        className={`font-medium text-sm ${
                           darkMode ? "text-white" : "text-gray-800"
                         }`}
                       >
@@ -624,8 +666,8 @@ function timeAgo(date) {
                       </p>
 
                         <p
-                          className={`text-sm ${
-                            darkMode ? "text-gray-400" : "text-gray-500"
+                          className={`text-xs mt-0.5 ${
+                            darkMode ? "text-gray-500" : "text-gray-400"
                           }`}
                         >
                           {timeAgo(activity.time)}
@@ -633,9 +675,14 @@ function timeAgo(date) {
                     </div>
                 ))
                 ) : (
-                <p className="text-gray-400">
-                    No recent activity found.
-                </p>
+                <div className="flex flex-col items-center gap-2 py-8">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${darkMode ? "bg-gray-800" : "bg-gray-100"}`}>
+                    <span className="text-lg">🔔</span>
+                  </div>
+                  <p className="text-gray-400 text-sm">
+                      No recent activity found.
+                  </p>
+                </div>
                 )}
             </div>
             </div>

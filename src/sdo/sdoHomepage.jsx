@@ -5,7 +5,6 @@ import { collection, onSnapshot } from "firebase/firestore";
 import SDOLayout from "./SDOLayout";
 import CaseRecords from "../AdminDashboard/Disciplinary/CaseRecords";
 import LostFoundPage from "../AdminDashboard/pages/LostFoundPage";
-import SDOAddCase from "./SDOAddCase";
 import SDOSettings from "./SDOSettings";
 
 export default function SDOHomepage() {
@@ -35,7 +34,6 @@ export default function SDOHomepage() {
   const stats = {
     totalCases: cases.length,
     pending: cases.filter((c) => c.status === "in-progress").length,
-    approved: cases.filter((c) => c.status === "Approved").length,
     declined: cases.filter((c) => c.status === "Declined").length,
     lost: lostItems.filter((i) => i.reportType === "Lost").length,
     found: lostItems.filter((i) => i.reportType === "Found").length,
@@ -53,10 +51,6 @@ export default function SDOHomepage() {
       setActivePage={setActivePage}
       handleLogout={handleLogout}
     >
-      {/* ================= ADD CASE PAGE ================= */}
-      {activePage === "add-case" && (
-        <SDOAddCase setActivePage={setActivePage} />
-      )}
 
       {/* ================= DASHBOARD ================= */}
       {activePage === "dashboard" && (
@@ -79,16 +73,12 @@ export default function SDOHomepage() {
           {/* CASE STATS */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             <Stat label="Total cases" value={stats.totalCases} />
-            <Stat label="Pending" value={stats.pending} />
-            <Stat label="Approved" value={stats.approved} />
-            <Stat label="Declined" value={stats.declined} />
-          </div>
-
-          {/* LOST FOUND */}
-          <div className="grid grid-cols-2 gap-3 mb-6">
+            <Stat label="On-going Case" value={stats.pending} />
+                  {/* LOST FOUND */}
             <StatBox label="Lost items" value={stats.lost} />
             <StatBox label="Found items" value={stats.found} />
           </div>
+
 
           {/* QUICK ACCESS */}
           <div className="bg-white border rounded-xl p-5">

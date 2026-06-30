@@ -18,11 +18,11 @@ export default function EvaluationFormPage() {
   const [name, setName] = useState("");
 
   const ratings = [
-    "Strongly Agree",
-    "Agree",
-    "Neutral",
-    "Disagree",
-    "Strongly Disagree",
+    "5 Strongly Agree",
+    "4 Agree",
+    "3 Neutral",
+    "2 Disagree",
+    "1 Strongly Disagree",
   ];
 
   useEffect(() => {
@@ -66,6 +66,13 @@ export default function EvaluationFormPage() {
         return alert("You already submitted this evaluation.");
       }
 
+
+     // CHECK IF ALL QUESTIONS ARE ANSWERED
+      if (Object.keys(answers).length !== event.questions.length) {
+        return alert("Please answer all questions before submitting.");
+      }
+
+
       // SAVE RESPONSE
       await setDoc(doc(collection(db, "evaluationResponses")), {
         eventId,
@@ -81,12 +88,13 @@ export default function EvaluationFormPage() {
       const ref = doc(db, "evaluationResults", eventId);
       const snap = await getDoc(ref);
 
-      if (!snap.exists()) {
-        await setDoc(ref, {
-          evaluationId: eventId,
-          aggregated: {},
-        });
-      }
+        if (!snap.exists()) {
+          await setDoc(ref, {
+            evaluationId: eventId,
+            respondents: 0,
+            aggregated: {},
+          });
+        }
 
       // SCORE MAP
       const scoreMap = {
@@ -114,11 +122,14 @@ export default function EvaluationFormPage() {
         totalCount += 1;
       });
 
-      batchUpdate[`aggregated.${sectionKey}.total`] = increment(totalCount);
-      batchUpdate[`aggregated.${sectionKey}.scoreSum`] = increment(totalScore);
-      batchUpdate[`aggregated.${sectionKey}.label`] = rawSectionKey;
+        batchUpdate[`aggregated.${sectionKey}.total`] = increment(totalCount);
+        batchUpdate[`aggregated.${sectionKey}.scoreSum`] = increment(totalScore);
+        batchUpdate[`aggregated.${sectionKey}.label`] = rawSectionKey;
 
-      await updateDoc(ref, batchUpdate);
+        // Count one respondent per submission
+        batchUpdate.respondents = increment(1);
+
+        await updateDoc(ref, batchUpdate);
 
       alert("Submitted successfully!");
 
@@ -188,11 +199,12 @@ export default function EvaluationFormPage() {
               {ratings.map((r) => (
                 <label key={r} className="text-sm">
                   <input
-                    type="radio"
-                    name={`q-${index}`}
-                    value={r}
-                    onChange={() => handleAnswer(index, r)}
-                  />{" "}
+                  type="radio"
+                  name={`q-${index}`}
+                  value={r}
+                  checked={answers[index] === r}
+                  onChange={() => handleAnswer(index, r)}
+                />{" "}
                   {r}
                 </label>
               ))}

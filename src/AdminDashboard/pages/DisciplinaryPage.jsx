@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
-import { collection, addDoc, serverTimestamp, doc, deleteDoc, getDocs } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, doc,  updateDoc, deleteDoc, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
-import PendingApprovalPage from "../Disciplinary/PendingApprovalPage";
-import CaseRecords from "../Disciplinary/CaseRecords";
+// import PendingApprovalPage from "../Disciplinary/PendingApprovalPage";
+// import CaseRecords from "../Disciplinary/CaseRecords";
+import { FaEye, FaTrash, FaClipboardCheck,} from "react-icons/fa";
 
 export default function DisciplinaryPage() {
   const [showModal, setShowModal] = useState(false);
   const [activePage, setActivePage] = useState("main");
   const [cases, setCases] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
 
    const [selectedCase, setSelectedCase] = useState(null);
@@ -42,11 +43,11 @@ const handleDelete = async (id) => {
   }
 };
   
-  const handleUpdate = async () => {
-    try {
-      const caseRef = doc(db, "cases", selectedCase.id);
-  
-        await updateDoc(doc(db, "cases", selectedCase.id), {
+    const handleUpdate = async () => {
+      try {
+        const caseRef = doc(db, "cases", selectedCase.id);
+
+        await updateDoc(caseRef, {
           studentId: selectedCase.studentId,
           name: selectedCase.name,
           program: selectedCase.program,
@@ -61,17 +62,18 @@ const handleDelete = async (id) => {
           decision: selectedCase.decision,
           status: selectedCase.status,
         });
-  
-      alert("Case updated successfully.");
-  
-      setShowEditModal(false);
-  
-      window.location.reload();
-    } catch (error) {
-      console.error(error);
-      alert("Failed to update case.");
-    }
-  };
+
+        alert("Case updated successfully.");
+
+        setIsEditing(false);
+        setShowViewModal(false);
+
+        window.location.reload();
+      } catch (error) {
+        console.error("Update Error:", error);
+        alert(error.message);
+      }
+    };
   
   const getOffenseLevel = (item) => {
     const userCases = cases
@@ -231,7 +233,7 @@ const handleSave = async () => {
     const newCase = {
       ...student,
       caseNumber,
-      status: "",
+      status: "in-progress",
       createdAt: serverTimestamp(),
     };
 
@@ -291,34 +293,22 @@ useEffect(() => {
 }, []);
 
 
-   // =========================
-  // PENDING APPROVAL PAGE
-  // =========================
-  if (activePage === "pending") {
-    return (
-      <PendingApprovalPage
-        cases={cases}
-        setCases={setCases}
-        setActivePage={setActivePage}
-      />
-    );
-  }
 
      // =========================
   // Case Records PAGE
-  // =========================
-  if (activePage === "records") {
-    return (
-      <CaseRecords
-        cases={cases}
-        setCases={setCases}
-        setActivePage={setActivePage}
-        handleEdit={handleEdit}
-        handleView={handleView}
-        handleDelete={handleDelete}
-      />
-    );
-  }
+  // // =========================
+  // if (activePage === "records") {
+  //   return (
+  //     <CaseRecords
+  //       cases={cases}
+  //       setCases={setCases}
+  //       setActivePage={setActivePage}
+  //       handleEdit={handleEdit}
+  //       handleView={handleView}
+  //       handleDelete={handleDelete}
+  //     />
+  //   );
+  // }
 
 
 const filteredCases = cases.filter((item) => {
@@ -394,190 +384,195 @@ useEffect(() => {
               + Add Case
             </button>
 
-            <button
+            {/* <button
               onClick={() => setActivePage("pending")}
               className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
             >
               Pending Approval
-            </button>
+            </button> */}
 
           </div>
 
         </div>
       </div>
 
-{/* TABLE */}
-<div
-  className={`rounded-3xl shadow-md p-4 sm:p-6 overflow-x-auto ${
-    darkMode
-      ? "bg-gray-900 border border-gray-700"
-      : "bg-white"
-  }`}
->
-  <div className="min-w-[1100px]">
+          {/* TABLE */}
+          <div
+            className={`rounded-3xl shadow-md p-4 sm:p-6 overflow-x-auto ${
+              darkMode
+                ? "bg-gray-900 border border-gray-700"
+                : "bg-white"
+            }`}
+          >
+            <div className="min-w-[1100px]">
 
-    {/* HEADER */}
-    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-      <h2
-        className={`text-xl font-bold ${
-          darkMode ? "text-white" : "text-gray-700"
-        }`}
-      >
-        Case Records
-      </h2>
+              {/* HEADER */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+                <h2
+                  className={`text-xl font-bold ${
+                    darkMode ? "text-white" : "text-gray-700"
+                  }`}
+                >
+                  Case Records
+                </h2>
 
-      <input
-        type="text"
-        placeholder="Search by Last Name or Student ID..."
-        value={searchTerm}
-        onChange={(e) => setSearchTerm(e.target.value)}
-        className={`w-full sm:w-96 rounded-xl px-4 py-2 border ${
-          darkMode
-            ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:ring-pink-500"
-            : "border-gray-300 focus:ring-[#ff6699]"
-        }`}
-      />
-    </div>
-
-    <table className="w-full text-left border-collapse">
-      <thead>
-        <tr
-          className={
-            darkMode
-              ? "bg-gray-800 text-gray-200"
-              : "bg-gray-100 text-gray-700"
-          }
-        >
-          <th className="p-4 rounded-l-xl">Case Number</th>
-          <th className="p-4">Student ID</th>
-          <th className="p-4">Name</th>
-          <th className="p-4">Program</th>
-          <th className="p-4">Year & Section</th>
-          <th className="p-4">Incident Type</th>
-          <th className="p-4">Contact</th>
-          <th className="p-4">Status</th>
-          <th className="p-4">Offense Level</th>
-          <th className="p-4 rounded-r-xl">Actions</th>
-        </tr>
-      </thead>
-
-      <tbody>
-        {cases.length === 0 ? (
-          <tr>
-            <td
-              colSpan="10"
-              className={`text-center p-6 ${
-                darkMode ? "text-gray-500" : "text-gray-400"
-              }`}
-            >
-              No disciplinary records yet.
-            </td>
-          </tr>
-        ) : (
-          [...filteredCases].reverse().map((item, index) => (
-            <tr
-              key={index}
-              className={`border-b transition ${
-                darkMode
-                  ? "border-gray-700 hover:bg-gray-800"
-                  : "hover:bg-pink-50"
-              }`}
-            >
-              <td className="p-4 font-semibold text-pink-500">
-                {item.caseNumber}
-              </td>
-
-              <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
-                {item.studentId}
-              </td>
-
-              <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
-                {item.name}
-              </td>
-
-              <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
-                {item.program}
-              </td>
-
-              <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
-                {item.yearLevel} - {item.section}
-              </td>
-
-              <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
-                {item.incidentType === "Other"
-                  ? item.otherIncident
-                  : item.incidentType}
-              </td>
-
-              <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
-                {item.contactNumber || "N/A"}
-              </td>
-
-              <td className="p-4">
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                <input
+                  type="text"
+                  placeholder="Search by Last Name or Student ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`w-full sm:w-96 rounded-xl px-4 py-2 border ${
                     darkMode
-                      ? "bg-yellow-900 text-yellow-300"
-                      : "bg-yellow-100 text-yellow-700"
+                      ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:ring-pink-500"
+                      : "border-gray-300 focus:ring-[#ff6699]"
                   }`}
-                >
-                  {item.status}
-                </span>
-              </td>
+                />
+              </div>
 
-              <td className="p-4">
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    getOffenseLevel(item) === "WARNING"
-                      ? darkMode
-                        ? "bg-gray-700 text-gray-200"
-                        : "bg-gray-200 text-gray-700"
-                      : getOffenseLevel(item) === "1ST OFFENSE"
-                      ? darkMode
-                        ? "bg-yellow-900 text-yellow-300"
-                        : "bg-yellow-100 text-yellow-700"
-                      : getOffenseLevel(item) === "2ND OFFENSE"
-                      ? darkMode
-                        ? "bg-orange-900 text-orange-300"
-                        : "bg-orange-100 text-orange-700"
-                      : darkMode
-                      ? "bg-red-900 text-red-300"
-                      : "bg-red-100 text-red-700"
-                  }`}
-                >
-                  {getOffenseLevel(item)}
-                </span>
-              </td>
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr
+                    className={
+                      darkMode
+                        ? "bg-gray-800 text-gray-200"
+                        : "bg-gray-100 text-gray-700"
+                    }
+                  >
+                    <th className="p-4 rounded-l-xl">Case Number</th>
+                    <th className="p-4">Student ID</th>
+                    <th className="p-4">Name</th>
+                    <th className="p-4">Program</th>
+                    <th className="p-4">Year & Section</th>
+                    <th className="p-4">Incident Type</th>
+                    <th className="p-4">Contact</th>
+                    <th className="p-4">Status</th>
+                    <th className="p-4">Offense Level</th>
+                    <th className="p-4 rounded-r-xl">Actions</th>
+                  </tr>
+                </thead>
 
-                  <td className="p-4">
-                    <div className="flex items-center justify-center gap-2">
-
-                      <button
-                        onClick={() => handleView(item)}
-                        className="px-3 py-2 rounded-lg  bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition shadow-sm"
-                        title="View"
+                <tbody>
+                  {cases.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan="10"
+                        className={`text-center p-6 ${
+                          darkMode ? "text-gray-500" : "text-gray-400"
+                        }`}
                       >
-                        👁 
-                      </button>
+                        No disciplinary records yet.
+                      </td>
+                    </tr>
+                  ) : (
+                    [...filteredCases].reverse().map((item, index) => (
+                          <tr
+                            key={item.id}
+                            onClick={() => handleView(item)}
+                            className={`border-b transition cursor-pointer ${
+                              darkMode
+                                ? "border-gray-700 hover:bg-gray-800"
+                                : "hover:bg-pink-50"
+                            }`}
+                          >
+                        <td className="p-4 font-semibold text-pink-500">
+                          {item.caseNumber}
+                        </td>
 
-                      <button
-                        onClick={() => handleDelete(item.id)}
-                        className="px-3 py-2 rounded-lg  bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition shadow-sm"
-                        title="Delete"
-                      >
-                        🗑️ 
-                      </button>
+                        <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
+                          {item.studentId}
+                        </td>
 
-                    </div>
-                  </td>
-            </tr>
-          ))
-        )}
-      </tbody>
-    </table>
+                        <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
+                          {item.name}
+                        </td>
 
-  </div>
-</div>
+                        <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
+                          {item.program}
+                        </td>
+
+                        <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
+                          {item.yearLevel} - {item.section}
+                        </td>
+
+                        <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
+                          {item.incidentType === "Other"
+                            ? item.otherIncident
+                            : item.incidentType}
+                        </td>
+
+                        <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
+                          {item.contactNumber || "N/A"}
+                        </td>
+
+                        <td className="p-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              darkMode
+                                ? "bg-yellow-900 text-yellow-300"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                        </td>
+
+                        <td className="p-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-sm font-medium ${
+                              getOffenseLevel(item) === "WARNING"
+                                ? darkMode
+                                  ? "bg-gray-700 text-gray-200"
+                                  : "bg-gray-200 text-gray-700"
+                                : getOffenseLevel(item) === "1ST OFFENSE"
+                                ? darkMode
+                                  ? "bg-yellow-900 text-yellow-300"
+                                  : "bg-yellow-100 text-yellow-700"
+                                : getOffenseLevel(item) === "2ND OFFENSE"
+                                ? darkMode
+                                  ? "bg-orange-900 text-orange-300"
+                                  : "bg-orange-100 text-orange-700"
+                                : darkMode
+                                ? "bg-red-900 text-red-300"
+                                : "bg-red-100 text-red-700"
+                            }`}
+                          >
+                            {getOffenseLevel(item)}
+                          </span>
+                        </td>
+
+                            <td className="p-4">
+                              <div className="flex items-center justify-center gap-2">
+
+                                <button
+                                  onClick={() => handleView(item)}
+                                  className="px-3 py-2 rounded-lg  bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition shadow-sm"
+                                  title="View"
+                                >
+                                  <FaEye />
+                  
+                                </button>
+
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleDelete(item.id);
+                                    }}
+                                    className="px-3 py-2 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition shadow-sm"
+                                    title="Delete"
+                                  >
+                                    <FaTrash />
+                                  </button>
+
+                              </div>
+                            </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+            </div>
+          </div>
 
       {/* MODAL */}
       {showModal && (
@@ -1048,23 +1043,41 @@ useEffect(() => {
                           className="w-full border rounded-xl p-3 bg-gray-100"
                         />
                       </div>
+                      
+                        {/* Date Created */}
+                        <div>
+                          <label className="font-semibold">Date Created</label>
 
+                          <input
+                            value={
+                              selectedCase.createdAt?.toDate
+                                ? selectedCase.createdAt.toDate().toLocaleDateString()
+                                : ""
+                            }
+                            disabled
+                            className="w-full border rounded-xl p-3 bg-gray-100"
+                          />
+                        </div>
                       {/* Student ID */}
                       <div>
                         <label className="font-semibold">Student ID</label>
-                        <input
-                          value={selectedCase.studentId}
-                          disabled={!isEditing}
-                          onChange={(e) =>
-                            setSelectedCase({
-                              ...selectedCase,
-                              studentId: e.target.value,
-                            })
-                          }
-                          className={`w-full border rounded-xl p-3 ${
-                            !isEditing ? "bg-gray-100" : "bg-white"
-                          }`}
-                        />
+                            <input
+                              type="text"
+                              value={selectedCase.studentId}
+                              disabled={!isEditing}
+                              maxLength={9}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/\D/g, "").slice(0, 9);
+
+                                setSelectedCase({
+                                  ...selectedCase,
+                                  studentId: value,
+                                });
+                              }}
+                              className={`w-full border rounded-xl p-3 ${
+                                !isEditing ? "bg-gray-100" : "bg-white"
+                              }`}
+                            />
                       </div>
 
                       {/* Student Name */}
@@ -1073,12 +1086,14 @@ useEffect(() => {
                         <input
                           value={selectedCase.name}
                           disabled={!isEditing}
-                          onChange={(e) =>
-                            setSelectedCase({
-                              ...selectedCase,
-                              name: e.target.value,
-                            })
-                          }
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^A-Za-z\s,.]/g, "");
+
+                              setSelectedCase({
+                                ...selectedCase,
+                                name: value,
+                              });
+                            }}
                           className={`w-full border rounded-xl p-3 ${
                             !isEditing ? "bg-gray-100" : "bg-white"
                           }`}
@@ -1197,24 +1212,28 @@ useEffect(() => {
                         />
                       </div>
 
-                      {/* Contact */}
-                      <div>
-                        <label className="font-semibold">Contact Number</label>
+                            {/* Contact */}
+                          <div>
+                            <label className="font-semibold">Contact Number</label>
 
-                        <input
-                          value={selectedCase.contactNumber || ""}
-                          disabled={!isEditing}
-                          onChange={(e) =>
-                            setSelectedCase({
-                              ...selectedCase,
-                              contactNumber: e.target.value,
-                            })
-                          }
-                          className={`w-full border rounded-xl p-3 ${
-                            !isEditing ? "bg-gray-100" : "bg-white"
-                          }`}
-                        />
-                      </div>
+                            <input
+                              type="text"
+                              value={selectedCase.contactNumber || ""}
+                              disabled={!isEditing}
+                              maxLength={11}
+                              onChange={(e) => {
+                                const value = e.target.value.replace(/\D/g, "").slice(0, 11);
+
+                                setSelectedCase({
+                                  ...selectedCase,
+                                  contactNumber: value,
+                                });
+                              }}
+                              className={`w-full border rounded-xl p-3 ${
+                                !isEditing ? "bg-gray-100" : "bg-white"
+                              }`}
+                            />
+                          </div>
 
                       {/* Status */}
                       <div>
@@ -1274,12 +1293,14 @@ useEffect(() => {
                   <textarea
                     disabled={!isEditing}
                     value={selectedCase.offense}
-                    onChange={(e) =>
-                      setSelectedCase({
-                        ...selectedCase,
-                        offense: e.target.value,
-                      })
-                    }
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^A-Za-z\s,.]/g, "");
+
+                        setSelectedCase({
+                          ...selectedCase,
+                          offense: value,
+                        });
+                      }}
                     className={`w-full border rounded-xl p-3 h-28 mt-2 ${
                       !isEditing ? "bg-gray-100" : "bg-white"
                     }`}
@@ -1294,12 +1315,36 @@ useEffect(() => {
                       <textarea
                         disabled={!isEditing}
                         value={selectedCase.sanctions}
-                        onChange={(e) =>
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/[^A-Za-z\s,.]/g, "");
+
+                              setSelectedCase({
+                                ...selectedCase,
+                                sanctions: value,
+                              });
+                            }}
+                        className={`w-full border rounded-xl p-3 h-28 mt-2 ${
+                          !isEditing ? "bg-gray-100" : "bg-white"
+                        }`}
+                      />
+                    </div>
+
+                    <div className="mt-5">
+                      <label className="font-semibold">
+                        Follow-up Actions / Recommendations
+                      </label>
+
+                      <textarea
+                        disabled={!isEditing}
+                        value={selectedCase.decision}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^A-Za-z\s,.]/g, "");
+
                           setSelectedCase({
                             ...selectedCase,
-                            sanctions: e.target.value,
-                          })
-                        }
+                            decision: value,
+                          });
+                        }}
                         className={`w-full border rounded-xl p-3 h-28 mt-2 ${
                           !isEditing ? "bg-gray-100" : "bg-white"
                         }`}
