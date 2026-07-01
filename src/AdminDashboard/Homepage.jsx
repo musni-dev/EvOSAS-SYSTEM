@@ -163,7 +163,7 @@ useEffect(() => {
       </aside>
 
       <div className="flex-1 flex flex-col">
-        <div className={`h-16 flex items-center justify-between px-6 shadow-sm transition
+        <div className={`h-16 flex items-center justify-between px-8 shadow-sm transition
             ${
               darkMode
                 ? "bg-gray-900 border-b border-gray-800 text-white"

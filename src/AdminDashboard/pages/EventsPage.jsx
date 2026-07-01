@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { db } from "../../firebase/firebase";
-import { collection, addDoc, Timestamp, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { collection,  query, where,getDocs, addDoc, Timestamp, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { FaTrash, FaClipboardCheck, FaQrcode, FaChartBar,} from "react-icons/fa";
+import html2canvas from "html2canvas";
 
 export default function EventsPage() {
   const [eventName, setEventName] = useState("");
@@ -80,21 +81,51 @@ export default function EventsPage() {
     }
   };
 
+  const [qrType, setQrType] = useState("form");
+
 const handleViewQR = (ev) => {
   const link = `${window.location.origin}/evaluation/${ev.id}`;
 
+  setQrType("form");
   setSelectedEvent(ev);
   setQrLink(link);
   setShowQR(true);
 };
 
 const handleDelete = async (id) => {
-  if (!window.confirm("Delete this evaluation form?")) return;
+  if (!window.confirm("Delete this evaluation and all responses?")) return;
 
   try {
+    // Delete evaluationResults
+    const resultsQuery = query(
+      collection(db, "evaluationResults"),
+      where("evaluationId", "==", id)
+    );
+
+    const resultsSnap = await getDocs(resultsQuery);
+
+    for (const document of resultsSnap.docs) {
+      await deleteDoc(doc(db, "evaluationResults", document.id));
+    }
+
+    // Delete evaluationResponses
+const responsesQuery = query(
+  collection(db, "evaluationResponses"),
+  where("eventId", "==", id)
+);
+
+    const responsesSnap = await getDocs(responsesQuery);
+
+    for (const document of responsesSnap.docs) {
+      await deleteDoc(doc(db, "evaluationResponses", document.id));
+    }
+
+    // Delete evaluation
     await deleteDoc(doc(db, "evaluations", id));
-    alert("Deleted successfully");
+
+    alert("Evaluation and all responses deleted successfully.");
   } catch (err) {
+    console.error(err);
     alert(err.message);
   }
 };
@@ -382,18 +413,20 @@ const handleDelete = async (id) => {
                       >
                         <FaQrcode />
                       </button>
+                                <button
+                                  onClick={() => {
+                                    setQrType("results");
 
-                      <button
-                        onClick={() => {
-                          const link = `${window.location.origin}/evaluation/${ev.id}/results`;
-                          setQrLink(link);
-                          setSelectedEvent(ev);
-                          setShowQR(true);
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded-lg transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98]"
-                      >
-                          <FaChartBar />
-                      </button>
+                                    const link = `${window.location.origin}/evaluation/${ev.id}/results`;
+
+                                    setQrLink(link);
+                                    setSelectedEvent(ev);
+                                    setShowQR(true);
+                                  }}
+                                  className="px-3 py-1.5 text-xs font-medium bg-emerald-500 text-white rounded-lg transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98]"
+                                >
+                                  <FaChartBar />
+                                </button>
 
                       <button
                         onClick={() => handleDelete(ev.id)}
@@ -424,11 +457,17 @@ const handleDelete = async (id) => {
 
     
 
-      {/* QR */}
+          {/* QR */}
           {showQR && selectedEvent && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
               <div className="bg-white p-7 rounded-3xl text-center w-[320px] shadow-2xl border border-gray-100">
 
+
+                    <h1 className="text-lg font-bold text-pink-600">
+                      {qrType === "form"
+                        ? "Evaluation Form"
+                        : "Evaluation Results"}
+                    </h1>
                 {/* EVENT NAME */}
                 <h2 className="text-lg font-bold text-gray-800">
                   {selectedEvent.eventName}
@@ -451,15 +490,100 @@ const handleDelete = async (id) => {
                   {/* DOWNLOAD QR */}
                   <button
                     onClick={() => {
-                      const canvas = qrRef.current?.querySelector("canvas");
-                      if (!canvas) return;
+                      const qrCanvas = qrRef.current?.querySelector("canvas");
+                      if (!qrCanvas) return;
 
-                      const url = canvas.toDataURL("image/png");
+                      const poster = document.createElement("canvas");
+                      const ctx = poster.getContext("2d");
 
-                      const a = document.createElement("a");
-                      a.href = url;
-                      a.download = `${selectedEvent.eventName}-QR.png`;
-                      a.click();
+                      poster.width = 700;
+                      poster.height = 950;
+
+                      // Background
+                      ctx.fillStyle = "#ffffff";
+                      ctx.fillRect(0, 0, poster.width, poster.height);
+
+                      // Border
+                      ctx.strokeStyle = "#ec4899";
+                      ctx.lineWidth = 6;
+                      ctx.strokeRect(15, 15, poster.width - 30, poster.height - 30);
+
+                      // Title
+                      ctx.fillStyle = "#db2777";
+                      ctx.font = "bold 42px Arial";
+                      ctx.textAlign = "center";
+                      ctx.fillText(
+                        qrType === "form"
+                          ? "Evaluation Form"
+                          : "Evaluation Results",
+                        poster.width / 2,
+                        80
+                      );
+
+                      // Event Name
+                      ctx.fillStyle = "#111827";
+                      ctx.font = "bold 30px Arial";
+                      ctx.fillText(selectedEvent.eventName, poster.width / 2, 140);
+
+                      // Event Date
+                      ctx.fillStyle = "#6b7280";
+                      ctx.font = "22px Arial";
+                      ctx.fillText(selectedEvent.eventDate, poster.width / 2, 180);
+
+                      // White box for QR
+                      ctx.fillStyle = "#f9fafb";
+                      ctx.fillRect(150, 220, 400, 400);
+
+                      // Draw QR
+                      ctx.drawImage(qrCanvas, 170, 240, 360, 360);
+
+                      // Instruction
+                      ctx.fillStyle = "#374151";
+                      ctx.font = "24px Arial";
+                      ctx.fillText(
+                        qrType === "form"
+                          ? "Scan to access the evaluation form"
+                          : "Scan to view the evaluation results",
+                        poster.width / 2,
+                        690
+                      );
+
+                      // Link
+                      ctx.fillStyle = "#2563eb";
+                      ctx.font = "18px Arial";
+
+                      const maxWidth = 600;
+                      const words = qrLink.split("");
+                      let line = "";
+                      let y = 740;
+
+                      for (let i = 0; i < words.length; i++) {
+                        const test = line + words[i];
+                        if (ctx.measureText(test).width > maxWidth) {
+                          ctx.fillText(line, poster.width / 2, y);
+                          line = words[i];
+                          y += 24;
+                        } else {
+                          line = test;
+                        }
+                      }
+
+                      ctx.fillText(line, poster.width / 2, y);
+
+                      // Footer
+                      ctx.fillStyle = "#9ca3af";
+                      ctx.font = "18px Arial";
+                      ctx.fillText("Generated by EVOSAS", poster.width / 2, 900);
+
+                      // Download
+                      const link = document.createElement("a");
+                      link.href = poster.toDataURL("image/png");
+                      link.download = `${selectedEvent.eventName}-${
+                        qrType === "form"
+                          ? "EvaluationForm"
+                          : "EvaluationResults"
+                      }.png`;
+                      link.click();
                     }}
                     className="flex-1 bg-emerald-500 text-white text-sm font-medium px-3 py-2.5 rounded-xl transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98]"
                   >

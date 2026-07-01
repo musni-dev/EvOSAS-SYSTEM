@@ -126,7 +126,7 @@ const S = {
 };
 
 // ── Main Component ────────────────────────────────────────────────────────────
-export default function LostFoundPage() {
+export default function LostFoundPage({ darkMode }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -419,23 +419,39 @@ const validate = () => {
 
   // ── Render ────────────────────────────────────────────────────────────────
 return (
-  <div className="h-screen overflow-hidden w-full px-4 md:px-6 lg:px-8 flex flex-col">
+  <div
+  className={`h-screen overflow-hidden w-full px-4 md:px-6 lg:px-8 flex flex-col ${
+    darkMode ? "bg-gray-950 text-white" : "bg-gray-50"
+  }`}
+>
 
     {/* Header */}
     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6 mt-4 md:mt-6 lg:mt-8">
       <div>
-        <h1 className="text-2xl font-bold text-pink-600">
+      <h1
+          className={`text-2xl font-bold ${
+            darkMode ? "text-pink-500" : "text-pink-600"
+          }`}
+        >
           Lost &amp; Found
         </h1>
 
-        <p className="text-sm text-gray-500 mt-1">
+        <p
+          className={`text-sm mt-1 ${
+            darkMode ? "text-gray-400" : "text-gray-500"
+          }`}
+        >
           Track and manage lost and found reports
         </p>
       </div>
 
       <button
         onClick={() => setShowAddModal(true)}
-        className="bg-pink-500 hover:bg-pink-600 text-white px-5 py-2.5 rounded-xl font-semibold transition"
+          className={`px-5 py-2.5 rounded-xl font-semibold transition ${
+              darkMode
+                ? "bg-pink-600 hover:bg-pink-500 text-white"
+                : "bg-pink-500 hover:bg-pink-600 text-white"
+            }`}
       >
         ＋ Add Report
       </button>
@@ -449,81 +465,84 @@ return (
         { label: "Found", value: stats.found, accent: "#10B981" },
         { label: "Claimed", value: stats.claimed, accent: "#3B82F6" },
       ].map(({ label, value, accent }) => (
-        <div
-          key={label}
-          className="bg-white border border-gray-200 rounded-xl p-4"
-          style={{
-            borderLeft: `4px solid ${accent}`,
-          }}
-        >
-          <p className="text-2xl font-bold text-gray-900">
-            {loading ? "—" : value}
-          </p>
+          <div
+            key={label}
+            className={`border rounded-xl p-4 ${
+              darkMode
+                ? "bg-gray-900 border-gray-700"
+                : "bg-white border-gray-200"
+            }`}
+            style={{
+              borderLeft: `4px solid ${accent}`,
+            }}
+          >
+            <p
+              className={`text-2xl font-bold ${
+                darkMode ? "text-white" : "text-gray-900"
+              }`}
+            >
+              {loading ? "—" : value}
+            </p>
 
-          <p className="text-xs uppercase tracking-wider text-gray-500">
-            {label}
-          </p>
-        </div>
+            <p
+              className={`text-xs uppercase tracking-wider ${
+                darkMode ? "text-gray-400" : "text-gray-500"
+              }`}
+            >
+              {label}
+            </p>
+          </div>
       ))}
     </div>
 
     {/* Search & Filters */}
     <div className="flex flex-col lg:flex-row gap-3 mb-6">
       <div className="relative flex-1">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          🔍
-        </span>
-
-        <input
-          className="
-          w-full
-          pl-10
-          pr-4
-          py-3
-          border
-          border-fuchsia-500
-          rounded-2xl
-          bg-gray-50
-          text-sm
-          outline-none
-          focus:ring-2
-          focus:ring-pink-300
-        "
-          placeholder="Search item, location, category…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+          <span
+            className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+              darkMode ? "text-gray-500" : "text-gray-400"
+            }`}
+          >
+            🔍
+          </span>
+          <input
+            className={`w-full pl-10 pr-4 py-3 border rounded-2xl text-sm outline-none focus:ring-2 ${
+              darkMode
+                ? "bg-gray-900 border-gray-700 text-white placeholder-gray-400 focus:ring-pink-500"
+                : "bg-gray-50 border-fuchsia-500 focus:ring-pink-300"
+            }`}
+            placeholder="Search item, location, category…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
       </div>
 
       {["All", "Lost", "Found"].map((t) => (
         <button
           key={t}
           onClick={() => setFilterType(t)}
-          className={`px-4 py-2 rounded-full text-sm font-semibold border transition
-          ${
-            filterType === t
-              ? "bg-pink-500 border-pink-500 text-white"
-              : "border-gray-300 text-gray-600 bg-white"
-          }`}
+            className={`px-4 py-2 rounded-full text-sm font-semibold border transition
+            ${
+              filterType === t
+                ? "bg-pink-500 border-pink-500 text-white"
+                : darkMode
+                ? "bg-gray-900 border-gray-700 text-gray-300 hover:bg-gray-800"
+                : "border-gray-300 text-gray-600 bg-white"
+            }`}
         >
           {t}
         </button>
       ))}
 
-      <select
-        value={filterStatus}
-        onChange={(e) => setFilterStatus(e.target.value)}
-        className="
-        border
-        border-gray-300
-        rounded-xl
-        px-4
-        py-2
-        text-sm
-        bg-white
-        min-w-[130px]
-      "
-      >
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className={`border rounded-xl px-4 py-2 text-sm min-w-[130px] ${
+                darkMode
+                  ? "bg-gray-900 border-gray-700 text-white"
+                  : "bg-white border-gray-300"
+              }`}
+            >
         {["All", "Pending", "Claimed"].map((s) => (
           <option key={s}>{s}</option>
         ))}
@@ -544,7 +563,11 @@ return (
   "
   >
       {loading ? (
-        <div className="col-span-full text-center py-12 text-gray-400">
+        <div
+              className={`col-span-full text-center py-12 ${
+                darkMode ? "text-gray-500" : "text-gray-400"
+              }`}
+            >
           <div className="text-4xl">⏳</div>
           <p className="mt-2">Loading reports…</p>
         </div>
@@ -555,21 +578,15 @@ return (
         </div>
       ) : (
         filtered.map((item) => (
-          <div
-            key={item.id}
-            onClick={() => setViewItem(item)}
-            className="
-            bg-white
-            border-2
-            border-fuchsia-500
-            rounded-2xl
-            overflow-hidden
-            cursor-pointer
-            transition-all
-            hover:shadow-lg
-            hover:-translate-y-1
-          "
-          >
+              <div
+                key={item.id}
+                onClick={() => setViewItem(item)}
+                className={`border-2 rounded-2xl overflow-hidden cursor-pointer transition-all hover:-translate-y-1 hover:shadow-lg ${
+                  darkMode
+                    ? "bg-gray-900 border-pink-600 hover:bg-gray-800"
+                    : "bg-white border-fuchsia-500"
+                }`}
+              >
             {item.imageUrl ? (
               <img
                 src={item.imageUrl}
@@ -577,7 +594,13 @@ return (
                 className="w-full h-40 object-cover"
               />
             ) : (
-              <div className="h-40 flex items-center justify-center bg-gradient-to-br from-pink-100 to-blue-100 text-4xl">
+              <div
+                  className={`h-40 flex items-center justify-center text-4xl ${
+                    darkMode
+                      ? "bg-gray-800"
+                      : "bg-gradient-to-br from-pink-100 to-blue-100"
+                  }`}
+                >
                 {EMOJI[item.category] || "📦"}
               </div>
             )}
@@ -597,21 +620,38 @@ return (
                 />
               </div>
 
-              <p className="font-bold text-gray-900 truncate mt-2">
-                {item.itemName}
-              </p>
+                <p
+                  className={`font-bold truncate mt-2 ${
+                    darkMode ? "text-white" : "text-gray-900"
+                  }`}
+                >
+                  {item.itemName}
+                </p>
+                  <p
+                    className={`text-xs flex items-center gap-1 mt-1 ${
+                      darkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    📍 {item.location}
+                  </p>
 
-              <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                📍 {item.location}
-              </p>
-
-              <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                🗓 {item.date || "—"}
-              </p>
+                    <p
+                      className={`text-xs flex items-center gap-1 mt-1 ${
+                        darkMode ? "text-gray-400" : "text-gray-500"
+                      }`}
+                    >
+                      🗓 {item.date || "—"}
+                    </p>
 
               {item.category && (
                 <div className="mt-2">
-                  <span className="bg-gray-100 text-gray-600 text-xs font-semibold px-2 py-1 rounded-full">
+                  <span
+                    className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                      darkMode
+                        ? "bg-gray-700 text-gray-200"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
                     {item.category}
                   </span>
                 </div>
@@ -627,9 +667,23 @@ return (
 
       {/* ── Add Report Modal ─────────────────────────────────────────────────── */}
       {showAddModal && (
-        <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && closeAdd()}>
-          <div style={S.modal}>
-            <div style={S.modalHeader}>
+        <div style={{ ...S.overlay,   background: darkMode  ? "rgba(0,0,0,0.85)"  : "rgba(0,0,0,0.55)", }}
+            onClick={(e) => e.target === e.currentTarget && closeAdd()}
+          >
+          <div
+              style={{
+                ...S.modal,
+                background: darkMode ? "#111827" : "#FFFFFF",
+                color: darkMode ? "#F9FAFB" : "#111827",
+                border: darkMode
+                  ? "1px solid #374151"
+                  : "1px solid #E5E7EB",
+              }}
+            >
+            <div  style={{ ...S.modalHeader, background: darkMode ? "#111827" : "#FFFFFF",  color: darkMode ? "#F9FAFB" : "#111827",   border: darkMode
+              ? "1px solid #374151"
+              : "1px solid #E5E7EB",
+          }}>
               <h2 style={S.modalTitle}>Add Report</h2>
               <button style={S.closeBtn} onClick={closeAdd}>✕</button>
             </div>
@@ -637,7 +691,10 @@ return (
 
               {/* Report Type Toggle */}
               <div style={S.field}>
-                <label style={S.label}>Report Type</label>
+                <label style={{
+                    ...S.label,
+                    color: darkMode ? "#E5E7EB" : "#374151",
+                  }}>Report Type</label>
                 <div style={{ display: "flex", gap: 8 }}>
                   {["Lost", "Found"].map((t) => (
                     <button
@@ -678,12 +735,12 @@ return (
                         itemName: value,
                       }));
                     }}
-                    style={{
-                      ...S.input,
-                      borderColor: errors.itemName
-                        ? "#EF4444"
-                        : "#E5E7EB",
-                    }}
+                      style={{
+                        ...S.input,
+                        background: darkMode ? "#1F2937" : "#FFFFFF",
+                        color: darkMode ? "#F9FAFB" : "#111827",
+                        borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                      }}
                   />
 
                   {errors.itemName && (
@@ -695,7 +752,12 @@ return (
               {/* Category */}
               <div style={S.field}>
                 <label style={S.label}>Category</label>
-                <select name="category" value={form.category} onChange={handleChange} style={S.select}>
+                <select name="category" value={form.category} onChange={handleChange} style={{
+                    ...S.select,
+                    background: darkMode ? "#1F2937" : "#FFFFFF",
+                    color: darkMode ? "#F9FAFB" : "#111827",
+                    borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                  }}>
                   <option value="">Select category…</option>
                   {CATEGORIES.map((c) => <option key={c}>{c}</option>)}
                   
@@ -714,7 +776,12 @@ return (
                   placeholder="Describe the item in detail…"
                   value={form.description}
                   onChange={handleChange}
-                  style={S.textarea}
+                  style={{
+                    ...S.textarea,
+                    background: darkMode ? "#1F2937" : "#FFFFFF",
+                    color: darkMode ? "#F9FAFB" : "#111827",
+                    borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                  }}
                 />
               </div>
 
@@ -734,12 +801,12 @@ return (
                           location: value,
                         }));
                       }}
-                      style={{
-                        ...S.input,
-                        borderColor: errors.location
-                          ? "#EF4444"
-                          : "#E5E7EB",
-                      }}
+                        style={{
+                          ...S.input,
+                          background: darkMode ? "#1F2937" : "#FFFFFF",
+                          color: darkMode ? "#F9FAFB" : "#111827",
+                          borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                        }}
                     />
 
                     {errors.location && (
@@ -754,12 +821,12 @@ return (
                       value={form.date}
                       max={new Date().toISOString().split("T")[0]}
                       onChange={handleChange}
-                      style={{
-                        ...S.input,
-                        borderColor: errors.date
-                          ? "#EF4444"
-                          : "#E5E7EB",
-                      }}
+                        style={{
+                          ...S.input,
+                          background: darkMode ? "#1F2937" : "#FFFFFF",
+                          color: darkMode ? "#F9FAFB" : "#111827",
+                          borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                        }}
                     />
 
                     {errors.date && (
@@ -789,12 +856,22 @@ return (
                         contactNumber: value,
                       }));
                     }}
-                    style={S.input}
+                    style={{
+                      ...S.input,
+                      background: darkMode ? "#1F2937" : "#FFFFFF",
+                      color: darkMode ? "#F9FAFB" : "#111827",
+                      borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                    }}
                   />
                 </div>
                 <div style={S.field}>
                   <label style={S.label}>Status</label>
-                  <select name="status" value={form.status} onChange={handleChange} style={S.select}>
+                  <select name="status" value={form.status} onChange={handleChange} style={{
+                          ...S.select,
+                          background: darkMode ? "#1F2937" : "#FFFFFF",
+                          color: darkMode ? "#F9FAFB" : "#111827",
+                          borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                        }}>
                     <option>Pending</option>
                     <option>Claimed</option>
                   </select>
@@ -811,6 +888,9 @@ return (
                     textAlign: "center", cursor: "pointer", background: "#FAFAFA",
                     transition: "border-color .15s",
                   }}
+
+                  
+                  
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#EC4899")}
                   onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#E5E7EB")}
                 >
@@ -848,7 +928,7 @@ return (
                 onClick={handleAdd}
                 disabled={uploading}
               >
-                {uploading ? "Saving…" : "Save Report"}
+                {uploading ? "Adding" : "Add Report"}
               </button>
             </div>
           </div>
@@ -856,584 +936,653 @@ return (
       )}
 
      {/* ── View Modal ───────────────────────────────────────────────────────── */}
-{viewItem && (
-  <div
-    style={S.overlay}
-    onClick={(e) =>
-      e.target === e.currentTarget && setViewItem(null)
-    }
-  >
-    <div style={{ ...S.modal, maxWidth: 480 }}>
-      
-      {/* HEADER */}
-      <div style={S.modalHeader}>
-        <h2 style={{ ...S.modalTitle, fontSize: 16 }}>
-          Report Details
-        </h2>
-        <button
-          style={S.closeBtn}
-          onClick={() => setViewItem(null)}
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* IMAGE */}
-      {viewItem.imageUrl ? (
-        <img
-          src={viewItem.imageUrl}
-          alt={viewItem.itemName}
-          style={{
-            width: "100%",
-            maxHeight: 220,
-            objectFit: "cover",
-          }}
-        />
-      ) : (
+      {viewItem && (
         <div
           style={{
-            ...S.cardImgPlaceholder,
-            height: 100,
-            fontSize: 48,
+            ...S.overlay,
+            background: darkMode
+              ? "rgba(0,0,0,.85)"
+              : "rgba(0,0,0,.55)",
           }}
+          onClick={(e) =>
+            e.target === e.currentTarget && setViewItem(null)
+          }
         >
-          {EMOJI[viewItem.category] || "📦"}
-        </div>
-      )}
-
-      {/* BODY */}
-      <div style={S.modalBody}>
-        
-        {/* BADGES ROW */}
-        <div
-          style={{
-            display: "flex",
-            gap: 8,
-            marginBottom: 12,
-            flexWrap: "wrap",
-            alignItems: "center",
-          }}
-        >
-          {/* REPORT TYPE (EDITABLE) */}
-          {editing.reportType ? (
-            <select
-              value={editValue.reportType}
-              onChange={async (e) => {
-                const value = e.target.value;
-
-                setEditValue((prev) => ({
-                  ...prev,
-                  reportType: value,
-                }));
-
-                await updateDoc(doc(db, "lost_found", viewItem.id), {
-                  reportType: value,
-                });
-
-                setViewItem((prev) => ({
-                  ...prev,
-                  reportType: value,
-                }));
-
-                setEditing((prev) => ({
-                  ...prev,
-                  reportType: false,
-                }));
-              }}
+          <div
               style={{
-                fontSize: 11,
-                fontWeight: 600,
-                padding: "4px 10px",
-                borderRadius: 999,
-                border: "1px solid #ddd",
-                color: "#111827",
-                background: "#fff",
+                ...S.modal,
+                maxWidth: 480,
+                background: darkMode ? "#111827" : "#fff",
+                color: darkMode ? "#F9FAFB" : "#111827",
+                border: darkMode
+                  ? "1px solid #374151"
+                  : "1px solid #E5E7EB",
               }}
             >
-              <option value="Lost">Lost</option>
-              <option value="Found">Found</option>
-            </select>
-          ) : (
-            <span
-              onClick={() =>
-                setEditing((prev) => ({
-                  ...prev,
-                  reportType: true,
-                }))
-              }
-              style={{ cursor: "pointer" }}
-            >
-              <Badge
-                label={viewItem.reportType}
-                config={TYPE_CONFIG[viewItem.reportType]}
+            
+            {/* HEADER */}
+            <div
+                style={{
+                  ...S.modalHeader,
+                  background: darkMode ? "#111827" :"#F9FAFB" ,
+                }}
+              >
+              <h2
+                  style={{
+                    ...S.modalTitle,
+                    fontSize: 16,
+                    color: darkMode ? "#F9FAFB" : "#111827",
+                  }}
+                >
+                Report Details
+              </h2>
+              <button
+                style={S.closeBtn}
+                onClick={() => setViewItem(null)}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* IMAGE */}
+            {viewItem.imageUrl ? (
+              <img
+                src={viewItem.imageUrl}
+                alt={viewItem.itemName}
+                style={{
+                  width: "100%",
+                  maxHeight: 220,
+                  objectFit: "cover",
+                }}
               />
-            </span>
-          )}
+            ) : (
+              <div
+                style={{
+                  ...S.cardImgPlaceholder,
+                  height: 100,
+                  fontSize: 48,
+                }}
+              >
+                {EMOJI[viewItem.category] || "📦"}
+              </div>
+            )}
 
-          {/* STATUS (EDITABLE) */}
-          {editingStatus ? (
-            <select
-              value={newStatus}
-              onChange={async (e) => {
-                const value = e.target.value;
-                setNewStatus(value);
+            {/* BODY */}
+            <div style={S.modalBody}>
+              
+              {/* BADGES ROW */}
+              <div
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  marginBottom: 12,
+                  flexWrap: "wrap",
+                  alignItems: "center",
+                }}
+              >
+                {/* REPORT TYPE (EDITABLE) */}
+                {editing.reportType ? (
+                  <select
+                    value={editValue.reportType}
+                    onChange={async (e) => {
+                      const value = e.target.value;
 
-                await updateDoc(
-                  doc(db, "lost_found", viewItem.id),
-                  { status: value }
-                );
+                      setEditValue((prev) => ({
+                        ...prev,
+                        reportType: value,
+                      }));
 
-                setViewItem((prev) => ({
-                  ...prev,
-                  status: value,
-                }));
+                      await updateDoc(doc(db, "lost_found", viewItem.id), {
+                        reportType: value,
+                      });
 
-                setEditingStatus(false);
-              }}
-              style={{
-                fontSize: 11,
-                fontWeight: 600,
-                padding: "4px 10px",
-                borderRadius: 999,
-                border: "1px solid #ddd",
-              }}
-            >
-              <option value="Pending">Pending</option>
-              <option value="Claimed">Claimed</option>
+                      setViewItem((prev) => ({
+                        ...prev,
+                        reportType: value,
+                      }));
+
+                      setEditing((prev) => ({
+                        ...prev,
+                        reportType: false,
+                      }));
+                    }}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      border: "1px solid #ddd",
+                      color: "#111827",
+                      background: darkMode ? "#1F2937" : "#fff",
+                      color: darkMode ? "#F9FAFB" : "#111827",
+                      border: `1px solid ${
+                        darkMode ? "#4B5563" : "#ddd"
+                      }`,
+                    }}
+                  >
+                    <option value="Lost">Lost</option>
+                    <option value="Found">Found</option>
+                  </select>
+                ) : (
+                  <span
+                    onClick={() =>
+                      setEditing((prev) => ({
+                        ...prev,
+                        reportType: true,
+                      }))
+                    }
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Badge
+                      label={viewItem.reportType}
+                      config={TYPE_CONFIG[viewItem.reportType]}
+                    />
+                  </span>
+                )}
+
+                {/* STATUS (EDITABLE) */}
+                {editingStatus ? (
+                  <select
+                    value={newStatus}
+                    onChange={async (e) => {
+                      const value = e.target.value;
+                      setNewStatus(value);
+
+                      await updateDoc(
+                        doc(db, "lost_found", viewItem.id),
+                        { status: value }
+                      );
+
+                      setViewItem((prev) => ({
+                        ...prev,
+                        status: value,
+                      }));
+
+                      setEditingStatus(false);
+                    }}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "4px 10px",
+                      borderRadius: 999,
+                      border: "1px solid #ddd",
+                      background: darkMode ? "#1F2937" : "#fff",
+                      color: darkMode ? "#F9FAFB" : "#111827",
+                      border: `1px solid ${
+                        darkMode ? "#4B5563" : "#ddd"
+                      }`,
+                    }}
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Claimed">Claimed</option>
 
 
-            </select>
-          ) : (
-            <span
-              onClick={() => setEditingStatus(true)}
-              style={{ cursor: "pointer" }}
-            >
-              <Badge
-                label={viewItem.status}
-                config={
-                  STATUS_CONFIG[viewItem.status] ||
-                  STATUS_CONFIG.Pending
-                }
-              />
-            </span>
-          )}
+                  </select>
+                ) : (
+                  <span
+                    onClick={() => setEditingStatus(true)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <Badge
+                      label={viewItem.status}
+                      config={
+                        STATUS_CONFIG[viewItem.status] ||
+                        STATUS_CONFIG.Pending
+                      }
+                    />
+                  </span>
+                )}
 
-      {/* CATEGORY (EDITABLE) */}
-        {editing.category ? (
-          <select
-            value={editValue.category}
-            onChange={async (e) => {
-              const value = e.target.value;
+            {/* CATEGORY (EDITABLE) */}
+              {editing.category ? (
+                <select
+                  value={editValue.category}
+                  onChange={async (e) => {
+                    const value = e.target.value;
 
-              setEditValue((prev) => ({
-                ...prev,
-                category: value,
-              }));
+                    setEditValue((prev) => ({
+                      ...prev,
+                      category: value,
+                    }));
 
-              await updateDoc(doc(db, "lost_found", viewItem.id), {
-                category: value,
-              });
+                    await updateDoc(doc(db, "lost_found", viewItem.id), {
+                      category: value,
+                    });
 
-              setViewItem((prev) => ({
-                ...prev,
-                category: value,
-              }));
+                    setViewItem((prev) => ({
+                      ...prev,
+                      category: value,
+                    }));
 
-              setEditing((prev) => ({
-                ...prev,
-                category: false,
-              }));
-            }}
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              padding: "4px 10px",
-              borderRadius: 999,
-              border: "1px solid #ddd",
-              color: "#111827",
-              background: "#fff",
-            }}
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <span
-            onClick={() =>
-              setEditing((prev) => ({
-                ...prev,
-                category: true,
-              }))
-            }
-            style={{
-              cursor: "pointer",
-              fontSize: 11,
-              fontWeight: 600,
-              background: "#F3F4F6",
-              color: "#111827",
-              padding: "3px 10px",
-              borderRadius: 99,
-              textTransform: "uppercase",
-              letterSpacing: "0.04em",
-            }}
-          >
-            {viewItem.category}
-          </span>
-        )}
-        </div>
+                    setEditing((prev) => ({
+                      ...prev,
+                      category: false,
+                    }));
+                  }}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    border: "1px solid #ddd",
+                    color: "#111827",
+                    background: darkMode ? "#1F2937" : "#fff",
+                      color: darkMode ? "#F9FAFB" : "#111827",
+                      border: `1px solid ${
+                        darkMode ? "#4B5563" : "#ddd"
+                      }`,
+                  }}
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span
+                  onClick={() =>
+                    setEditing((prev) => ({
+                      ...prev,
+                      category: true,
+                    }))
+                  }
+                    style={{
+                      cursor:"pointer",
+                      fontSize:11,
+                      fontWeight:600,
+                      padding:"3px 10px",
+                      borderRadius:99,
+                      textTransform:"uppercase",
+                      letterSpacing:"0.04em",
 
-        {/* TITLE */}
-          {editing.name ? (
+                      background: darkMode
+                        ? "#374151"
+                        : "#F3F4F6",
+
+                      color: darkMode
+                        ? "#F9FAFB"
+                        : "#111827",
+                    }}
+                >
+                  {viewItem.category}
+                </span>
+              )}
+              </div>
+
+              {/* TITLE */}
+                {editing.name ? (
+                  <input
+                    value={editValue.name}
+                    onChange={(e) =>
+                      setEditValue((prev) => ({
+                        ...prev,
+                        name: e.target.value,
+                      }))
+                    }
+                    onBlur={async () => {
+                      await updateDoc(doc(db, "lost_found", viewItem.id), {
+                        itemName: editValue.name,
+                      });
+
+                      setViewItem((prev) => ({
+                        ...prev,
+                        itemName: editValue.name,
+                      }));
+
+                      setEditing((prev) => ({
+                        ...prev,
+                        name: false,
+                      }));
+                    }}
+                    autoFocus
+                    style={{
+                      width: "100%",
+                      fontSize: 18,
+                      fontWeight: 700,
+                      borderRadius: 8,
+                      padding: 8,
+                      background: darkMode ? "#1F2937" : "#fff",
+                      color: darkMode ? "#F9FAFB" : "#111827",
+                      border: `1px solid ${
+                        darkMode ? "#4B5563" : "#D1D5DB"
+                      }`,
+                    }}
+                  />
+                ) : (
+                  <h3
+                    onClick={() =>
+                      setEditing((prev) => ({
+                        ...prev,
+                        name: true,
+                      }))
+                    }
+                    style={{
+                      fontWeight:700,
+                      fontSize:18,
+                      margin:"0 0 10px",
+                      cursor:"pointer",
+                      color: darkMode ? "#F9FAFB" : "#111827",
+                    }}
+                  >
+                    {viewItem.itemName}
+                  </h3>
+                )}
+
+              {/* DESCRIPTION */}
+                {editing.description ? (
+                  <textarea
+                    value={editValue.description}
+                    onChange={(e) =>
+                      setEditValue((prev) => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    onBlur={async () => {
+                      await updateDoc(doc(db, "lost_found", viewItem.id), {
+                        description: editValue.description,
+                      });
+
+                      setViewItem((prev) => ({
+                        ...prev,
+                        description: editValue.description,
+                      }));
+
+                      setEditing((prev) => ({
+                        ...prev,
+                        description: false,
+                      }));
+                    }}
+                    autoFocus
+                      style={{
+                        width:"100%",
+                        minHeight:80,
+                        padding:8,
+                        borderRadius:8,
+                        background: darkMode ? "#1F2937" : "#fff",
+                        color: darkMode ? "#F9FAFB" : "#111827",
+                        border:`1px solid ${
+                          darkMode ? "#4B5563" : "#D1D5DB"
+                        }`,
+                      }}
+                  />
+                ) : (
+                  <p
+                    onClick={() =>
+                      setEditing((prev) => ({
+                        ...prev,
+                        description: true,
+                      }))
+                    }
+                    style={{
+                      fontSize:14,
+                      lineHeight:1.6,
+                      cursor:"pointer",
+                      margin:"0 0 14px",
+                      color: darkMode ? "#D1D5DB" : "#374151",
+                    }}
+                  >
+                    {viewItem.description || "No description"}
+                  </p>
+                )}
+
+              {/* INFO */}
+              <div
+        style={{
+          borderTop: `1px solid ${
+              darkMode ? "#374151" : "#F3F4F6"
+            }`,
+          paddingTop: 12,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+
+        {/* Location */}
+        <div>
+          <span style={{ color: darkMode ? "#ffffff" : "#000000", fontSize: 14 }}>📍 Location</span>
+
+          {editing.location ? (
             <input
-              value={editValue.name}
+              value={editValue.location}
               onChange={(e) =>
-                setEditValue((prev) => ({
-                  ...prev,
-                  name: e.target.value,
+                setEditValue((p) => ({
+                  ...p,
+                  location: e.target.value,
                 }))
               }
               onBlur={async () => {
                 await updateDoc(doc(db, "lost_found", viewItem.id), {
-                  itemName: editValue.name,
+                  location: editValue.location,
                 });
 
-                setViewItem((prev) => ({
-                  ...prev,
-                  itemName: editValue.name,
+                setViewItem((p) => ({
+                  ...p,
+                  location: editValue.location,
                 }));
 
-                setEditing((prev) => ({
-                  ...prev,
-                  name: false,
+                setEditing((p) => ({
+                  ...p,
+                  location: false,
                 }));
               }}
               autoFocus
               style={{
-                width: "100%",
-                fontSize: 18,
-                fontWeight: 700,
-                color: "#111827",
-                border: "1px solid #D1D5DB",
-                borderRadius: 8,
-                padding: "8px",
+                ...S.input,
+                background: darkMode ? "#1F2937" : "#FFFFFF",
+                color: darkMode ? "#F9FAFB" : "#111827",
+                borderColor: darkMode ? "#4B5563" : "#E5E7EB",
               }}
             />
           ) : (
-            <h3
+            <div
               onClick={() =>
-                setEditing((prev) => ({
-                  ...prev,
-                  name: true,
+                setEditing((p) => ({
+                  ...p,
+                  location: true,
                 }))
               }
               style={{
-                fontWeight: 700,
-                fontSize: 18,
-                margin: "0 0 10px",
-                color: "#111827",
+                color: darkMode ? "#E5E7EB" : "#111827",
+                fontWeight: 600,
                 cursor: "pointer",
               }}
             >
-              {viewItem.itemName}
-            </h3>
+              {viewItem.location}
+            </div>
           )}
-
-        {/* DESCRIPTION */}
-          {editing.description ? (
-            <textarea
-              value={editValue.description}
-              onChange={(e) =>
-                setEditValue((prev) => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-              onBlur={async () => {
-                await updateDoc(doc(db, "lost_found", viewItem.id), {
-                  description: editValue.description,
-                });
-
-                setViewItem((prev) => ({
-                  ...prev,
-                  description: editValue.description,
-                }));
-
-                setEditing((prev) => ({
-                  ...prev,
-                  description: false,
-                }));
-              }}
-              autoFocus
-              style={{
-                width: "100%",
-                minHeight: 80,
-                border: "1px solid #D1D5DB",
-                borderRadius: 8,
-                padding: 8,
-                color: "#111827",
-              }}
-            />
-          ) : (
-            <p
-              onClick={() =>
-                setEditing((prev) => ({
-                  ...prev,
-                  description: true,
-                }))
-              }
-              style={{
-                fontSize: 14,
-                color: "#374151",
-                margin: "0 0 14px",
-                lineHeight: 1.6,
-                cursor: "pointer",
-              }}
-            >
-              {viewItem.description || "No description"}
-            </p>
-          )}
-
-        {/* INFO */}
-        <div
-  style={{
-    borderTop: "1px solid #F3F4F6",
-    paddingTop: 12,
-    display: "flex",
-    flexDirection: "column",
-    gap: 12,
-  }}
->
-
-  {/* Location */}
-  <div>
-    <span style={{ color: "#000000", fontSize: 13 }}>📍 Location</span>
-
-    {editing.location ? (
-      <input
-        value={editValue.location}
-        onChange={(e) =>
-          setEditValue((p) => ({
-            ...p,
-            location: e.target.value,
-          }))
-        }
-        onBlur={async () => {
-          await updateDoc(doc(db, "lost_found", viewItem.id), {
-            location: editValue.location,
-          });
-
-          setViewItem((p) => ({
-            ...p,
-            location: editValue.location,
-          }));
-
-          setEditing((p) => ({
-            ...p,
-            location: false,
-          }));
-        }}
-        autoFocus
-        style={S.input}
-      />
-    ) : (
-      <div
-        onClick={() =>
-          setEditing((p) => ({
-            ...p,
-            location: true,
-          }))
-        }
-        style={{
-          color: "#111827",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        {viewItem.location}
-      </div>
-    )}
-  </div>
-
-  {/* Date */}
-  <div>
-    <span style={{ color: "#000000", fontSize: 13 }}>🗓 Date</span>
-
-    {editing.date ? (
-      <input
-        type="date"
-        value={editValue.date}
-        onChange={(e) =>
-          setEditValue((p) => ({
-            ...p,
-            date: e.target.value,
-          }))
-        }
-        onBlur={async () => {
-          await updateDoc(doc(db, "lost_found", viewItem.id), {
-            date: editValue.date,
-          });
-
-          setViewItem((p) => ({
-            ...p,
-            date: editValue.date,
-          }));
-
-          setEditing((p) => ({
-            ...p,
-            date: false,
-          }));
-        }}
-        autoFocus
-        style={S.input}
-      />
-    ) : (
-      <div
-        onClick={() =>
-          setEditing((p) => ({
-            ...p,
-            date: true,
-          }))
-        }
-        style={{
-          color: "#111827",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        {viewItem.date}
-      </div>
-    )}
-  </div>
-
-  {/* Contact */}
-  <div>
-    <span style={{ color: "#000000", fontSize: 13 }}>📞 Contact</span>
-
-    {editing.contact ? (
-      <input
-        value={editValue.contact}
-        onChange={(e) =>
-          setEditValue((p) => ({
-            ...p,
-            contact: e.target.value,
-          }))
-        }
-        onBlur={async () => {
-          await updateDoc(doc(db, "lost_found", viewItem.id), {
-            contactNumber: editValue.contact,
-          });
-
-          setViewItem((p) => ({
-            ...p,
-            contactNumber: editValue.contact,
-          }));
-
-          setEditing((p) => ({
-            ...p,
-            contact: false,
-          }));
-        }}
-        autoFocus
-        style={S.input}
-      />
-    ) : (
-      <div
-        onClick={() =>
-          setEditing((p) => ({
-            ...p,
-            contact: true,
-          }))
-        }
-        style={{
-          color: "#111827",
-          fontWeight: 600,
-          cursor: "pointer",
-        }}
-      >
-        {viewItem.contactNumber}
-      </div>
-    )}
-  </div>
-
-</div>
-      </div>
-
-      {/* FOOTER */}
-      <div
-        style={{
-          ...S.modalFooter,
-          justifyContent: "space-between",
-        }}
-      >
-        {/* LEFT: EDIT BUTTON */}
-        <button
-          style={{
-            ...S.btn("secondary"),
-            background: "#f3f4f6",
-            color: "#374151",
-          }}
-          onClick={() => setEditingStatus(true)}
-        >
-          
-        </button>
-
-        {/* RIGHT: ACTIONS */}
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            style={S.btn("danger")}
-            onClick={() => {
-              setDeleteTarget(viewItem);
-              setViewItem(null);
-            }}
-          >
-            🗑 Delete
-          </button>
-
-          <button
-            style={S.btn("secondary")}
-            onClick={() => setViewItem(null)}
-          >
-            Close
-          </button>
         </div>
-      </div>
-    </div>
-  </div>
-)}
 
-      {/* ── Delete Confirm Modal ──────────────────────────────────────────────── */}
-      {deleteTarget && (
-        <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && !deleteLoading && setDeleteTarget(null)}>
-          <div style={{ ...S.modal, maxWidth: 380 }}>
-            <div style={{ padding: "28px 24px", textAlign: "center" }}>
-              <div style={{ fontSize: 44, marginBottom: 12 }}>🗑️</div>
-              <h2 style={{ fontWeight: 700, fontSize: 17, margin: "0 0 8px" }}>Delete Report?</h2>
-              <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 24px" }}>
-                "<strong>{deleteTarget.itemName}</strong>" will be permanently removed from Firestore.
-              </p>
-              <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
-                <button
-                  style={S.btn("secondary")}
-                  onClick={() => setDeleteTarget(null)}
-                  disabled={deleteLoading}
+        {/* Date */}
+        <div>
+          <span style={{  color: darkMode ? "#ffffff" : "#000000", fontSize: 14 }}>🗓 Date</span>
+
+          {editing.date ? (
+            <input
+              type="date"
+              value={editValue.date}
+              onChange={(e) =>
+                setEditValue((p) => ({
+                  ...p,
+                  date: e.target.value,
+                }))
+              }
+              onBlur={async () => {
+                await updateDoc(doc(db, "lost_found", viewItem.id), {
+                  date: editValue.date,
+                });
+
+                setViewItem((p) => ({
+                  ...p,
+                  date: editValue.date,
+                }));
+
+                setEditing((p) => ({
+                  ...p,
+                  date: false,
+                }));
+              }}
+              autoFocus
+              style={{
+                ...S.input,
+                background: darkMode ? "#1F2937" : "#FFFFFF",
+                color: darkMode ? "#F9FAFB" : "#111827",
+                borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+              }}
+            />
+          ) : (
+            <div
+              onClick={() =>
+                setEditing((p) => ({
+                  ...p,
+                  date: true,
+                }))
+              }
+              style={{
+                  color: darkMode ? "#E5E7EB" : "#111827",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {viewItem.date}
+            </div>
+          )}
+        </div>
+
+        {/* Contact */}
+        <div>
+          <span style={{ color: darkMode ? "#ffffff" : "#000000", fontSize: 14 }}>📞 Contact</span>
+
+          {editing.contact ? (
+            <input
+              value={editValue.contact}
+              onChange={(e) =>
+                setEditValue((p) => ({
+                  ...p,
+                  contact: e.target.value,
+                }))
+              }
+              onBlur={async () => {
+                await updateDoc(doc(db, "lost_found", viewItem.id), {
+                  contactNumber: editValue.contact,
+                });
+
+                setViewItem((p) => ({
+                  ...p,
+                  contactNumber: editValue.contact,
+                }));
+
+                setEditing((p) => ({
+                  ...p,
+                  contact: false,
+                }));
+              }}
+              autoFocus
+              style={{
+                  ...S.input,
+                  background: darkMode ? "#1F2937" : "#FFFFFF",
+                  color: darkMode ? "#F9FAFB" : "#111827",
+                  borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                }}
+            />
+          ) : (
+            <div
+              onClick={() =>
+                setEditing((p) => ({
+                  ...p,
+                  contact: true,
+                }))
+              }
+              style={{
+                  color: darkMode ? "#E5E7EB" : "#111827",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {viewItem.contactNumber}
+            </div>
+          )}
+        </div>
+
+      </div>
+            </div>
+
+            {/* FOOTER */}
+                <div
+                  style={{
+                    ...S.modalFooter,
+                        justifyContent: "flex-end",
+                        gap: 8,
+                    borderTop:`1px solid ${
+                      darkMode ? "#374151" : "#E5E7EB"
+                    }`,
+                  }}
                 >
-                  Cancel
+   
+
+              {/* RIGHT: ACTIONS */}
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                 style={{
+                    ...S.btn("danger"),
+                    border: darkMode ? "1px solid #7F1D1D" : undefined,
+                  }}
+                  onClick={() => {
+                    setDeleteTarget(viewItem);
+                    setViewItem(null);
+                  }}
+                >
+                  🗑 Delete
                 </button>
+
                 <button
-                  style={{ ...S.btn("danger"), opacity: deleteLoading ? 0.6 : 1 }}
-                  onClick={handleDelete}
-                  disabled={deleteLoading}
+                  style={{
+                        ...S.btn("secondary"),
+                        background: darkMode ? "#374151" : "#F3F4F6",
+                        color: darkMode ? "#F9FAFB" : "#374151",
+                      }}
+                  onClick={() => setViewItem(null)}
                 >
-                  {deleteLoading ? "Deleting…" : "Yes, Delete"}
+                  Close
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
+
+            {/* ── Delete Confirm Modal ──────────────────────────────────────────────── */}
+            {deleteTarget && (
+              <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && !deleteLoading && setDeleteTarget(null)}>
+                <div style={{ ...S.modal, maxWidth: 380 }}>
+                  <div style={{ padding: "28px 24px", textAlign: "center" }}>
+                    <div style={{ fontSize: 44, marginBottom: 12 }}>🗑️</div>
+                    <h2 style={{ fontWeight: 700, fontSize: 17, margin: "0 0 8px" }}>Delete Report?</h2>
+                    <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 24px" }}>
+                      "<strong>{deleteTarget.itemName}</strong>" will be permanently removed from Firestore.
+                    </p>
+                    <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+                      <button
+                        style={S.btn("secondary")}
+                        onClick={() => setDeleteTarget(null)}
+                        disabled={deleteLoading}
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        style={{ ...S.btn("danger"), opacity: deleteLoading ? 0.6 : 1 }}
+                        onClick={handleDelete}
+                        disabled={deleteLoading}
+                      >
+                        {deleteLoading ? "Deleting…" : "Yes, Delete"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
     </div>
   );

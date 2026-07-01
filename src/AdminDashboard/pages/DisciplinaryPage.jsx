@@ -5,7 +5,7 @@ import { db } from "../../firebase/firebase";
 // import CaseRecords from "../Disciplinary/CaseRecords";
 import { FaEye, FaTrash, FaClipboardCheck,} from "react-icons/fa";
 
-export default function DisciplinaryPage() {
+export default function DisciplinaryPage({ darkMode }) {
   const [showModal, setShowModal] = useState(false);
   const [activePage, setActivePage] = useState("main");
   const [cases, setCases] = useState([]);
@@ -321,19 +321,7 @@ const filteredCases = cases.filter((item) => {
 });
 
 
-const [darkMode, setDarkMode] = useState(() => {
-  return localStorage.getItem("theme") === "dark";
-});
 
-useEffect(() => {
-  if (darkMode) {
-    document.documentElement.classList.add("dark");
-    localStorage.setItem("theme", "dark");
-  } else {
-    document.documentElement.classList.remove("dark");
-    localStorage.setItem("theme", "light");
-  }
-}, [darkMode]);
 
 
   return (

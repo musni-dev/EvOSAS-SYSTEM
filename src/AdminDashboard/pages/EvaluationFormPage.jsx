@@ -96,14 +96,13 @@ export default function EvaluationFormPage() {
           });
         }
 
-      // SCORE MAP
-      const scoreMap = {
-        "Strongly Agree": 5,
-        Agree: 4,
-        Neutral: 3,
-        Disagree: 2,
-        "Strongly Disagree": 1,
-      };
+const scoreMap = {
+  "5 Strongly Agree": 5,
+  "4 Agree": 4,
+  "3 Neutral": 3,
+  "2 Disagree": 2,
+  "1 Strongly Disagree": 1,
+};
 
       // 🔥 NORMALIZED SECTION KEY (CASE INSENSITIVE FIX)
       const rawSectionKey = `${program} ${yearSection}`.trim();

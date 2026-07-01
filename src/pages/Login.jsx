@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../firebase/firebase";
 import bcrypt from "bcryptjs";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 import dctLogo from "../assets/dct-logo.png";
 import osasLogo from "../assets/osas-logo.png";
@@ -177,7 +178,7 @@ const [showPassword, setShowPassword] = useState(false);
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute inset-y-0 right-4 flex items-center text-xs sm:text-sm text-white hover:underline"
                   >
-                    {showPassword ? "Hide" : "Show"}
+                    {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
                   </button>
                 )}
               </div>
