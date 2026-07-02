@@ -368,7 +368,7 @@ function timeAgo(date) {
       {/* STAT CARDS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
         <div className="relative overflow-hidden bg-gradient-to-br from-pink-600 to-rose-500 text-white rounded-3xl p-6 shadow-lg shadow-pink-500/20 transition-all duration-300 hover:shadow-xl hover:shadow-pink-500/30 hover:-translate-y-0.5">
-          <p className="text-sm font-medium opacity-90 tracking-wide">Case Reports</p>
+          <p className="text-sm font-medium opacity-90 tracking-wide">Total Case Reports</p>
           <h2 className="text-4xl sm:text-5xl font-bold mt-3">{stats.totalCases}</h2>
               <p className="mt-2 text-sm opacity-90">
               {stats.todayCases

@@ -3,11 +3,24 @@ import jsQR from "jsqr";
 import { collection, query, where, getDocs, addDoc, updateDoc, getDoc, doc, serverTimestamp, Timestamp,} from "firebase/firestore";
 import { ScanLine, Camera, AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Home, QrCode,} from "lucide-react";
 import { db, auth } from "../firebase/firebase"; // adjust path to your firebase config
-import { signOut,onAuthStateChanged } from "firebase/auth";
+import { signOut, onAuthStateChanged } from "firebase/auth";
+import bcrypt from "bcryptjs";
+import {
+  FiUser,
+  FiLock,
+  FiEye,
+  FiEyeOff,
+  FiMail,
+  FiShield,
+  FiHash,
+  FiX,
+  FiBriefcase,
+  FiAward,
+} from "react-icons/fi";
 
 
 
-export default function sscHomepage() {
+export default function sscHomepage({ darkMode = false }) {
   const [view, setView] = useState("home"); // "home" | "scan" | "confirm"
   const [scanResult, setScanResult] = useState(null); // decoded payload passed to confirm view
 
@@ -16,6 +29,7 @@ export default function sscHomepage() {
       {view === "home" && (
         <HomeView
           onScanPress={() => setView("scan")}
+          darkMode={darkMode}
         />
       )}
 
@@ -50,8 +64,25 @@ export default function sscHomepage() {
 /* HOME VIEW                                                               */
 /* ---------------------------------------------------------------------- */
 
-function HomeView({ onScanPress }) {
-  const officerName = auth.currentUser?.displayName || "Officer";
+function HomeView({ onScanPress, darkMode }) {
+  // This app doesn't use Firebase Authentication for SSC Officer accounts —
+  // login stores the user's info in localStorage under "userData" instead,
+  // so we read the greeting name from there (auth.currentUser is always
+  // empty for this login path).
+  const getOfficerName = () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem("userData"));
+      const fullName = [userData?.firstName, userData?.lastName].filter(Boolean).join(" ");
+      if (fullName) return fullName;
+      if (userData?.username) return userData.username;
+    } catch {
+      // ignore parse errors, fall through
+    }
+    return auth.currentUser?.displayName || "Officer";
+  };
+
+  const officerName = getOfficerName();
+  const [showProfile, setShowProfile] = useState(false);
 
 const handleLogout = async () => {
   try {
@@ -71,7 +102,14 @@ const handleLogout = async () => {
     <div className="min-h-screen w-full flex flex-col px-4 py-6 sm:py-10">
       <div className="w-full max-w-sm sm:max-w-md mx-auto flex-1 flex flex-col">
 
-        <div className="w-full flex justify-end mb-4">
+        <div className="w-full flex justify-end gap-2 mb-4">
+          <button
+            onClick={() => setShowProfile(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 active:bg-pink-800 text-white font-semibold shadow-md shadow-pink-200 transition"
+          >
+            <FiUser className="w-4 h-4" />
+            My Profile
+          </button>
           <button
             onClick={handleLogout}
             className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold"
@@ -106,6 +144,12 @@ const handleLogout = async () => {
         </div>
       </div>
 
+      <ProfileModal
+        isOpen={showProfile}
+        onClose={() => setShowProfile(false)}
+        darkMode={darkMode}
+      />
+
       <style>{`
         @keyframes ping-slow {
           0% { transform: scale(1); opacity: 0.5; }
@@ -116,6 +160,397 @@ const handleLogout = async () => {
           animation: ping-slow 2.4s cubic-bezier(0,0,0.2,1) infinite;
         }
       `}</style>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
+/* PROFILE MODAL                                                           */
+/* ---------------------------------------------------------------------- */
+
+function ProfileModal({ isOpen, onClose, darkMode }) {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
+
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [passwordErrors, setPasswordErrors] = useState({});
+  const [updating, setUpdating] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState({ type: "", text: "" });
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+
+    // This app doesn't use Firebase Authentication for user identity — login
+    // stores the Firestore "users" document id in localStorage instead.
+    // We check a few likely keys so this keeps working regardless of exactly
+    // how the login screen saved it.
+    const getLoggedInUid = () => {
+      const directUid = localStorage.getItem("uid");
+      if (directUid) return directUid;
+
+      try {
+        const userData = JSON.parse(localStorage.getItem("userData"));
+        if (userData?.uid) return userData.uid;
+        if (userData?.id) return userData.id;
+      } catch {
+        // ignore parse errors, fall through
+      }
+
+      return auth.currentUser?.uid || null;
+    };
+
+    const fetchProfile = async () => {
+      setLoading(true);
+      setFetchError("");
+      try {
+        const uid = getLoggedInUid();
+        if (!uid) {
+          throw new Error("No logged-in user found. Please log in again.");
+        }
+        const docRef = doc(db, "users", uid);
+        const snap = await getDoc(docRef);
+        if (!snap.exists()) {
+          throw new Error("Profile not found.");
+        }
+        if (isMounted) {
+          setProfile({ id: snap.id, ...snap.data() });
+        }
+      } catch (err) {
+        console.error("Failed to fetch profile:", err);
+        if (isMounted) setFetchError(err.message || "Failed to load profile.");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
+  // Reset password fields & messages whenever the modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordErrors({});
+      setPasswordMessage({ type: "", text: "" });
+      setShowCurrent(false);
+      setShowNew(false);
+      setShowConfirm(false);
+    }
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const getInitials = () => {
+    if (!profile) return "?";
+    const first = profile.firstName?.trim()?.[0] || "";
+    const last = profile.lastName?.trim()?.[0] || "";
+    const initials = `${first}${last}`.toUpperCase();
+    return initials || "?";
+  };
+
+  const getFullName = () => {
+    if (!profile) return "";
+    return [profile.firstName, profile.middleName, profile.lastName].filter(Boolean).join(" ");
+  };
+
+  const isActive = (profile?.status || "").toLowerCase() === "active";
+
+  const validatePassword = () => {
+    const errors = {};
+    if (!currentPassword) {
+      errors.current = "Current password is required.";
+    }
+    if (!newPassword) {
+      errors.new = "New password is required.";
+    } else if (newPassword.length < 8) {
+      errors.new = "New password must be at least 8 characters.";
+    } else if (!/[A-Z]/.test(newPassword)) {
+      errors.new = "New password must contain an uppercase letter.";
+    } else if (!/[a-z]/.test(newPassword)) {
+      errors.new = "New password must contain a lowercase letter.";
+    } else if (!/[0-9]/.test(newPassword)) {
+      errors.new = "New password must contain a number.";
+    }
+    if (!confirmPassword) {
+      errors.confirm = "Please confirm your new password.";
+    } else if (newPassword && confirmPassword !== newPassword) {
+      errors.confirm = "Passwords do not match.";
+    }
+    setPasswordErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordMessage({ type: "", text: "" });
+
+    if (!validatePassword()) return;
+
+    if (!profile || !profile.id) {
+      setPasswordMessage({ type: "error", text: "Profile not loaded yet." });
+      return;
+    }
+
+    setUpdating(true);
+    try {
+      // Passwords are stored bcrypt-hashed in Firestore (see the users
+      // collection), so we compare against the hash instead of using
+      // Firebase Auth reauthentication.
+      const isCurrentCorrect = await bcrypt.compare(currentPassword, profile.password || "");
+      if (!isCurrentCorrect) {
+        setPasswordMessage({ type: "error", text: "Current password is incorrect." });
+        setUpdating(false);
+        return;
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword.trim(), 10);
+
+      await updateDoc(doc(db, "users", profile.id), {
+        password: hashedPassword,
+        updatedAt: serverTimestamp(),
+      });
+
+      setProfile((p) => ({ ...p, password: hashedPassword }));
+      setPasswordMessage({ type: "success", text: "Password updated successfully." });
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setPasswordErrors({});
+    } catch (err) {
+      console.error("Password update error:", err);
+      setPasswordMessage({ type: "error", text: "Failed to update password. Please try again." });
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  const cardBg = darkMode ? "bg-gray-900" : "bg-white";
+  const textPrimary = darkMode ? "text-gray-100" : "text-gray-900";
+  const textSecondary = darkMode ? "text-gray-400" : "text-gray-500";
+  const borderColor = darkMode ? "border-gray-700" : "border-pink-100";
+  const sectionBg = darkMode ? "bg-gray-800" : "bg-pink-50";
+  const inputClass = darkMode
+    ? "bg-gray-800 border-gray-700 text-gray-100 placeholder-gray-500"
+    : "bg-white border-pink-200 text-gray-900 placeholder-gray-400";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/50 backdrop-blur-sm transition-opacity duration-200 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className={`w-full max-w-[500px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border ${borderColor} ${cardBg} transition-all duration-200 animate-scale-in`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className={`sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-4 border-b ${borderColor} ${cardBg}`}>
+          <h2 className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${textPrimary}`}>
+            <FiUser className="text-pink-500" />
+            My Profile
+          </h2>
+          <button
+            onClick={onClose}
+            className={`p-2 rounded-full transition ${darkMode ? "hover:bg-gray-800" : "hover:bg-pink-50"}`}
+            aria-label="Close"
+          >
+            <FiX className={textPrimary} />
+          </button>
+        </div>
+
+        <div className="px-5 sm:px-6 py-5 space-y-6">
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <div className="w-8 h-8 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin" />
+              <p className={`text-sm ${textSecondary}`}>Loading profile...</p>
+            </div>
+          )}
+
+          {!loading && fetchError && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">
+              <span>{fetchError}</span>
+            </div>
+          )}
+
+          {!loading && !fetchError && profile && (
+            <>
+              {/* Account Details */}
+              <div>
+                <p className={`text-xs font-semibold uppercase tracking-wide mb-3 ${textSecondary}`}>
+                  Account Details
+                </p>
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 rounded-full bg-pink-600 text-white flex items-center justify-center text-xl font-bold shadow-md shadow-pink-200 flex-shrink-0">
+                    {getInitials()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className={`font-semibold truncate ${textPrimary}`}>{getFullName()}</p>
+                    <p className={`text-sm truncate ${textSecondary}`}>@{profile.username}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Information */}
+              <div className={`rounded-xl border ${borderColor} ${sectionBg} p-4 space-y-3`}>
+                <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>
+                  Information
+                </p>
+
+                <InfoRow icon={<FiHash />} label="Student ID" value={profile.studentId} darkMode={darkMode} />
+                <InfoRow icon={<FiBriefcase />} label="Position" value={profile.position} darkMode={darkMode} />
+                <InfoRow icon={<FiAward />} label="Role" value={profile.role} darkMode={darkMode} />
+                <InfoRow icon={<FiMail />} label="Email" value={profile.email} darkMode={darkMode} />
+
+                <div className="flex items-center justify-between gap-3">
+                  <span className={`flex items-center gap-2 text-sm ${textSecondary}`}>
+                    <FiShield />
+                    Status
+                  </span>
+                  <span className={`inline-flex items-center gap-1.5 text-sm font-medium ${isActive ? "text-green-600" : "text-gray-500"}`}>
+                    <span className={`w-2 h-2 rounded-full ${isActive ? "bg-green-500" : "bg-gray-400"}`} />
+                    {profile.status || "Unknown"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Change Password */}
+              <div>
+                <p className={`text-xs font-semibold uppercase tracking-wide mb-3 flex items-center gap-2 ${textSecondary}`}>
+                  <FiLock />
+                  Change Password
+                </p>
+
+                <form onSubmit={handleChangePassword} className="space-y-3">
+                  <PasswordField
+                    label="Current Password"
+                    value={currentPassword}
+                    onChange={setCurrentPassword}
+                    show={showCurrent}
+                    onToggle={() => setShowCurrent((v) => !v)}
+                    error={passwordErrors.current}
+                    inputClass={inputClass}
+                    darkMode={darkMode}
+                  />
+                  <PasswordField
+                    label="New Password"
+                    value={newPassword}
+                    onChange={setNewPassword}
+                    show={showNew}
+                    onToggle={() => setShowNew((v) => !v)}
+                    error={passwordErrors.new}
+                    inputClass={inputClass}
+                    darkMode={darkMode}
+                  />
+                  <PasswordField
+                    label="Confirm Password"
+                    value={confirmPassword}
+                    onChange={setConfirmPassword}
+                    show={showConfirm}
+                    onToggle={() => setShowConfirm((v) => !v)}
+                    error={passwordErrors.confirm}
+                    inputClass={inputClass}
+                    darkMode={darkMode}
+                  />
+
+                  {passwordMessage.text && (
+                    <div
+                      className={`text-sm px-3 py-2 rounded-lg ${
+                        passwordMessage.type === "success"
+                          ? "bg-green-50 text-green-600 border border-green-200"
+                          : "bg-red-50 text-red-600 border border-red-200"
+                      }`}
+                    >
+                      {passwordMessage.text}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={updating}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-pink-600
+                               hover:bg-pink-700 active:bg-pink-800 disabled:opacity-60 disabled:cursor-not-allowed
+                               text-white font-semibold text-sm shadow-md shadow-pink-200 transition"
+                  >
+                    {updating ? "Updating Password..." : "Update Password"}
+                  </button>
+                </form>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.96) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-scale-in {
+          animation: scale-in 0.2s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function InfoRow({ icon, label, value, darkMode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className={`flex items-center gap-2 text-sm ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+        {icon}
+        {label}
+      </span>
+      <span className={`text-sm font-medium truncate max-w-[60%] text-right ${darkMode ? "text-gray-100" : "text-gray-900"}`}>
+        {value || "—"}
+      </span>
+    </div>
+  );
+}
+
+function PasswordField({ label, value, onChange, show, onToggle, error, inputClass, darkMode }) {
+  return (
+    <div>
+      <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+        {label}
+      </label>
+      <div className="relative">
+        <input
+          type={show ? "text" : "password"}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={`w-full pr-10 pl-3 py-2.5 rounded-xl border text-sm outline-none focus:ring-2 focus:ring-pink-400 transition ${inputClass}`}
+          placeholder={label}
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          className={`absolute right-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-gray-400 hover:text-gray-200" : "text-gray-400 hover:text-gray-600"}`}
+          tabIndex={-1}
+        >
+          {show ? <FiEyeOff /> : <FiEye />}
+        </button>
+      </div>
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   );
 }

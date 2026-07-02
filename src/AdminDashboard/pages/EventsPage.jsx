@@ -5,7 +5,7 @@ import { collection,  query, where,getDocs, addDoc, Timestamp, onSnapshot, delet
 import { FaTrash, FaClipboardCheck, FaQrcode, FaChartBar,} from "react-icons/fa";
 import html2canvas from "html2canvas";
 
-export default function EventsPage() {
+export default function EventsPage({ darkMode }) {
   const [eventName, setEventName] = useState("");
   const [eventDate, setEventDate] = useState("");
 
@@ -188,34 +188,49 @@ const responsesQuery = query(
 
   setQuestions([
     "The event was well organized.",
-    "The venue and facilities were satisfactory.",
     "Overall, I am satisfied with this event.",
   ]);
 
   setEditingIndex(null);
 };
 
+  const getToday = () => {
+  const today = new Date();
+  const offset = today.getTimezoneOffset();
+  return new Date(today.getTime() - offset * 60 * 1000)
+    .toISOString()
+    .split("T")[0];
+};
+
   return (
-    <div className="h-screen overflow-hidden flex flex-col space-y-6 bg-slate-50 p-5 sm:p-6">
+    <div
+      className={`h-screen overflow-hidden flex flex-col space-y-6 p-4 sm:p-5 lg:p-6 ${
+        darkMode ? "bg-slate-950" : "bg-slate-50"
+      }`}
+    >
        <div className="flex-1 overflow-y-auto space-y-6 pr-1">
 
       {/* HEADER */}
-      <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-7 sm:p-8 shadow-sm border border-white/60">
+      <div
+        className={`backdrop-blur-xl rounded-3xl p-5 sm:p-7 lg:p-8 shadow-sm border ${
+          darkMode ? "bg-slate-900/70 border-slate-700" : "bg-white/70 border-white/60"
+        }`}
+      >
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
           <div>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
               Event Evaluation Management
             </h1>
 
-            <p className="text-gray-500 mt-2 text-sm sm:text-base">
+            <p className={`mt-2 text-sm sm:text-base ${darkMode ? "text-slate-300" : "text-gray-500"}`}>
               Create evaluation forms, generate QR codes, and analyze feedback.
             </p>
           </div>
 
           <button
             onClick={() => setShowForm(true)}
-            className="px-5 py-3 rounded-xl bg-pink-500 text-white font-medium shadow-sm shadow-pink-500/30 hover:bg-pink-600 transition"
+            className="px-5 py-3 rounded-xl bg-pink-500 text-white font-medium shadow-sm shadow-pink-500/30 hover:bg-pink-600 transition w-full md:w-auto"
           >
             Create Evaluation Form
           </button>
@@ -247,21 +262,25 @@ const responsesQuery = query(
 
      {/* FORM MODAL */}
 {showForm && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4">
 
     {/* MODAL BOX */}
-    <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto bg-white rounded-3xl p-6 sm:p-7 shadow-2xl border border-gray-100">
+    <div
+      className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl p-4 sm:p-6 lg:p-7 shadow-2xl border ${
+        darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+      }`}
+    >
 
 
       {/* HEADER */}
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+        <h2 className={`text-xl sm:text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
           Event Evaluation Form
         </h2>
 
         <button
           onClick={addQuestion}
-          className="px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-xl shadow-sm transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98]"
+          className="px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-xl shadow-sm transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98] w-full sm:w-auto"
         >
           + Add Question
         </button>
@@ -273,26 +292,42 @@ const responsesQuery = query(
           value={eventName}
           onChange={(e) => setEventName(e.target.value)}
           placeholder="Event Name"
-          className="border border-pink-600 p-3 rounded-xl w-full text-sm placeholder:text-gray-400 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent"
+          className={`border p-3 rounded-xl w-full text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent ${
+            darkMode
+              ? "border-pink-500 bg-slate-800 text-white placeholder-slate-400"
+              : "border-pink-600 placeholder:text-gray-400"
+          }`}
         />
 
         <input
           type="date"
           value={eventDate}
           onChange={(e) => setEventDate(e.target.value)}
-          className="border border-pink-600 p-3 rounded-xl w-full text-sm text-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent"
+           min={getToday()}
+          className={`border p-3 rounded-xl w-full text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent ${
+            darkMode ? "border-pink-500 bg-slate-800 text-slate-200" : "border-pink-600 text-gray-600"
+          }`}
         />
       </div>
 
       {/* QUESTIONS */}
       <div className="space-y-4">
         {questions.map((q, i) => (
-          <div key={i} className="border border-gray-200 p-4 rounded-2xl bg-gray-50 transition-colors duration-200 hover:border-pink-200">
+          <div
+            key={i}
+            className={`border p-4 rounded-2xl transition-colors duration-200 ${
+              darkMode
+                ? "border-slate-700 bg-slate-800/60 hover:border-pink-500/50"
+                : "border-gray-200 bg-gray-50 hover:border-pink-200"
+            }`}
+          >
 
             <input
               value={q}
               onChange={(e) => handleQuestionChange(i, e.target.value)}
-              className="border border-pink-600 p-2.5 w-full rounded-lg text-sm bg-white transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent"
+              className={`border p-2.5 w-full rounded-lg text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent ${
+                darkMode ? "border-pink-500 bg-slate-900 text-white" : "border-pink-600 bg-white"
+              }`}
             />
 
             <button
@@ -304,7 +339,12 @@ const responsesQuery = query(
 
             <div className="flex gap-4 flex-wrap mt-3">
               {ratings.map((r) => (
-                <label key={r} className="text-xs sm:text-sm flex items-center gap-1.5 text-gray-600">
+                <label
+                  key={r}
+                  className={`text-xs sm:text-sm flex items-center gap-1.5 ${
+                    darkMode ? "text-slate-300" : "text-gray-600"
+                  }`}
+                >
                   <input type="radio" name={`q-${i}`} className="accent-pink-500" /> {r}
                 </label>
               ))}
@@ -315,7 +355,11 @@ const responsesQuery = query(
       </div>
 
       {/* FOOTER ACTIONS */}
-        <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-4">
+        <div
+          className={`mt-6 flex flex-col-reverse sm:flex-row justify-end gap-3 border-t pt-4 ${
+            darkMode ? "border-slate-700" : "border-gray-100"
+          }`}
+        >
 
           {/* CLOSE BUTTON */}
           <button
@@ -344,10 +388,14 @@ const responsesQuery = query(
   </div>
 )}
       {/* TABLE */}
-      <div className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100">
+      <div
+        className={`rounded-3xl p-4 sm:p-6 shadow-sm border ${
+          darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+        }`}
+      >
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
 
-            <h2 className="text-lg font-bold text-gray-800">
+            <h2 className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
               Evaluation Forms
             </h2>
 
@@ -357,7 +405,11 @@ const responsesQuery = query(
                 placeholder="Search event..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-pink-600 bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all"
+                className={`w-full px-4 py-2.5 rounded-xl border focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent transition-all ${
+                  darkMode
+                    ? "border-pink-500 bg-slate-800 text-white placeholder-slate-400"
+                    : "border-pink-600 bg-white"
+                }`}
               />
             </div>
 
@@ -365,13 +417,37 @@ const responsesQuery = query(
         
 
         <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm border-separate border-spacing-0">
+        <table className="w-full min-w-[560px] text-left text-sm border-separate border-spacing-0">
           <thead>
             <tr>
-              <th className="py-3 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Event</th>
-              <th className="py-3 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Respondent</th>
-              <th className="py-3 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Rating</th>
-              <th className="py-3 px-2 text-xs font-semibold uppercase tracking-wider text-gray-500">Actions</th>
+              <th
+                className={`py-3 px-2 text-xs font-semibold uppercase tracking-wider ${
+                  darkMode ? "text-slate-400" : "text-gray-500"
+                }`}
+              >
+                Event
+              </th>
+              <th
+                className={`py-3 px-2 text-xs font-semibold uppercase tracking-wider ${
+                  darkMode ? "text-slate-400" : "text-gray-500"
+                }`}
+              >
+                Respondent
+              </th>
+              <th
+                className={`py-3 px-2 text-xs font-semibold uppercase tracking-wider ${
+                  darkMode ? "text-slate-400" : "text-gray-500"
+                }`}
+              >
+                Rating
+              </th>
+              <th
+                className={`py-3 px-2 text-xs font-semibold uppercase tracking-wider ${
+                  darkMode ? "text-slate-400" : "text-gray-500"
+                }`}
+              >
+                Actions
+              </th>
             </tr>
           </thead>
 
@@ -400,10 +476,27 @@ const responsesQuery = query(
               const avg = count ? (score / count).toFixed(2) : "0.0";
 
               return (
-                <tr key={ev.id} className={`transition-colors duration-150 hover:bg-pink-50/60 ${idx % 2 === 0 ? "bg-gray-50/60" : "bg-transparent"}`}>
-                  <td className="py-3.5 px-2 rounded-l-xl font-medium text-gray-800">{ev.eventName}</td>
-                  <td className="py-3.5 px-2 text-pink-600">{totalResponses}</td>
-                  <td className="py-3.5 px-2 text-pink-600">{avg}</td>
+                <tr
+                  key={ev.id}
+                  className={`transition-colors duration-150 ${
+                    darkMode
+                      ? `hover:bg-slate-800/60 ${idx % 2 === 0 ? "bg-slate-800/30" : "bg-transparent"}`
+                      : `hover:bg-pink-50/60 ${idx % 2 === 0 ? "bg-gray-50/60" : "bg-transparent"}`
+                  }`}
+                >
+                  <td
+                    className={`py-3.5 px-2 rounded-l-xl font-medium ${
+                      darkMode ? "text-white" : "text-gray-800"
+                    }`}
+                  >
+                    {ev.eventName}
+                  </td>
+                  <td className={`py-3.5 px-2 ${darkMode ? "text-pink-400" : "text-pink-600"}`}>
+                    {totalResponses}
+                  </td>
+                  <td className={`py-3.5 px-2 ${darkMode ? "text-pink-400" : "text-pink-600"}`}>
+                    {avg}
+                  </td>
                   <td className="py-3.5 px-2 rounded-r-xl">
                     <div className="flex gap-2 flex-wrap">
 
@@ -447,10 +540,16 @@ const responsesQuery = query(
 
         {evaluations.length === 0 && (
           <div className="flex flex-col items-center gap-2 py-12">
-            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-gray-100">
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                darkMode ? "bg-slate-800" : "bg-gray-100"
+              }`}
+            >
               <span className="text-lg">🗒️</span>
             </div>
-            <p className="text-gray-400 text-sm">No evaluation forms yet</p>
+            <p className={`text-sm ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
+              No evaluation forms yet
+            </p>
           </div>
         )}
       </div>
@@ -460,7 +559,11 @@ const responsesQuery = query(
           {/* QR */}
           {showQR && selectedEvent && (
             <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-              <div className="bg-white p-7 rounded-3xl text-center w-[320px] shadow-2xl border border-gray-100">
+              <div
+                className={`p-6 sm:p-7 rounded-3xl text-center w-full max-w-[320px] shadow-2xl border ${
+                  darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+                }`}
+              >
 
 
                     <h1 className="text-lg font-bold text-pink-600">
@@ -469,19 +572,24 @@ const responsesQuery = query(
                         : "Evaluation Results"}
                     </h1>
                 {/* EVENT NAME */}
-                <h2 className="text-lg font-bold text-gray-800">
+                <h2 className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
                   {selectedEvent.eventName}
                 </h2>
 
-                <p className="text-xs text-gray-500 mb-4">
+                <p className={`text-xs mb-4 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
                   {selectedEvent.eventDate}
                 </p>
 
-                <div ref={qrRef} className="flex justify-center p-3 bg-gray-50 rounded-2xl">
+                <div
+                  ref={qrRef}
+                  className={`flex justify-center p-3 rounded-2xl ${
+                    darkMode ? "bg-slate-100" : "bg-gray-50"
+                  }`}
+                >
                   <QRCodeCanvas value={qrLink} size={220} />
                 </div>
 
-                <p className="mt-3 text-xs break-all text-gray-500">
+                <p className={`mt-3 text-xs break-all ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
                   {qrLink}
                 </p>
 

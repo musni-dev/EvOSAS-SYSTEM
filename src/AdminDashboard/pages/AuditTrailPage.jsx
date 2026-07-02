@@ -150,7 +150,7 @@ const StatCard = ({ label, value, Icon, accent, darkMode }) => (
         <Icon size={15} />
       </div>
     </div>
-    <p className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>{value}</p>
+    <p className={`text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>{value}</p>
   </div>
 );
 

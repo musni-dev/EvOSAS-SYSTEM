@@ -4,6 +4,37 @@ import { db } from "../../firebase/firebase";
 // import PendingApprovalPage from "../Disciplinary/PendingApprovalPage";
 // import CaseRecords from "../Disciplinary/CaseRecords";
 import { FaEye, FaTrash, FaClipboardCheck,} from "react-icons/fa";
+import { logAudit } from "../../utils/auditTrail";
+
+// AUDIT TRAIL: reads the currently logged-in user (saved by Login.jsx) so
+// every audit log entry records who actually performed the action.
+const getCurrentUser = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("userData") || "{}");
+    const name =
+      [stored.firstName, stored.lastName].filter(Boolean).join(" ") ||
+      stored.username ||
+      "Administrator";
+
+    return {
+      uid: localStorage.getItem("uid") || stored.uid || "",
+      name,
+      email: stored.username || "",
+      role: localStorage.getItem("role") || stored.role || "",
+      department: stored.position || "",
+      photoURL: stored.photoURL || "",
+    };
+  } catch {
+    return {
+      uid: localStorage.getItem("uid") || "",
+      name: "Administrator",
+      email: "",
+      role: localStorage.getItem("role") || "",
+      department: "",
+      photoURL: "",
+    };
+  }
+};
 
 export default function DisciplinaryPage({ darkMode }) {
   const [showModal, setShowModal] = useState(false);
@@ -31,8 +62,21 @@ const handleDelete = async (id) => {
 
   if (!confirmDelete) return;
 
+  // AUDIT TRAIL: capture the case data before it's removed from Firestore
+  const caseToDelete = cases.find((c) => c.id === id);
+
   try {
     await deleteDoc(doc(db, "cases", id));
+
+    await logAudit({
+      action: "Deleted Case",
+      module: "Cases",
+      documentId: id,
+      documentTitle: caseToDelete?.caseNumber || "",
+      performedBy: getCurrentUser(),
+      oldData: caseToDelete || null,
+      description: `Disciplinary case ${caseToDelete?.caseNumber || id} was deleted.`,
+    });
 
     alert("Case deleted successfully.");
 
@@ -46,6 +90,10 @@ const handleDelete = async (id) => {
     const handleUpdate = async () => {
       try {
         const caseRef = doc(db, "cases", selectedCase.id);
+
+        // AUDIT TRAIL: the original (pre-edit) case is still intact in the
+        // `cases` list state, since selectedCase edits work on a separate copy.
+        const oldCaseData = cases.find((c) => c.id === selectedCase.id) || null;
 
         await updateDoc(caseRef, {
           studentId: selectedCase.studentId,
@@ -61,6 +109,17 @@ const handleDelete = async (id) => {
           sanctions: selectedCase.sanctions,
           decision: selectedCase.decision,
           status: selectedCase.status,
+        });
+
+        await logAudit({
+          action: "Edited Case",
+          module: "Cases",
+          documentId: selectedCase.id,
+          documentTitle: selectedCase.caseNumber || "",
+          performedBy: getCurrentUser(),
+          oldData: oldCaseData,
+          newData: selectedCase,
+          description: `Disciplinary case ${selectedCase.caseNumber} was updated.`,
         });
 
         alert("Case updated successfully.");
@@ -238,6 +297,16 @@ const handleSave = async () => {
     };
 
     const docRef = await addDoc(collection(db, "cases"), newCase);
+
+    await logAudit({
+      action: "Added Case",
+      module: "Cases",
+      documentId: docRef.id,
+      documentTitle: caseNumber,
+      performedBy: getCurrentUser(),
+      newData: newCase,
+      description: `New disciplinary case ${caseNumber} was added.`,
+    });
 
     setCases((prev) => [
       ...prev,
@@ -830,7 +899,7 @@ const filteredCases = cases.filter((item) => {
             <div className="mb-8">
 
               <h3 className="text-xl font-bold text-gray-800 mb-4">
-                Type of Incident
+                Type of Incident *
               </h3>
 
               <div className="flex flex-wrap gap-3">
@@ -882,7 +951,7 @@ const filteredCases = cases.filter((item) => {
             <div className="mb-8">
 
               <h3 className="text-xl font-bold text-gray-800 mb-4">
-                Incident Description Narrative
+                Incident Description Narrative *
               </h3>
 
               <textarea
@@ -900,7 +969,7 @@ const filteredCases = cases.filter((item) => {
             <div className="mb-8">
 
               <h3 className="text-xl font-bold text-gray-800 mb-4">
-                Immediate Actions Taken
+                Immediate Actions Taken *
               </h3>
 
               <textarea
@@ -918,7 +987,7 @@ const filteredCases = cases.filter((item) => {
             <div className="mb-8">
 
               <h3 className="text-xl font-bold text-gray-800 mb-4">
-                Follow-up Actions / Recommendations
+                Follow-up Actions / Recommendations *
               </h3>
 
               <textarea

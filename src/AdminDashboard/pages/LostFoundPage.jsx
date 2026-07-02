@@ -3,6 +3,37 @@ import { db, storage } from "../../firebase/firebase";
 import { collection, addDoc, deleteDoc, doc, updateDoc, query, orderBy, onSnapshot, serverTimestamp,} from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL,  deleteObject } from "firebase/storage";
 import { color } from "framer-motion";
+import { logAudit } from "../../utils/auditTrail";
+
+// AUDIT TRAIL: reads the currently logged-in user (saved by Login.jsx) so
+// every audit log entry records who actually performed the action.
+const getCurrentUser = () => {
+  try {
+    const stored = JSON.parse(localStorage.getItem("userData") || "{}");
+    const name =
+      [stored.firstName, stored.lastName].filter(Boolean).join(" ") ||
+      stored.username ||
+      "Administrator";
+
+    return {
+      uid: localStorage.getItem("uid") || stored.uid || "",
+      name,
+      email: stored.username || "",
+      role: localStorage.getItem("role") || stored.role || "",
+      department: stored.position || "",
+      photoURL: stored.photoURL || "",
+    };
+  } catch {
+    return {
+      uid: localStorage.getItem("uid") || "",
+      name: "Administrator",
+      email: "",
+      role: localStorage.getItem("role") || "",
+      department: "",
+      photoURL: "",
+    };
+  }
+};
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 const CATEGORIES = [
@@ -336,7 +367,7 @@ const validate = () => {
       }
 
       // Firestore: save document
-        await addDoc(collection(db, "lost_found"), {
+        const docRef = await addDoc(collection(db, "lost_found"), {
           reportType: form.reportType,
           itemName: form.itemName.trim(),
           category: form.category,
@@ -349,6 +380,25 @@ const validate = () => {
           imagePath,
           createdAt: serverTimestamp(),
         });
+
+      await logAudit({
+        action: "Added Lost & Found Item",
+        module: "Lost & Found",
+        documentId: docRef.id,
+        documentTitle: form.itemName.trim(),
+        performedBy: getCurrentUser(),
+        newData: {
+          reportType: form.reportType,
+          itemName: form.itemName.trim(),
+          category: form.category,
+          description: form.description.trim(),
+          location: form.location.trim(),
+          date: form.date,
+          status: form.status,
+          contactNumber: form.contactNumber.trim(),
+        },
+        description: `${form.reportType} item "${form.itemName.trim()}" was reported.`,
+      });
 
       closeAdd();
     } catch (err) {
@@ -379,6 +429,16 @@ const validate = () => {
         await deleteDoc(
           doc(db, "lost_found", deleteTarget.id)
         );
+
+        await logAudit({
+          action: "Deleted Lost & Found Item",
+          module: "Lost & Found",
+          documentId: deleteTarget.id,
+          documentTitle: deleteTarget.itemName || "",
+          performedBy: getCurrentUser(),
+          oldData: deleteTarget,
+          description: `${deleteTarget.reportType || ""} item "${deleteTarget.itemName || ""}" was deleted.`,
+        });
 
         setDeleteTarget(null);
       } catch (err) {
@@ -1036,6 +1096,17 @@ return (
                         reportType: value,
                       });
 
+                      await logAudit({
+                        action: "Edited Lost & Found Item",
+                        module: "Lost & Found",
+                        documentId: viewItem.id,
+                        documentTitle: viewItem.itemName || "",
+                        performedBy: getCurrentUser(),
+                        oldData: { reportType: viewItem.reportType },
+                        newData: { reportType: value },
+                        description: `Report type of "${viewItem.itemName}" changed to ${value}.`,
+                      });
+
                       setViewItem((prev) => ({
                         ...prev,
                         reportType: value,
@@ -1093,6 +1164,17 @@ return (
                         { status: value }
                       );
 
+                      await logAudit({
+                        action: "Edited Lost & Found Item",
+                        module: "Lost & Found",
+                        documentId: viewItem.id,
+                        documentTitle: viewItem.itemName || "",
+                        performedBy: getCurrentUser(),
+                        oldData: { status: viewItem.status },
+                        newData: { status: value },
+                        description: `Status of "${viewItem.itemName}" changed to ${value}.`,
+                      });
+
                       setViewItem((prev) => ({
                         ...prev,
                         status: value,
@@ -1147,6 +1229,17 @@ return (
 
                     await updateDoc(doc(db, "lost_found", viewItem.id), {
                       category: value,
+                    });
+
+                    await logAudit({
+                      action: "Edited Lost & Found Item",
+                      module: "Lost & Found",
+                      documentId: viewItem.id,
+                      documentTitle: viewItem.itemName || "",
+                      performedBy: getCurrentUser(),
+                      oldData: { category: viewItem.category },
+                      newData: { category: value },
+                      description: `Category of "${viewItem.itemName}" changed to ${value}.`,
                     });
 
                     setViewItem((prev) => ({
@@ -1225,6 +1318,17 @@ return (
                         itemName: editValue.name,
                       });
 
+                      await logAudit({
+                        action: "Edited Lost & Found Item",
+                        module: "Lost & Found",
+                        documentId: viewItem.id,
+                        documentTitle: editValue.name || viewItem.itemName || "",
+                        performedBy: getCurrentUser(),
+                        oldData: { itemName: viewItem.itemName },
+                        newData: { itemName: editValue.name },
+                        description: `Item name changed from "${viewItem.itemName}" to "${editValue.name}".`,
+                      });
+
                       setViewItem((prev) => ({
                         ...prev,
                         itemName: editValue.name,
@@ -1282,6 +1386,17 @@ return (
                     onBlur={async () => {
                       await updateDoc(doc(db, "lost_found", viewItem.id), {
                         description: editValue.description,
+                      });
+
+                      await logAudit({
+                        action: "Edited Lost & Found Item",
+                        module: "Lost & Found",
+                        documentId: viewItem.id,
+                        documentTitle: viewItem.itemName || "",
+                        performedBy: getCurrentUser(),
+                        oldData: { description: viewItem.description },
+                        newData: { description: editValue.description },
+                        description: `Description of "${viewItem.itemName}" was updated.`,
                       });
 
                       setViewItem((prev) => ({
@@ -1358,6 +1473,17 @@ return (
                   location: editValue.location,
                 });
 
+                await logAudit({
+                  action: "Edited Lost & Found Item",
+                  module: "Lost & Found",
+                  documentId: viewItem.id,
+                  documentTitle: viewItem.itemName || "",
+                  performedBy: getCurrentUser(),
+                  oldData: { location: viewItem.location },
+                  newData: { location: editValue.location },
+                  description: `Location of "${viewItem.itemName}" was updated.`,
+                });
+
                 setViewItem((p) => ({
                   ...p,
                   location: editValue.location,
@@ -1414,6 +1540,17 @@ return (
                   date: editValue.date,
                 });
 
+                await logAudit({
+                  action: "Edited Lost & Found Item",
+                  module: "Lost & Found",
+                  documentId: viewItem.id,
+                  documentTitle: viewItem.itemName || "",
+                  performedBy: getCurrentUser(),
+                  oldData: { date: viewItem.date },
+                  newData: { date: editValue.date },
+                  description: `Date of "${viewItem.itemName}" was updated.`,
+                });
+
                 setViewItem((p) => ({
                   ...p,
                   date: editValue.date,
@@ -1467,6 +1604,17 @@ return (
               onBlur={async () => {
                 await updateDoc(doc(db, "lost_found", viewItem.id), {
                   contactNumber: editValue.contact,
+                });
+
+                await logAudit({
+                  action: "Edited Lost & Found Item",
+                  module: "Lost & Found",
+                  documentId: viewItem.id,
+                  documentTitle: viewItem.itemName || "",
+                  performedBy: getCurrentUser(),
+                  oldData: { contactNumber: viewItem.contactNumber },
+                  newData: { contactNumber: editValue.contact },
+                  description: `Contact number of "${viewItem.itemName}" was updated.`,
                 });
 
                 setViewItem((p) => ({

@@ -18,6 +18,7 @@ import {
   doc,
   serverTimestamp,
 } from "firebase/firestore";
+import { logLogin } from "../utils/auditTrail";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -35,8 +36,19 @@ const [showPassword, setShowPassword] = useState(false);
 
       localStorage.setItem("isLoggedIn", "true");
       localStorage.setItem("role", "Administrator");
+      // Firebase Auth admin login also gets a uid saved, in case any admin
+      // screens later need to look up their own Firestore user record.
+      if (auth.currentUser?.uid) {
+        localStorage.setItem("uid", auth.currentUser.uid);
+      }
 
       window.dispatchEvent(new Event("authChanged"));
+
+      // AUDIT TRAIL: log this successful Administrator login (Firebase Auth path)
+      await logLogin(auth.currentUser, {
+        role: "Administrator",
+        name: "Administrator",
+      });
 
       const accepted = localStorage.getItem("acceptedTerms");
 
@@ -89,11 +101,34 @@ const [showPassword, setShowPassword] = useState(false);
         localStorage.setItem("isLoggedIn", "true");
         localStorage.setItem("role", userData.role);
         localStorage.setItem("userData", JSON.stringify(userData));
+        // Save the Firestore document ID of the logged-in user so other
+        // pages (e.g. the Profile modal) can look up and update their
+        // own "users" record.
+        localStorage.setItem("uid", foundUser.id);
 
 
 
 
         window.dispatchEvent(new Event("authChanged"));
+
+        // AUDIT TRAIL: log this successful login (Firestore-based accounts)
+        const loggedInName =
+          [userData.firstName, userData.lastName].filter(Boolean).join(" ") ||
+          userData.username;
+
+        await logLogin(
+          {
+            uid: foundUser.id,
+            email: userData.username,
+            displayName: loggedInName,
+            photoURL: userData.photoURL || "",
+          },
+          {
+            role: userData.role,
+            department: userData.position,
+            name: loggedInName,
+          }
+        );
 
         switch (userData.role) {
           case "Administrator":
