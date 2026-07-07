@@ -487,23 +487,31 @@ return (
 
     {/* Header */}
     <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6 mt-4 md:mt-6 lg:mt-8">
-      <div>
-      <h1
-          className={`text-2xl font-bold ${
-            darkMode ? "text-pink-500" : "text-pink-600"
-          }`}
-        >
-          Lost &amp; Found
-        </h1>
+    <div className="flex flex-col gap-2.5">
+  <div className="flex items-center gap-2.5 flex-wrap">
+    <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
+      Lost &amp; Found
+    </h1>
 
-        <p
-          className={`text-sm mt-1 ${
-            darkMode ? "text-gray-400" : "text-gray-500"
-          }`}
-        >
-          Track and manage lost and found reports
-        </p>
-      </div>
+    <span
+      className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${
+        darkMode
+          ? "bg-pink-500/15 text-pink-300 border border-pink-500/30"
+          : "bg-pink-100 text-pink-600 border border-pink-200"
+      }`}
+    >
+      Report Management
+    </span>
+  </div>
+
+  <p
+    className={`text-sm sm:text-base ${
+      darkMode ? "text-slate-300" : "text-gray-500"
+    }`}
+  >
+    Track and manage lost and found reports
+  </p>
+</div>
 
       <button
         onClick={() => setShowAddModal(true)}
@@ -620,6 +628,7 @@ return (
     xl:grid-cols-4
     gap-4
     pb-6
+    pt-1
   "
   >
       {loading ? (

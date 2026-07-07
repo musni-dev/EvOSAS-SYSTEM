@@ -1,8 +1,8 @@
 import { useEffect, useState, useRef } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { db } from "../../firebase/firebase";
-import { collection,  query, where,getDocs, addDoc, Timestamp, onSnapshot, deleteDoc, doc } from "firebase/firestore";
-import { FaTrash, FaClipboardCheck, FaQrcode, FaChartBar,} from "react-icons/fa";
+import { collection,  query, where,getDocs, addDoc, updateDoc, Timestamp, onSnapshot, deleteDoc, doc } from "firebase/firestore";
+import { FaTrash, FaClipboardCheck, FaQrcode, FaChartBar, FaPen} from "react-icons/fa";
 import html2canvas from "html2canvas";
 
 export default function EventsPage({ darkMode }) {
@@ -21,6 +21,15 @@ export default function EventsPage({ darkMode }) {
   const [showForm, setShowForm] = useState(false);
   const [editingIndex, setEditingIndex] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
+
+  // VIEW / EDIT (row click) modal state
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewingEvent, setViewingEvent] = useState(null);
+  const [isEditingView, setIsEditingView] = useState(false);
+  const [savingView, setSavingView] = useState(false);
+  const [viewEventName, setViewEventName] = useState("");
+  const [viewEventDate, setViewEventDate] = useState("");
+  const [viewQuestions, setViewQuestions] = useState([]);
 
   const [questions, setQuestions] = useState([
     "The event was well organized.",
@@ -202,6 +211,60 @@ const responsesQuery = query(
     .split("T")[0];
 };
 
+  // Open the view/edit modal when a table row is clicked
+  const handleRowClick = (ev) => {
+    setViewingEvent(ev);
+    setViewEventName(ev.eventName);
+    setViewEventDate(ev.eventDate);
+    setViewQuestions(ev.questions || []);
+    setIsEditingView(false);
+    setShowViewModal(true);
+  };
+
+  const closeViewModal = () => {
+    setShowViewModal(false);
+    setViewingEvent(null);
+    setIsEditingView(false);
+  };
+
+  const handleViewQuestionChange = (index, value) => {
+    const updated = [...viewQuestions];
+    updated[index] = value;
+    setViewQuestions(updated);
+  };
+
+  const addViewQuestion = () => {
+    setViewQuestions([...viewQuestions, `New Question ${viewQuestions.length + 1}`]);
+  };
+
+  const deleteViewQuestion = (index) => {
+    setViewQuestions(viewQuestions.filter((_, i) => i !== index));
+  };
+
+  const saveViewEdits = async () => {
+    try {
+      if (!viewEventName.trim()) return alert("Enter event name");
+      if (!viewEventDate) return alert("Select event date");
+      if (viewQuestions.length === 0) return alert("Add at least one question");
+
+      setSavingView(true);
+
+      await updateDoc(doc(db, "evaluations", viewingEvent.id), {
+        eventName: viewEventName,
+        eventDate: viewEventDate,
+        questions: viewQuestions,
+      });
+
+      alert("Evaluation updated successfully");
+      setIsEditingView(false);
+      setShowViewModal(false);
+    } catch (err) {
+      alert(err.message);
+    } finally {
+      setSavingView(false);
+    }
+  };
+
   return (
     <div
       className={`h-screen overflow-hidden flex flex-col space-y-6 p-4 sm:p-5 lg:p-6 ${
@@ -219,9 +282,20 @@ const responsesQuery = query(
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
 
           <div>
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
-              Event Evaluation Management
-            </h1>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
+                Event Evaluation Management
+              </h1>
+              <span
+                className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${
+                  darkMode
+                    ? "bg-pink-500/15 text-pink-300 border border-pink-500/30"
+                    : "bg-pink-100 text-pink-600 border border-pink-200"
+                }`}
+              >
+                Powered by EvOSAS
+              </span>
+            </div>
 
             <p className={`mt-2 text-sm sm:text-base ${darkMode ? "text-slate-300" : "text-gray-500"}`}>
               Create evaluation forms, generate QR codes, and analyze feedback.
@@ -414,7 +488,10 @@ const responsesQuery = query(
             </div>
 
           </div>
-        
+
+          <p className={`text-xs mb-3 ${darkMode ? "text-slate-500" : "text-gray-400"}`}>
+            Tip: click a row to view its full details and questions, or edit them.
+          </p>
 
         <div className="overflow-x-auto">
         <table className="w-full min-w-[560px] text-left text-sm border-separate border-spacing-0">
@@ -478,7 +555,8 @@ const responsesQuery = query(
               return (
                 <tr
                   key={ev.id}
-                  className={`transition-colors duration-150 ${
+                  onClick={() => handleRowClick(ev)}
+                  className={`cursor-pointer transition-colors duration-150 ${
                     darkMode
                       ? `hover:bg-slate-800/60 ${idx % 2 === 0 ? "bg-slate-800/30" : "bg-transparent"}`
                       : `hover:bg-pink-50/60 ${idx % 2 === 0 ? "bg-gray-50/60" : "bg-transparent"}`
@@ -498,7 +576,10 @@ const responsesQuery = query(
                     {avg}
                   </td>
                   <td className="py-3.5 px-2 rounded-r-xl">
-                    <div className="flex gap-2 flex-wrap">
+                    <div
+                      className="flex gap-2 flex-wrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
 
                       <button
                         onClick={() => handleViewQR(ev)}
@@ -555,6 +636,196 @@ const responsesQuery = query(
       </div>
 
     
+
+          {/* VIEW / EDIT MODAL */}
+          {showViewModal && viewingEvent && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-3 sm:p-4">
+              <div
+                className={`relative w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-3xl p-4 sm:p-6 lg:p-7 shadow-2xl border ${
+                  darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+                }`}
+              >
+                {/* HEADER */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-6">
+                  <div>
+                    <p
+                      className={`text-[11px] font-bold uppercase tracking-wider ${
+                        darkMode ? "text-pink-400" : "text-pink-500"
+                      }`}
+                    >
+                      {isEditingView ? "Editing Evaluation" : "Evaluation Details"}
+                    </p>
+                    <h2 className={`text-xl sm:text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                      {viewingEvent.eventName}
+                    </h2>
+                  </div>
+
+                  {!isEditingView && (
+                    <button
+                      onClick={() => setIsEditingView(true)}
+                      className="flex items-center gap-2 px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-xl shadow-sm transition-all duration-200 hover:bg-pink-700 active:scale-[0.98] w-full sm:w-auto justify-center"
+                    >
+                      <FaPen className="text-xs" /> Edit
+                    </button>
+                  )}
+                </div>
+
+                {/* EVENT DETAILS */}
+                <div className="grid md:grid-cols-2 gap-4 mb-6">
+                  <div>
+                    <label
+                      className={`text-xs font-semibold uppercase tracking-wide ${
+                        darkMode ? "text-slate-400" : "text-gray-500"
+                      }`}
+                    >
+                      Event Name
+                    </label>
+                    {isEditingView ? (
+                      <input
+                        value={viewEventName}
+                        onChange={(e) => setViewEventName(e.target.value)}
+                        className={`mt-1.5 border p-3 rounded-xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent ${
+                          darkMode ? "border-pink-500 bg-slate-800 text-white" : "border-pink-600"
+                        }`}
+                      />
+                    ) : (
+                      <p className={`mt-1.5 text-sm font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
+                        {viewEventName}
+                      </p>
+                    )}
+                  </div>
+
+                  <div>
+                    <label
+                      className={`text-xs font-semibold uppercase tracking-wide ${
+                        darkMode ? "text-slate-400" : "text-gray-500"
+                      }`}
+                    >
+                      Event Date
+                    </label>
+                    {isEditingView ? (
+                      <input
+                        type="date"
+                        value={viewEventDate}
+                        onChange={(e) => setViewEventDate(e.target.value)}
+                        className={`mt-1.5 border p-3 rounded-xl w-full text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent ${
+                          darkMode ? "border-pink-500 bg-slate-800 text-slate-200" : "border-pink-600 text-gray-600"
+                        }`}
+                      />
+                    ) : (
+                      <p className={`mt-1.5 text-sm font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
+                        {viewEventDate}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* QUESTIONS */}
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className={`text-sm font-bold uppercase tracking-wide ${darkMode ? "text-slate-300" : "text-gray-600"}`}>
+                    Questions ({viewQuestions.length})
+                  </h3>
+
+                  {isEditingView && (
+                    <button
+                      onClick={addViewQuestion}
+                      className="px-3 py-1.5 bg-pink-600 text-white text-xs font-medium rounded-lg shadow-sm transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98]"
+                    >
+                      + Add Question
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {viewQuestions.map((q, i) => (
+                    <div
+                      key={i}
+                      className={`border p-4 rounded-2xl transition-colors duration-200 ${
+                        darkMode
+                          ? "border-slate-700 bg-slate-800/60"
+                          : "border-gray-200 bg-gray-50"
+                      }`}
+                    >
+                      {isEditingView ? (
+                        <>
+                          <input
+                            value={q}
+                            onChange={(e) => handleViewQuestionChange(i, e.target.value)}
+                            className={`border p-2.5 w-full rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent ${
+                              darkMode ? "border-pink-500 bg-slate-900 text-white" : "border-pink-600 bg-white"
+                            }`}
+                          />
+                          <button
+                            onClick={() => deleteViewQuestion(i)}
+                            className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium mt-3 rounded-lg transition-all duration-200 hover:bg-red-700 active:scale-[0.98]"
+                          >
+                            Delete Question
+                          </button>
+                        </>
+                      ) : (
+                        <p className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                          {i + 1}. {q}
+                        </p>
+                      )}
+
+                      <div className="flex gap-4 flex-wrap mt-3">
+                        {ratings.map((r) => (
+                          <label
+                            key={r}
+                            className={`text-xs sm:text-sm flex items-center gap-1.5 ${
+                              darkMode ? "text-slate-400" : "text-gray-500"
+                            }`}
+                          >
+                            <input type="radio" disabled className="accent-pink-500" /> {r}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* FOOTER ACTIONS */}
+                <div
+                  className={`mt-6 flex flex-col-reverse sm:flex-row justify-end gap-3 border-t pt-4 ${
+                    darkMode ? "border-slate-700" : "border-gray-100"
+                  }`}
+                >
+                  {isEditingView ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setViewEventName(viewingEvent.eventName);
+                          setViewEventDate(viewingEvent.eventDate);
+                          setViewQuestions(viewingEvent.questions || []);
+                          setIsEditingView(false);
+                        }}
+                        className="px-6 py-3 rounded-xl border border-gray-400 text-gray-500 font-medium transition-all duration-200 hover:bg-gray-100 active:scale-[0.98]"
+                      >
+                        Cancel
+                      </button>
+
+                      <button
+                        onClick={saveViewEdits}
+                        disabled={savingView}
+                        className="px-6 py-3 bg-pink-600 text-white font-medium rounded-xl shadow-sm shadow-pink-500/30 transition-all duration-200 hover:bg-pink-700 hover:shadow-md active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {savingView ? "Saving..." : "Save Changes"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={closeViewModal}
+                      className="px-6 py-3 rounded-xl border border-red-700 bg-red-700 text-white font-medium transition-all duration-200 hover:bg-red-600 active:scale-[0.98]"
+                    >
+                      Close
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* QR */}
           {showQR && selectedEvent && (

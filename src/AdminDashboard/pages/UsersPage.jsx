@@ -43,6 +43,7 @@ const emptyForm = {
   firstName: "",
   middleName: "",
   lastName: "",
+  suffix: "",
   position: "",
   username: "",
   password: "",
@@ -50,12 +51,18 @@ const emptyForm = {
   status: "Active",
 };
 
+// Full role list — still used for filtering/badges so existing Administrator
+// accounts remain visible/searchable in the table.
 const roles = [
   "Administrator",
   "SSC Officer",
   "Student Disciplinary Officer",
   "Student Organization Coordinator",
 ];
+
+// Roles that can be assigned when creating/editing a user from this page.
+// "Administrator" is intentionally excluded from here only.
+const assignableRoles = roles.filter((role) => role !== "Administrator");
 
 const positions = [
   "President",
@@ -96,11 +103,21 @@ const shortRole = {
   "Student Organization Coordinator": "SOC",
 };
 
+// Only letters and spaces allowed (no numbers, no special characters).
+const NAME_CHARS_REGEX = /[^A-Za-z\s]/g;
+const NAME_VALID_REGEX = /^[A-Za-z\s]+$/;
+
+function sanitizeNameInput(value) {
+  return value.replace(NAME_CHARS_REGEX, "");
+}
+
 function getNextDefaultPassword(users) {
   return "EvOSAS-2026";
 }
 function formatName(user) {
-  return [user.firstName, user.middleName, user.lastName].filter(Boolean).join(" ");
+  return [user.firstName, user.middleName, user.lastName, user.suffix]
+    .filter(Boolean)
+    .join(" ");
 }
 
 function initialsOf(user) {
@@ -128,6 +145,7 @@ function normalizeUser(snapshotDoc) {
     firstName: data.firstName || "",
     middleName: data.middleName || "",
     lastName: data.lastName || "",
+    suffix: data.suffix || "",
     position: data.position || "",
     username: data.username || "",
     password: data.password || "",
@@ -313,6 +331,7 @@ export default function UsersPage({ darkMode }) {
       firstName: user.firstName,
       middleName: user.middleName,
       lastName: user.lastName,
+      suffix: user.suffix || "",
       position: user.position,
       username: user.username,
       password: user.password,
@@ -325,8 +344,31 @@ export default function UsersPage({ darkMode }) {
   }
 
   function validateForm() {
-    if (!form.firstName.trim()) return "First name is required.";
-    if (!form.lastName.trim()) return "Last name is required.";
+    const studentId = form.studentId.trim();
+    const firstName = form.firstName.trim();
+    const middleName = form.middleName.trim();
+    const lastName = form.lastName.trim();
+
+    // Student ID is optional, but if provided must be exactly 9 digits.
+    if (studentId && !/^\d{9}$/.test(studentId)) {
+      return "Student ID must be exactly 9 digits.";
+    }
+
+    if (!firstName) return "First name is required.";
+    if (!NAME_VALID_REGEX.test(firstName)) {
+      return "First name must contain letters only (no numbers or special characters).";
+    }
+
+    if (!lastName) return "Last name is required.";
+    if (!NAME_VALID_REGEX.test(lastName)) {
+      return "Last name must contain letters only (no numbers or special characters).";
+    }
+
+    // Middle name is optional, but if provided must be letters only.
+    if (middleName && !NAME_VALID_REGEX.test(middleName)) {
+      return "Middle name must contain letters only (no numbers or special characters).";
+    }
+
     if (!form.username.trim()) return "Username is required.";
     if (!form.password.trim()) return "Password is required.";
     if (!form.role) return "Assigned role is required.";
@@ -355,6 +397,7 @@ export default function UsersPage({ darkMode }) {
       firstName: form.firstName.trim(),
       middleName: form.middleName.trim(),
       lastName: form.lastName.trim(),
+      suffix: form.suffix.trim(),
       position: form.position,
       username: form.username.trim().toLowerCase(),
       password: hashedPassword,
@@ -856,15 +899,16 @@ function generateUniqueUsername(firstName, lastName, users) {
             Account information
           </p>
           <div className="grid gap-3">
-            <Field label="Student ID" darkMode={darkMode}>
+            <Field label="Student ID (optional, 9 digits)" darkMode={darkMode}>
                 <input
                   type="text"
                   inputMode="numeric"
+                  maxLength={9}
                   value={form.studentId}
                   onChange={(event) =>
                     updateForm(
                       "studentId",
-                      event.target.value.replace(/\D/g, "")
+                      event.target.value.replace(/\D/g, "").slice(0, 9)
                     )
                   }
                   placeholder="123456789"
@@ -877,7 +921,7 @@ function generateUniqueUsername(firstName, lastName, users) {
                   <input
                     value={form.firstName}
                       onChange={(event) => {
-                        const firstName = event.target.value;
+                        const firstName = sanitizeNameInput(event.target.value);
 
                         updateForm("firstName", firstName);
                         updateForm(
@@ -892,17 +936,21 @@ function generateUniqueUsername(firstName, lastName, users) {
               <Field label="Middle name" darkMode={darkMode}>
                 <input
                   value={form.middleName}
-                  onChange={(event) => updateForm("middleName", event.target.value)}
+                  onChange={(event) =>
+                    updateForm("middleName", sanitizeNameInput(event.target.value))
+                  }
                   placeholder="Cruz"
                   className={formInputClass}
                 />
               </Field>
             </div>
 
+            <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Last name *" darkMode={darkMode}>
                   <input
+                    value={form.lastName}
                         onChange={(event) => {
-                          const lastName = event.target.value;
+                          const lastName = sanitizeNameInput(event.target.value);
 
                           updateForm("lastName", lastName);
                           updateForm(
@@ -914,8 +962,17 @@ function generateUniqueUsername(firstName, lastName, users) {
                     className={formInputClass}
                   />
                 </Field>
+                <Field label="Suffix" darkMode={darkMode}>
+                  <input
+                    value={form.suffix}
+                    onChange={(event) => updateForm("suffix", event.target.value)}
+                    placeholder="Jr., Sr., III"
+                    className={formInputClass}
+                  />
+                </Field>
+            </div>
 
-            <Field label="Position (Only For SSC)" darkMode={darkMode}>
+            <Field label="Position (Only For SSC, optional)" darkMode={darkMode}>
               <select
                 value={form.position}
                 onChange={(event) => updateForm("position", event.target.value)}
@@ -937,7 +994,7 @@ function generateUniqueUsername(firstName, lastName, users) {
             </p>
             <div className="grid gap-3">
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Username" darkMode={darkMode}>
+                <Field label="Username *" darkMode={darkMode}>
                   <input
                     value={form.username}
                     onChange={(event) => updateForm("username", event.target.value)}
@@ -964,7 +1021,7 @@ function generateUniqueUsername(firstName, lastName, users) {
                     className={formInputClass}
                   >
                     <option value="">Select role...</option>
-                    {roles.map((role) => (
+                    {assignableRoles.map((role) => (
                       <option key={role} value={role}>
                         {role}
                       </option>
@@ -1055,6 +1112,12 @@ function generateUniqueUsername(firstName, lastName, users) {
                 <p className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Student ID</p>
                 <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-slate-900"}`}>
                   {viewUser.studentId || "—"}
+                </p>
+              </div>
+              <div>
+                <p className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Suffix</p>
+                <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-slate-900"}`}>
+                  {viewUser.suffix || "—"}
                 </p>
               </div>
               <div>

@@ -101,7 +101,7 @@ const actionMeta = (action = "") => {
   return { Icon: Activity, bg: "bg-gray-100 text-gray-500", dark: "bg-gray-800 text-gray-400" };
 };
 
-const ITEMS_PER_PAGE = 15;
+const ITEMS_PER_PAGE = 10;
 
 // ─── MODULE BADGE ────────────────────────────────────────────
 const ModuleBadge = ({ module, darkMode }) => {
