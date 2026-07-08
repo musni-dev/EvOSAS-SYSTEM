@@ -449,15 +449,6 @@ export default function OrganizationsPage({ darkMode }) {
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      openViewModal(item);
-                                    }}
-                                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition"
-                                  >
-                                    <FaEye />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
                                       openModal(item);
                                     }}
                                     className="bg-pink-600 hover:bg-pink-700 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition"

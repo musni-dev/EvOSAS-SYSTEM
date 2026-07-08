@@ -5,7 +5,7 @@ import {
   BookOpen,
   ShieldCheck,
   ClipboardList,
-  Bell,
+  FileText,
   Search,
   Users,
   QrCode,
@@ -42,9 +42,9 @@ const features = [
     desc: "Collect event feedback digitally.",
   },
   {
-    icon: Bell,
-    title: "Announcements",
-    desc: "Share official announcements.",
+    icon: FileText,
+    title: "Files",
+    desc: "Submitting Student Organizations File.",
   },
   {
     icon: Users,
@@ -59,14 +59,6 @@ const steps = [
   { icon: BookOpen, label: "Manage records" },
   { icon: FileBarChart, label: "Generate reports" },
   { icon: ClipboardList, label: "Monitor activities" },
-];
-
-const stats = [
-  { value: 1500, suffix: "+", label: "Students" },
-  { value: 250, suffix: "+", label: "Disciplinary Cases" },
-  { value: 700, suffix: "+", label: "Attendance Records" },
-  { value: 500, suffix: "+", label: "Lost & Found Reports" },
-  { value: 99, suffix: "%", label: "System Availability" },
 ];
 
 const checklist = [
@@ -85,7 +77,7 @@ const floatingCards = [
   { label: "Attendance", icon: QrCode, className: "top-[8%] right-[4%] sm:right-[8%]" },
   { label: "Lost & Found", icon: Search, className: "bottom-[26%] left-[2%] sm:left-[6%]" },
   { label: "Reports", icon: FileBarChart, className: "bottom-[30%] right-[2%] sm:right-[6%]" },
-  { label: "Announcements", icon: Bell, className: "top-[42%] left-[3%] hidden lg:block" },
+  { label: "Files", icon: FileText, className: "top-[42%] left-[3%] hidden lg:block" },
   { label: "QR Code", icon: QrCode, className: "top-[42%] right-[3%] hidden lg:block" },
 ];
 
@@ -141,7 +133,7 @@ export default function Home() {
       <Navbar />
 
       {/* ---------------- Hero ---------------- */}
-      <section className="relative min-h-screen flex items-center justify-center pt-28 pb-16 px-5 bg-gradient-to-b from-[#fff1f6] via-white to-white dark:from-[#1a0f14] dark:via-[#0f0f0f] dark:to-[#0f0f0f]">
+      <section className="relative min-h-screen flex items-center justify-center pt-28 pb-16 px-5 bg-gradient-to-b from-[#f6cbda] via-white to-white dark:from-[#1a0f14] dark:via-[#0f0f0f] dark:to-[#0f0f0f]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,102,153,0.12),transparent_60%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,102,153,0.08),transparent_60%)]" />
 
         {/* Floating UI cards */}
@@ -157,7 +149,7 @@ export default function Home() {
             className="flex items-center justify-center gap-5 sm:gap-8 mb-8"
           >
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 dark:bg-[#1e1e1e] backdrop-blur shadow-lg ring-1 ring-pink-100 dark:ring-white/10 flex items-center justify-center hover:scale-105 hover:shadow-pink-200 dark:hover:shadow-black/40 transition-all duration-300">
-              <img src={osasLogo} alt="OSAS logo" className="w-11 h-11 sm:w-14 sm:h-14 object-contain" />
+              <img src={osasLogo} alt="OSAS logo" className="w-11 h-11 sm:w-50 sm:h-50 object-contain" />
             </div>
 
             <motion.h1
@@ -171,7 +163,7 @@ export default function Home() {
             </motion.h1>
 
             <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-white/90 dark:bg-[#1e1e1e] backdrop-blur shadow-lg ring-1 ring-pink-100 dark:ring-white/10 flex items-center justify-center hover:scale-105 hover:shadow-pink-200 dark:hover:shadow-black/40 transition-all duration-300">
-              <img src={sscLogo} alt="SSC logo" className="w-11 h-11 sm:w-14 sm:h-14 object-contain" />
+              <img src={sscLogo} alt="SSC logo" className="w-11 h-11 sm:w-50 sm:h-50 object-contain" />
             </div>
           </motion.div>
 
@@ -192,9 +184,9 @@ export default function Home() {
           >
             EvOSAS is a centralized digital platform designed to modernize the Office
             of Student Affairs and Services by streamlining disciplinary records,
-            student services, attendance monitoring, announcements, event
-            evaluations, and lost-and-found management through one secure and
-            efficient web application.
+            lost-and-found management, SSC attendance monitoring, event
+            evaluations, and student organization files management through one secure and
+            efficient website.
           </motion.p>
 
           <motion.div
@@ -269,7 +261,7 @@ export default function Home() {
           >
             <div className="aspect-[4/3] rounded-3xl bg-gradient-to-br from-pink-500 via-pink-400 to-rose-400 shadow-2xl shadow-pink-200 dark:shadow-black/40 flex items-center justify-center overflow-hidden">
               <div className="grid grid-cols-2 gap-4 p-8 w-full">
-                {[BookOpen, ShieldCheck, QrCode, Bell].map((Icon, i) => (
+                {[BookOpen, ShieldCheck, QrCode, FileText].map((Icon, i) => (
                   <div
                     key={i}
                     className="aspect-square rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center"
@@ -288,12 +280,13 @@ export default function Home() {
             transition={{ duration: 0.7 }}
           >
             <h2 className="text-3xl sm:text-4xl font-bold mb-5 dark:text-white">
-              Built for Dominican College of Tarlac
+              Built for Office of Student Affairs and Services
             </h2>
             <p className="text-gray-500 dark:text-gray-400 leading-relaxed mb-8">
               EvOSAS centralizes student services for OSAS staff, SSC officers, and
-              students alike — bringing discipline records, attendance, lost and
-              found, and event evaluations into one secure, easy-to-use platform.
+              students alike — bringing disciplinary cases,lost-and-found management, 
+              SSC attendance monitoring, event evaluations, and student organization 
+              files management into one secure, easy-to-use platform.
             </p>
             <Link
               to="/about"
@@ -332,17 +325,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ---------------- Statistics ---------------- */}
-      <section className="py-24 px-5 bg-gradient-to-br from-[#2d2d2d] via-[#3a2b31] to-[#2d2d2d] dark:from-[#141414] dark:via-[#1f1418] dark:to-[#141414]">
-        <div className="max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-10 text-center">
-          {stats.map((s) => (
-            <div key={s.label}>
-              <Counter value={s.value} suffix={s.suffix} />
-              <p className="mt-2 text-sm text-gray-400">{s.label}</p>
-            </div>
-          ))}
-        </div>
-      </section>
 
       {/* ---------------- Why Choose EvOSAS ---------------- */}
       <section className="py-24 px-5 bg-white dark:bg-[#0f0f0f]">
@@ -367,17 +349,6 @@ export default function Home() {
             </div>
           </motion.div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.7 }}
-            className="order-1 lg:order-2 aspect-square rounded-3xl bg-gradient-to-br from-[#fff1f6] to-pink-50 dark:from-[#1a1216] dark:to-[#161016] ring-1 ring-pink-100 dark:ring-white/5 flex items-center justify-center"
-          >
-            <div className="w-24 h-24 rounded-full bg-white dark:bg-[#1e1e1e] shadow-lg dark:shadow-black/30 flex items-center justify-center">
-              <img src={osasLogo} alt="OSAS logo" className="w-14 h-14 object-contain" />
-            </div>
-          </motion.div>
         </div>
       </section>
 

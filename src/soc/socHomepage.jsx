@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { db, storage } from "../firebase/firebase";
-import { collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, doc, updateDoc, getDoc } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, onSnapshot, query, where, doc, updateDoc, getDoc } from "firebase/firestore";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import bcrypt from "bcryptjs";
 
@@ -60,8 +60,10 @@ export default function SOCHomepage() {
   const [resubmitting, setResubmitting] = useState(false);
 
   // Profile modal state
-  // NOTE: assumes the logged-in user's Firestore document ID ("uid") in the
+  // NOTE: the logged-in user's Firestore document ID ("uid") in the
   // "users" collection is saved to localStorage at login time under the key "uid".
+  // This same uid is now also used as the ownership key for uploaded documents
+  // (see "uploadedBy" field below), so each SOC account only ever sees its own files.
   // If your login screen stores it under a different key, update the line below.
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
@@ -93,20 +95,52 @@ export default function SOCHomepage() {
     navigate("/login");
   };
 
+  // ---- DATA ISOLATION FIX ----
+  // Before: this query had no "where" clause, so every SOC account's
+  // onSnapshot listener pulled ALL documents from "organization_bylaws",
+  // regardless of who uploaded them — that's why every account saw every file.
+  //
+  // Fix: only load documents whose "uploadedBy" field matches the currently
+  // logged-in user's uid (the same uid saved to localStorage at login,
+  // see Login.jsx -> localStorage.setItem("uid", foundUser.id)).
   useEffect(() => {
+    const uid = localStorage.getItem("uid");
+
+    // No logged-in user identified -> show nothing rather than everything.
+    if (!uid) {
+      setUploads([]);
+      return;
+    }
+
+    // NOTE: no orderBy here on purpose — combining where() on one field with
+    // orderBy() on a different field requires a Firestore composite index to
+    // be created manually in the console. To avoid depending on that, we sort
+    // client-side instead (see the .sort() below), right after fetching.
     const q = query(
       collection(db, "organization_bylaws"),
-      orderBy("uploadedAt", "desc")
+      where("uploadedBy", "==", uid)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const files = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const files = snapshot.docs
+          .map((doc) => ({
+            id: doc.id,
+            ...doc.data(),
+          }))
+          .sort((a, b) => (b.uploadedAt?.seconds ?? 0) - (a.uploadedAt?.seconds ?? 0));
 
-      setUploads(files);
-    });
+        setUploads(files);
+      },
+      (error) => {
+        // Surface the real reason instead of silently showing an empty table.
+        // The most common cause here is a missing Firestore composite index
+        // for (uploadedBy ==, uploadedAt desc) — Firebase's error message
+        // includes a direct link to auto-create it in the console.
+        console.error("organization_bylaws onSnapshot error:", error);
+      }
+    );
 
     return () => unsubscribe();
   }, []);
@@ -135,6 +169,15 @@ export default function SOCHomepage() {
 
     if (!validatePdf(file)) return;
 
+    // ---- DATA ISOLATION FIX ----
+    // Require a logged-in uid before allowing an upload, and stamp the new
+    // document with "uploadedBy" so it can later be filtered per-account.
+    const uid = localStorage.getItem("uid");
+    if (!uid) {
+      alert("You must be logged in to upload a document.");
+      return;
+    }
+
     try {
       setLoading(true);
 
@@ -154,6 +197,7 @@ export default function SOCHomepage() {
         fileURL,
         status: STATUSES[0],
         uploadedAt: serverTimestamp(),
+        uploadedBy: uid, // ownership key used by the read query above
       });
 
       alert("File uploaded successfully!");
@@ -190,6 +234,17 @@ export default function SOCHomepage() {
     if (!resubmitItem) return;
     if (!validatePdf(resubmitFile)) return;
 
+    // ---- DATA ISOLATION FIX ----
+    // Defense-in-depth: even though `uploads` (and therefore `resubmitItem`)
+    // is already scoped to the current user's own documents via the filtered
+    // query above, double-check ownership here before writing, in case of
+    // stale state.
+    const uid = localStorage.getItem("uid");
+    if (!uid || resubmitItem.uploadedBy !== uid) {
+      alert("You can only re-submit your own documents.");
+      return;
+    }
+
     try {
       setResubmitting(true);
 
@@ -208,6 +263,7 @@ export default function SOCHomepage() {
         fileURL,
         status: STATUSES[0],
         uploadedAt: serverTimestamp(),
+        uploadedBy: uid, // keep ownership stamped on resubmit as well
       });
 
       // Only delete the old file once the new one is uploaded and the
@@ -442,7 +498,7 @@ export default function SOCHomepage() {
                   }`}
                 />
                 <p className={`text-xs mt-2 flex items-center gap-1 ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
-                  <span>📄</span> PDF only · Maximum file size: 2MB
+                  <span>📄</span> PDF only 
                 </p>
               </div>
             </div>

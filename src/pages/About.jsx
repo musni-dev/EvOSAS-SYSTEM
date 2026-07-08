@@ -105,10 +105,10 @@ export default function About() {
             className="flex items-center justify-center gap-6 mb-8"
           >
             <div className="w-16 h-16 rounded-full bg-white/90 dark:bg-[#1e1e1e] shadow-lg ring-1 ring-pink-100 dark:ring-white/10 flex items-center justify-center">
-              <img src={osasLogo} alt="OSAS logo" className="w-11 h-11 object-contain" />
+              <img src={osasLogo} alt="OSAS logo" className="w-50 h-50 object-contain" />
             </div>
             <div className="w-16 h-16 rounded-full bg-white/90 dark:bg-[#1e1e1e] shadow-lg ring-1 ring-pink-100 dark:ring-white/10 flex items-center justify-center">
-              <img src={sscLogo} alt="SSC logo" className="w-11 h-11 object-contain" />
+              <img src={sscLogo} alt="SSC logo" className="w-50 h-50 object-contain" />
             </div>
           </motion.div>
           <motion.h1

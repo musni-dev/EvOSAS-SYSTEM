@@ -39,17 +39,27 @@ export default function Navbar() {
     >
       <nav className="max-w-7xl mx-auto px-5 sm:px-8 flex items-center justify-between">
         {/* Brand */}
-        <Link to="/" className="flex items-center gap-3 group">
-          <div className="w-10 h-10 rounded-full bg-white/90 dark:bg-[#2a2a2a] shadow-md ring-1 ring-pink-100 dark:ring-white/10 flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
-            <img src={osasLogo} alt="OSAS logo" className="w-8 h-8 object-contain" />
-          </div>
-          <span
-            className="font-semibold text-lg tracking-tight text-[#2d2d2d] dark:text-white transition-colors"
-            style={{ fontFamily: "'Poppins', sans-serif" }}
+        <Link
+            to="/"
+            onClick={(e) => {
+              if (location.pathname === "/") {
+                e.preventDefault();
+                window.location.reload();
+              }
+            }}
+            className="flex items-center gap-3 group"
           >
-            EvOSAS
-          </span>
-        </Link>
+            <div className="w-10 h-10 rounded-full bg-white/90 dark:bg-[#2a2a2a] shadow-md ring-1 ring-pink-100 dark:ring-white/10 flex items-center justify-center overflow-hidden transition-transform duration-300 group-hover:scale-105">
+              <img src={osasLogo} alt="OSAS logo" className="w-full h-full object-contain" />
+            </div>
+
+            <span
+              className="font-semibold text-lg tracking-tight text-[#2d2d2d] dark:text-white transition-colors"
+              style={{ fontFamily: "'Poppins', sans-serif" }}
+            >
+              EvOSAS
+            </span>
+          </Link>
 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-10">

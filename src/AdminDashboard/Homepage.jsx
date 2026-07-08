@@ -7,6 +7,8 @@ import OrganizationsPage from "./pages/OrganizationsPage";
 import UsersPage from "./pages/UsersPage";
 import DashboardPage from "./pages/DashboardPage";
 import AuditTrailPage from "./pages/AuditTrailPage";
+import ProfilePage from "./pages/ProfilePage";
+import { FaUserCircle } from "react-icons/fa";
 
 const Icon = ({ name, size = 18 }) => {
   const icons = {
@@ -50,6 +52,9 @@ const pages = [
   { id: "audittrail", label: "Audit Trail", icon: "audit" },
 ];
 
+// Pages reachable via the header (not shown in the sidebar nav list)
+const hiddenPages = ["profile"];
+
 export default function Homepage() {
   const [active, setActive] = useState("dashboard");
   const [collapsed, setCollapsed] = useState(false);
@@ -58,7 +63,7 @@ export default function Homepage() {
     const params = new URLSearchParams(window.location.search);
     const page = params.get("page");
 
-    if (page && pages.some((p) => p.id === page)) {
+    if (page && (pages.some((p) => p.id === page) || hiddenPages.includes(page))) {
       setActive(page);
     }
   }, []);
@@ -87,6 +92,13 @@ useEffect(() => {
     localStorage.setItem("theme", "light");
   }
 }, [darkMode]);
+
+  const pageTitles = {
+    lostfound: "Lost & Found",
+    orgs: "Organizations",
+    audittrail: "Audit Trail",
+    profile: "My Profile",
+  };
 
   return (
     <div className="flex h-screen bg-gradient-to-br from-gray-100 via-gray-50 to-gray-200 dark:bg-gray-950 dark:bg-none">
@@ -174,22 +186,35 @@ useEffect(() => {
                   darkMode ? "text-white" : "text-gray-800"
                 }`}
               >
-            {active === "lostfound"
-              ? "Lost & Found"
-              : active === "orgs"
-              ? "Organizations"
-              : active}
+            {pageTitles[active] || active}
           </h2>
 
-          <button
-            onClick={() => {
-              localStorage.clear();
-              window.location.href = "/";
-            }}
-            className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md transition"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handleChangePage("profile")}
+              aria-label="My Profile"
+              title="My Profile"
+              className={`p-2 rounded-xl transition ${
+                active === "profile"
+                  ? "bg-pink-500 text-white shadow-md shadow-pink-400/30"
+                  : darkMode
+                  ? "text-gray-300 hover:bg-gray-800"
+                  : "text-gray-500 hover:bg-gray-100"
+              }`}
+            >
+              <FaUserCircle size={22} />
+            </button>
+
+            <button
+              onClick={() => {
+                localStorage.clear();
+                window.location.href = "/";
+              }}
+              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md transition"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
         
@@ -201,6 +226,7 @@ useEffect(() => {
           {active === "orgs" && <OrganizationsPage darkMode={darkMode} />}
           {active === "users" && <UsersPage darkMode={darkMode} />}
           {active === "audittrail" && <AuditTrailPage darkMode={darkMode} />}
+          {active === "profile" && <ProfilePage darkMode={darkMode} />}
         </div>
       </div>
     
