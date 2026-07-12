@@ -3,7 +3,19 @@ import { db } from "../../firebase/firebase";
 import { collection, onSnapshot, query, orderBy, doc, updateDoc, deleteDoc, addDoc, serverTimestamp,} from "firebase/firestore";
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 import { FaEye, FaTrash, FaClipboardCheck, FaUpload, FaFolderOpen, FaDownload,} from "react-icons/fa";
+import { logAudit } from "../../utils/auditTrail"; // ← adjust path if needed
+import { getAuth } from "firebase/auth";
 
+// ─── Audit helper ────────────────────────────────────────────
+function getPerformedBy() {
+  const user = getAuth().currentUser;
+  return {
+    uid: user?.uid || "",
+    name: user?.displayName || user?.email || "Unknown",
+    role: localStorage.getItem("role") || "",
+    email: user?.email || "",
+  };
+}
 
 const STATUS_CONFIG = {
   "In Progress": {
@@ -75,7 +87,23 @@ export default function OrganizationsPage({ darkMode }) {
   const handleStatusChange = async (id, newStatus) => {
     setUpdating(true);
     try {
+      // 🔎 capture the previous status before updating, for the audit log
+      const item = uploads.find((u) => u.id === id);
+
       await updateDoc(doc(db, "organization_bylaws", id), { status: newStatus });
+
+      // 🔎 Audit log: status updated
+      await logAudit({
+        action: "Updated Document Status",
+        module: "By-Laws",
+        documentId: id,
+        documentTitle: item?.fileName || "",
+        performedBy: getPerformedBy(),
+        oldData: { status: item?.status || "" },
+        newData: { status: newStatus },
+        description: `Updated status of "${item?.fileName || id}" to "${newStatus}".`,
+      });
+
       showToast(`Status updated to "${newStatus}".`);
       setModalOpen(false);
       setSelectedItem(null);
@@ -88,25 +116,42 @@ export default function OrganizationsPage({ darkMode }) {
 
   // Deletes both the Firestore record AND the actual file in Firebase
   // Storage, so removed documents don't keep taking up storage space.
-  const handleDelete = async (item) => {
-    try {
-      if (item.fileURL) {
-        try {
-          const storage = getStorage();
-          await deleteObject(storageRef(storage, item.fileURL));
-        } catch (storageErr) {
-          // File may already be missing from Storage (e.g. manually removed);
-          // don't block deleting the Firestore record because of that.
-          console.warn("Could not delete file from Storage:", storageErr);
-        }
+const handleDelete = async (item) => {
+  try {
+    if (item.fileURL) {
+      try {
+        const storage = getStorage();
+        await deleteObject(storageRef(storage, item.fileURL));
+      } catch (storageErr) {
+        // File may already be missing from Storage (e.g. manually removed);
+        // don't block deleting the Firestore record because of that.
+        console.warn("Could not delete file from Storage:", storageErr);
       }
-      await deleteDoc(doc(db, "organization_bylaws", item.id));
-      showToast("Document deleted.");
-      setDeleteConfirm(null);
-    } catch (e) {
-      showToast("Failed to delete.", "error");
     }
-  };
+    await deleteDoc(doc(db, "organization_bylaws", item.id));
+
+    // 🔎 Audit log: document deleted
+    await logAudit({
+      action: "Deleted Document",
+      module: "By-Laws",
+      documentId: item.id,
+      documentTitle: item.fileName || "",
+      performedBy: getPerformedBy(),
+      oldData: {
+        organization: item.organization || "",
+        documentType: item.documentType || "",
+        fileName: item.fileName || "",
+        status: item.status || "",
+      },
+      description: `Deleted "${item.fileName || item.id}" submitted by ${item.organization || "Unknown"}.`,
+    });
+
+    showToast("Document deleted.");
+    setDeleteConfirm(null);
+  } catch (e) {
+    showToast("Failed to delete.", "error");
+  }
+};
 
   const openModal = (item) => {
     setSelectedItem(item);
@@ -148,13 +193,28 @@ export default function OrganizationsPage({ darkMode }) {
       await uploadBytes(fileRef, uploadFile);
       const fileURL = await getDownloadURL(fileRef);
 
-      await addDoc(collection(db, "organization_bylaws"), {
+      const docRef = await addDoc(collection(db, "organization_bylaws"), {
         organization: uploadOrgName.trim(),
         documentType: uploadDocType,
         fileName: uploadFile.name,
         fileURL,
         status: STATUSES[0],
         uploadedAt: serverTimestamp(),
+      });
+
+      // 🔎 Audit log: document uploaded
+      await logAudit({
+        action: "Uploaded Document",
+        module: "By-Laws",
+        documentId: docRef.id,
+        documentTitle: uploadFile.name,
+        performedBy: getPerformedBy(),
+        newData: {
+          organization: uploadOrgName.trim(),
+          documentType: uploadDocType,
+          fileName: uploadFile.name,
+        },
+        description: `Uploaded "${uploadFile.name}" for ${uploadOrgName.trim()}.`,
       });
 
       showToast("Document uploaded successfully.");

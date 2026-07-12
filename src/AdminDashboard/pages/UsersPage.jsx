@@ -780,7 +780,7 @@ function generateUniqueUsername(firstName, lastName, users) {
                         </span>
                       </td>
                         <td
-                          className={`truncate px-3 py-3 text-xs sm:px-4 ${
+                          className={`whitespace-nowrap px-3 py-3 text-xs sm:px-4 ${
                             darkMode ? "text-pink-300" : "text-pink-700"
                           }`}
                         >
@@ -797,17 +797,6 @@ function generateUniqueUsername(firstName, lastName, users) {
                             darkMode={darkMode}
                           >
                             <Edit3 size={15} />
-                          </IconButton>
-                          <IconButton
-                            label="Reset password to default"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              resetPassword(user);
-                            }}
-                            disabled={resettingId === user.id}
-                            darkMode={darkMode}
-                          >
-                            <KeyRound size={15} />
                           </IconButton>
                           <IconButton
                             label="Toggle status"

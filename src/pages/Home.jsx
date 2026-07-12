@@ -74,11 +74,11 @@ const checklist = [
 
 const floatingCards = [
   { label: "Student Records", icon: BookOpen, className: "top-[12%] left-[4%] sm:left-[8%]" },
-  { label: "Attendance", icon: QrCode, className: "top-[8%] right-[4%] sm:right-[8%]" },
+  { label: "Attendance", icon: QrCode, className: "top-[12%] right-[4%] sm:right-[8%]" },
   { label: "Lost & Found", icon: Search, className: "bottom-[26%] left-[2%] sm:left-[6%]" },
   { label: "Reports", icon: FileBarChart, className: "bottom-[30%] right-[2%] sm:right-[6%]" },
-  { label: "Files", icon: FileText, className: "top-[42%] left-[3%] hidden lg:block" },
-  { label: "QR Code", icon: QrCode, className: "top-[42%] right-[3%] hidden lg:block" },
+  { label: "Files", icon: FileText, className: "top-[35%] left-[3%] hidden lg:block" },
+  { label: "QR Code", icon: QrCode, className: "top-[35%] right-[3%] hidden lg:block" },
 ];
 
 /* ------------------------------- sub components ---------------------------- */

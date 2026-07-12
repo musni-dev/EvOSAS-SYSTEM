@@ -13,6 +13,7 @@ const getDeviceInfo = () => {
   let browser = "Unknown";
   if (ua.includes("Chrome") && !ua.includes("Edg")) browser = "Chrome";
   else if (ua.includes("Firefox")) browser = "Firefox";
+  else if (ua.includes("Brave")) browser = "Brave";
   else if (ua.includes("Safari") && !ua.includes("Chrome")) browser = "Safari";
   else if (ua.includes("Edg")) browser = "Edge";
 

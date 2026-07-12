@@ -1,9 +1,3 @@
-// ============================================================
-//  AuditTrailPage.jsx  —  EVOSAS Audit Trail
-//  Pink-600 theme + Dark Mode
-//  All logic is self-contained; no existing logic is changed.
-// ============================================================
-
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   collection,
@@ -113,6 +107,7 @@ const ModuleBadge = ({ module, darkMode }) => {
     "By-Laws": "bg-amber-100 text-amber-700",
     Evaluation: "bg-indigo-100 text-indigo-700",
     Profile: "bg-rose-100 text-rose-700",
+    Attendance: "bg-cyan-100 text-cyan-700",
   };
   const darkColours = {
     Cases: "bg-pink-900/30 text-pink-400",
@@ -122,6 +117,7 @@ const ModuleBadge = ({ module, darkMode }) => {
     "By-Laws": "bg-amber-900/30 text-amber-400",
     Evaluation: "bg-indigo-900/30 text-indigo-400",
     Profile: "bg-rose-900/30 text-rose-400",
+    Attendance: "bg-cyan-900/30 text-cyan-400",
   };
   const cls = darkMode
     ? darkColours[module] || "bg-gray-700 text-gray-300"

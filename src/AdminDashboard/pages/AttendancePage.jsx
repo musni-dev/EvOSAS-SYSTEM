@@ -4,6 +4,8 @@ import {  addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, serverTi
 import { CalendarDays, Check, CheckCircle2, ChevronDown, Clock, Download, GraduationCap, Plus, QrCode, Search, StopCircle, Trash2, Users, X,
 } from "lucide-react";
 import { db } from "../../firebase/firebase";
+import { logAudit } from "../../utils/auditTrail"; // ← adjust path if needed
+import { getAuth } from "firebase/auth";
 
 function formatTimestamp(value) {
   if (!value) return "-";
@@ -55,6 +57,17 @@ function getSessionEndDateTime(session) {
 function isSessionExpired(session) {
   const end = getSessionEndDateTime(session);
   return end ? new Date() > end : false;
+}
+
+// ─── Audit helper ────────────────────────────────────────────
+function getPerformedBy() {
+  const user = getAuth().currentUser;
+  return {
+    uid: user?.uid || "",
+    name: user?.displayName || user?.email || "Unknown",
+    role: localStorage.getItem("role") || "",
+    email: user?.email || "",
+  };
 }
 
 function StatCard({ icon: Icon, label, value, sub, color = "pink", darkMode }) {
@@ -281,6 +294,17 @@ useEffect(() => {
         createdAt: serverTimestamp(),
       });
 
+      // 🔎 Audit log: session created
+      await logAudit({
+        action: "Created Attendance Session",
+        module: "Attendance",
+        documentId: ref.id,
+        documentTitle: title.trim(),
+        performedBy: getPerformedBy(),
+        newData: { title: title.trim(), eventDate, eventTime, qrEndTime },
+        description: `Created attendance session "${title.trim()}".`,
+      });
+
       setTitle("");
       setEventDate("");
       setEventTime("");
@@ -300,6 +324,9 @@ useEffect(() => {
   async function deleteSessions(sessionIds) {
     if (!sessionIds.length) return;
 
+    // 🔎 capture session details before they're deleted, for the audit log
+    const sessionsToDelete = sessions.filter((s) => sessionIds.includes(s.id));
+
     const batch = writeBatch(db);
 
     for (const sessionId of sessionIds) {
@@ -318,6 +345,25 @@ useEffect(() => {
     }
 
     await batch.commit();
+
+    // 🔎 Audit log: session(s) deleted
+    for (const session of sessionsToDelete) {
+      await logAudit({
+        action: "Deleted Attendance Session",
+        module: "Attendance",
+        documentId: session.id,
+        documentTitle: session.title,
+        performedBy: getPerformedBy(),
+        oldData: {
+          title: session.title,
+          eventDate: session.eventDate,
+          eventTime: session.eventTime,
+          qrEndTime: session.qrEndTime,
+          status: session.status,
+        },
+        description: `Deleted attendance session "${session.title}" and its attendance records.`,
+      });
+    }
 
     if (sessionIds.includes(selectedSessionId)) {
       setSelectedSessionId("");

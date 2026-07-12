@@ -1,7 +1,6 @@
-import { useState, useEffect, useRef } from "react";
-import { db, storage } from "../firebase/firebase";
+import { useState, useEffect } from "react";
+import { db } from "../firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import bcrypt from "bcryptjs";
 
 /*
@@ -82,9 +81,6 @@ export default function SDOProfile({ darkMode }) {
   const [uid, setUid] = useState("");
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(null);
-  const fileInputRef = useRef(null);
 
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [showPw, setShowPw] = useState({ current: false, next: false, confirm: false });
@@ -116,38 +112,7 @@ export default function SDOProfile({ darkMode }) {
   }, []);
 
   const displayName = formatName(profile);
-  const photoURL = previewUrl || profile?.photoURL || null;
-
-  const handlePickFile = () => fileInputRef.current?.click();
-
-  const handleFileChange = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file || !uid) return;
-
-    const localUrl = URL.createObjectURL(file);
-    setPreviewUrl(localUrl);
-    setUploading(true);
-    try {
-      const storageRef = ref(storage, `profile_pictures/${uid}`);
-      await uploadBytes(storageRef, file);
-      const downloadUrl = await getDownloadURL(storageRef);
-      await updateDoc(doc(db, "users", uid), { photoURL: downloadUrl });
-      setProfile((p) => ({ ...(p || {}), photoURL: downloadUrl }));
-
-      // Keep localStorage's cached userData in sync so other pages
-      // (sidebar avatar, etc.) reflect the new photo immediately.
-      try {
-        const stored = JSON.parse(localStorage.getItem("userData") || "{}");
-        localStorage.setItem("userData", JSON.stringify({ ...stored, photoURL: downloadUrl }));
-      } catch {
-        /* ignore */
-      }
-    } catch (err) {
-      console.error("Profile picture upload failed:", err);
-    } finally {
-      setUploading(false);
-    }
-  };
+  const photoURL = profile?.photoURL || null;
 
   const handlePwSubmit = async (e) => {
     e.preventDefault();
@@ -206,7 +171,7 @@ export default function SDOProfile({ darkMode }) {
   const strength = passwordStrength(pwForm.next);
 
   const cardClass = `rounded-2xl p-6 shadow-sm border ${
-    darkMode ? "bg-slate-900 border-slate-700 shadow-black/30" : "bg-white border-gray-200"
+    darkMode ? "bg-slate-900 border-slate-700 shadow-black/30" : "bg-white "
   }`;
 
   const inputClass = `w-full px-3.5 py-2.5 pr-11 rounded-lg text-sm border transition-colors duration-150 outline-none ${
@@ -246,40 +211,12 @@ export default function SDOProfile({ darkMode }) {
                   {getInitials(displayName)}
                 </div>
               )}
-
-              <button
-                onClick={handlePickFile}
-                disabled={uploading}
-                className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-pink-600 text-white flex items-center justify-center
-                  shadow-md hover:bg-pink-700 active:scale-95 transition-all duration-150 disabled:opacity-60"
-                aria-label="Change profile picture"
-              >
-                {uploading ? (
-                  <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    <circle cx="12" cy="13" r="3.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )}
-              </button>
-
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileChange}
-                className="hidden"
-              />
             </div>
 
             <h3 className={`mt-4 text-base font-semibold truncate ${darkMode ? "text-white" : "text-gray-900"}`}>
               {displayName}
             </h3>
-            <p className={`text-xs truncate ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
+            <p className={`text-xs truncate ${darkMode ? "text-slate-400" : "text-gray-800"}`}>
               {profile?.username || "—"}
             </p>
 
@@ -299,7 +236,7 @@ export default function SDOProfile({ darkMode }) {
         <div className="lg:col-span-2 space-y-6">
           {/* PERSONAL INFORMATION */}
           <div className={cardClass}>
-            <h3 className={`text-sm font-semibold mb-4 ${darkMode ? "text-white" : "text-gray-900"}`}>
+            <h3 className={`text-sm font-semibold mb-4 ${darkMode ? "text-white" : "text-pink-600"}`}>
               Personal information
             </h3>
             <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">
@@ -316,10 +253,10 @@ export default function SDOProfile({ darkMode }) {
 
           {/* CHANGE PASSWORD */}
           <div className={cardClass}>
-            <h3 className={`text-sm font-semibold mb-1 ${darkMode ? "text-white" : "text-gray-900"}`}>
+            <h3 className={`text-sm font-semibold mb-1 ${darkMode ? "text-white" : "text-pink-600"}`}>
               Change password
             </h3>
-            <p className={`text-xs mb-4 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
+            <p className={`text-xs mb-4 ${darkMode ? "text-slate-400" : "text-black"}`}>
               Use a strong password you don't use elsewhere
             </p>
 
@@ -408,7 +345,7 @@ export default function SDOProfile({ darkMode }) {
 function InfoField({ label, value, darkMode }) {
   return (
     <div>
-      <dt className={`text-[11px] font-medium uppercase tracking-wide mb-0.5 ${darkMode ? "text-slate-500" : "text-gray-400"}`}>
+      <dt className={`text-[11px] font-medium uppercase tracking-wide mb-0.5 ${darkMode ? "text-pink-600" : "text-pink-600"}`}>
         {label}
       </dt>
       <dd className={`text-sm truncate ${darkMode ? "text-white" : "text-gray-900"}`}>{value}</dd>
@@ -419,7 +356,7 @@ function InfoField({ label, value, darkMode }) {
 function PasswordField({ label, value, onChange, visible, onToggleVisible, darkMode, inputClass }) {
   return (
     <div>
-      <label className={`block text-xs font-medium mb-1.5 ${darkMode ? "text-slate-300" : "text-gray-600"}`}>
+      <label className={`block text-xs font-medium mb-1.5 ${darkMode ? "text-slate-300" :"text-pink-600"}`}>
         {label}
       </label>
       <div className="relative">

@@ -1,9 +1,21 @@
 import { useEffect, useState, useRef } from "react";
-import { QRCodeCanvas } from "qrcode.react";
 import { db } from "../../firebase/firebase";
 import { collection,  query, where,getDocs, addDoc, updateDoc, Timestamp, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { FaTrash, FaClipboardCheck, FaQrcode, FaChartBar, FaPen} from "react-icons/fa";
 import html2canvas from "html2canvas";
+import { logAudit } from "../../utils/auditTrail"; // ← adjust path if needed
+import { getAuth } from "firebase/auth";
+
+// ─── Audit helper ────────────────────────────────────────────
+function getPerformedBy() {
+  const user = getAuth().currentUser;
+  return {
+    uid: user?.uid || "",
+    name: user?.displayName || user?.email || "Unknown",
+    role: localStorage.getItem("role") || "",
+    email: user?.email || "",
+  };
+}
 
 export default function EventsPage({ darkMode }) {
   const [eventName, setEventName] = useState("");
@@ -76,6 +88,17 @@ export default function EventsPage({ darkMode }) {
         status: "Active",
       });
 
+      // 🔎 Audit log: evaluation created
+      await logAudit({
+        action: "Created Evaluation",
+        module: "Evaluation",
+        documentId: docRef.id,
+        documentTitle: eventName,
+        performedBy: getPerformedBy(),
+        newData: { eventName, eventDate, questions },
+        description: `Created evaluation form "${eventName}".`,
+      });
+
       const link = `${window.location.origin}/evaluation/${docRef.id}`;
       setQrLink(link);
       setShowQR(true);
@@ -104,6 +127,9 @@ const handleViewQR = (ev) => {
 const handleDelete = async (id) => {
   if (!window.confirm("Delete this evaluation and all responses?")) return;
 
+  // 🔎 capture the event's details before it's deleted, for the audit log
+  const eventToDelete = evaluations.find((e) => e.id === id);
+
   try {
     // Delete evaluationResults
     const resultsQuery = query(
@@ -131,6 +157,23 @@ const responsesQuery = query(
 
     // Delete evaluation
     await deleteDoc(doc(db, "evaluations", id));
+
+    // 🔎 Audit log: evaluation deleted
+    await logAudit({
+      action: "Deleted Evaluation",
+      module: "Evaluation",
+      documentId: id,
+      documentTitle: eventToDelete?.eventName || "",
+      performedBy: getPerformedBy(),
+      oldData: eventToDelete
+        ? {
+            eventName: eventToDelete.eventName,
+            eventDate: eventToDelete.eventDate,
+            questions: eventToDelete.questions,
+          }
+        : null,
+      description: `Deleted evaluation "${eventToDelete?.eventName || id}" and all responses.`,
+    });
 
     alert("Evaluation and all responses deleted successfully.");
   } catch (err) {
@@ -253,6 +296,26 @@ const responsesQuery = query(
         eventName: viewEventName,
         eventDate: viewEventDate,
         questions: viewQuestions,
+      });
+
+      // 🔎 Audit log: evaluation edited
+      await logAudit({
+        action: "Edited Evaluation",
+        module: "Evaluation",
+        documentId: viewingEvent.id,
+        documentTitle: viewEventName,
+        performedBy: getPerformedBy(),
+        oldData: {
+          eventName: viewingEvent.eventName,
+          eventDate: viewingEvent.eventDate,
+          questions: viewingEvent.questions,
+        },
+        newData: {
+          eventName: viewEventName,
+          eventDate: viewEventDate,
+          questions: viewQuestions,
+        },
+        description: `Edited evaluation "${viewEventName}".`,
       });
 
       alert("Evaluation updated successfully");

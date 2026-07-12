@@ -10,11 +10,11 @@ const quickLinks = [
 ];
 
 const modules = [
-  "Student Discipline",
-  "Lost & Found",
-  "Attendance",
+  "Student Discipline Records",
+  "Lost & Found Items",
+  "SSC Attendance",
   "Event Evaluation",
-  "Announcements",
+  "Organization Files",
 ];
 
 export default function Footer() {

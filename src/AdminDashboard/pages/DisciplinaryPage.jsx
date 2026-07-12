@@ -376,25 +376,6 @@ useEffect(() => {
   fetchCases();
 }, []);
 
-
-
-     // =========================
-  // Case Records PAGE
-  // // =========================
-  // if (activePage === "records") {
-  //   return (
-  //     <CaseRecords
-  //       cases={cases}
-  //       setCases={setCases}
-  //       setActivePage={setActivePage}
-  //       handleEdit={handleEdit}
-  //       handleView={handleView}
-  //       handleDelete={handleDelete}
-  //     />
-  //   );
-  // }
-
-
 const filteredCases = cases.filter((item) => {
   const term = searchTerm.toLowerCase();
 
@@ -673,7 +654,7 @@ const filteredCases = cases.filter((item) => {
 
                           <td className="p-3.5">
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
                                 darkMode
                                   ? "bg-yellow-900 text-yellow-300"
                                   : "bg-yellow-100 text-yellow-700"
@@ -685,7 +666,7 @@ const filteredCases = cases.filter((item) => {
 
                           <td className="p-3.5">
                             <span
-                              className={`px-3 py-1 rounded-full text-xs font-semibold ${offenseBadgeClasses(level)}`}
+                              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${offenseBadgeClasses(level)}`}
                             >
                               {level}
                             </span>
@@ -696,13 +677,6 @@ const filteredCases = cases.filter((item) => {
                               className="flex items-center justify-center gap-2"
                               onClick={(e) => e.stopPropagation()}
                             >
-                              <button
-                                onClick={() => handleView(item)}
-                                className="px-3 py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition shadow-sm"
-                                title="View"
-                              >
-                                <FaEye />
-                              </button>
 
                               <button
                                 onClick={() => handleDelete(item.id)}
