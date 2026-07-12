@@ -1,0 +1,87 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      // Only Administrator accounts use Firebase Auth in this system —
+      // SSC/SDO/SOC use a custom Firestore + bcrypt session instead.
+      // So a valid Firebase Auth session IS the admin check.
+      return request.auth != null;
+    }
+
+    // ── Users ──────────────────────────────────────────
+    match /users/{userId} {
+      // NOTE: SSC/SDO/SOC read/write their own account via client code with
+      // no Firebase Auth session, so "isSignedIn()" only ever gates the
+      // Administrator here. This collection is more open than ideal until
+      // the custom-token migration happens.
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // ── Disciplinary Cases ─────────────────────────────
+    match /cases/{caseId} {
+      allow read: if true;
+      allow write: if true;
+      // TODO after auth migration: restrict write to isAdmin() || hasRole('SDO')
+    }
+
+    // ── Lost & Found ───────────────────────────────────
+    match /lost_found/{itemId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── Attendance Sessions & Records ──────────────────
+    match /sessions/{sessionId} {
+      allow read: if true;
+      allow write: if true;
+      // TODO after migration: write restricted to SSC/Admin
+    }
+    match /attendance/{recordId} {
+      allow read: if true;
+      allow create: if true; // students scanning QR, no Firebase Auth session
+      allow update, delete: if true;
+    }
+
+    // ── Event Evaluation ───────────────────────────────
+    match /evaluations/{evalId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /evaluationResponses/{responseId} {
+      allow read: if true;
+      allow create: if true; // students, unauthenticated
+      allow update, delete: if false; // responses should never be edited after submission
+    }
+    match /evaluationResults/{resultId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // ── Organization By-Laws ────────────────────────────
+    match /organization_bylaws/{docId} {
+      allow read: if true;
+      allow write: if true;
+      // NOTE: SOC's "own documents only" rule is enforced client-side only
+      // (the `where("uploadedBy", "==", uid)` query) — cannot be enforced
+      // here until SOC has a real Firebase Auth session.
+    }
+
+    // ── Audit Trail ────────────────────────────────────
+    match /auditTrail/{logId} {
+      allow read: if true;
+      allow create: if true; // written by the app itself on every action
+      allow update, delete: if false; // logs must be immutable
+    }
+
+    // ── Default deny for anything else ─────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
