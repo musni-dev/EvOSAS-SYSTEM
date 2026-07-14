@@ -210,7 +210,7 @@ useEffect(() => {
                 localStorage.clear();
                 window.location.href = "/";
               }}
-              className="bg-pink-500 hover:bg-pink-600 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md transition"
+              className="bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 rounded-xl text-sm font-medium shadow-md transition"
             >
               Logout
             </button>

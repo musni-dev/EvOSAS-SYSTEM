@@ -118,8 +118,14 @@ export default function EvaluationFormPage() {
 
   const submitEvaluation = async () => {
     try {
+
+
       if (!studentId || !program || !yearSection) {
         return alert("Please fill up required fields");
+      }
+      
+      if ((event.status || "Active") === "Disabled") {
+        return alert("This evaluation form is no longer accepting responses.");
       }
 
       if (studentId.length !== 9) {
@@ -230,12 +236,36 @@ const scoreMap = {
   }
 
   if (!event) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <p className="text-gray-500 text-sm">Event not found</p>
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 text-center space-y-3 max-w-sm">
+        <div className="w-12 h-12 mx-auto rounded-full bg-red-100 flex items-center justify-center text-2xl">
+          ⚠️
+        </div>
+        <h2 className="text-lg font-bold text-gray-800">This evaluation form has expired</h2>
+        <p className="text-sm text-gray-500">
+          This link is no longer valid. It may have been removed by the OSAS.
+        </p>
       </div>
-    );
-  }
+    </div>
+  );
+}
+
+if ((event.status || "Active") === "Disabled") {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="bg-white rounded-3xl shadow-xl border border-gray-100 p-8 text-center space-y-3 max-w-sm">
+        <div className="w-12 h-12 mx-auto rounded-full bg-amber-100 flex items-center justify-center text-2xl">
+          🔒
+        </div>
+        <h2 className="text-lg font-bold text-gray-800">This form is no longer accepting responses</h2>
+        <p className="text-sm text-gray-500">
+          The organizer has disabled this evaluation link.
+        </p>
+      </div>
+    </div>
+  );
+}
 
   const answeredCount = Object.keys(answers).length;
   const totalQuestions = event.questions.length;

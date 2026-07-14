@@ -7,20 +7,15 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // Only Administrator accounts use Firebase Auth in this system —
-      // SSC/SDO/SOC use a custom Firestore + bcrypt session instead.
-      // So a valid Firebase Auth session IS the admin check.
       return request.auth != null;
     }
 
     // ── Users ──────────────────────────────────────────
     match /users/{userId} {
-      // NOTE: SSC/SDO/SOC read/write their own account via client code with
-      // no Firebase Auth session, so "isSignedIn()" only ever gates the
-      // Administrator here. This collection is more open than ideal until
-      // the custom-token migration happens.
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastLoginAt']);
     }
 
     // ── Disciplinary Cases ─────────────────────────────
@@ -56,7 +51,8 @@ service cloud.firestore {
     match /evaluationResponses/{responseId} {
       allow read: if true;
       allow create: if true; // students, unauthenticated
-      allow update, delete: if false; // responses should never be edited after submission
+      allow update: if false;            // responses should never be edited
+      allow delete: if isAdmin();        
     }
     match /evaluationResults/{resultId} {
       allow read: if true;

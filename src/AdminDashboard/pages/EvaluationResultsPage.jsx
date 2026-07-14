@@ -67,6 +67,28 @@ export default function EvaluationResultsPage() {
     return { text: "No Data", color: "text-gray-400 bg-gray-50" };
   };
 
+  const handleDownloadResults = () => {
+  const headers = ["Section", "Respondents", "Average Rating", "Remarks"];
+  const rows = sections.map((s) => {
+    const rating = ratingLabel(s.avg);
+    return [s.label, s.respondents, s.avg.toFixed(2), rating.text];
+  });
+
+  let csv = headers.join(",") + "\n";
+  rows.forEach((r) => {
+    csv += r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n";
+  });
+  csv += `\n"Overall Total (${totalRespondents} respondents)","","${overall}",""\n`;
+
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${event?.eventName || "evaluation"}-results.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+};
+
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
 
@@ -112,9 +134,15 @@ export default function EvaluationResultsPage() {
 
         {/* PER-SECTION BREAKDOWN */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-5 sm:p-7">
-          <h2 className="text-base font-bold text-gray-800 mb-4">
-            Results per Section
-          </h2>
+        <div className="flex items-center justify-between mb-4">
+            <h2 className="text-base font-bold text-gray-800">Results per Section</h2>
+            <button
+              onClick={handleDownloadResults}
+              className="px-4 py-2 bg-pink-600 text-white text-xs font-medium rounded-xl shadow-sm transition-all duration-200 hover:bg-pink-700 active:scale-[0.98]"
+            >
+              Download Results
+            </button>
+          </div>
 
           {sections.length === 0 ? (
             <p className="text-sm text-gray-400 py-8 text-center">

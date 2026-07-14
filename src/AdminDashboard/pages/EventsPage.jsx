@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { db } from "../../firebase/firebase";
+import { QRCodeCanvas } from "qrcode.react";
 import { collection,  query, where,getDocs, addDoc, updateDoc, Timestamp, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { FaTrash, FaClipboardCheck, FaQrcode, FaChartBar, FaPen} from "react-icons/fa";
 import html2canvas from "html2canvas";
@@ -42,6 +43,8 @@ export default function EventsPage({ darkMode }) {
   const [viewEventName, setViewEventName] = useState("");
   const [viewEventDate, setViewEventDate] = useState("");
   const [viewQuestions, setViewQuestions] = useState([]);
+
+  const [togglingStatus, setTogglingStatus] = useState(false);
 
   const [questions, setQuestions] = useState([
     "The event was well organized.",
@@ -182,6 +185,46 @@ const responsesQuery = query(
   }
 };
 
+const handleToggleStatus = async (ev) => {
+  if (togglingStatus) return;
+
+  setTogglingStatus(true);
+
+  const currentStatus = ev.status || "Active";
+  const newStatus = currentStatus === "Disabled" ? "Active" : "Disabled";
+
+  try {
+    await updateDoc(doc(db, "evaluations", ev.id), {
+      status: newStatus,
+    });
+
+    // Update the modal immediately
+    setViewingEvent((prev) => ({
+      ...prev,
+      status: newStatus,
+    }));
+
+    await logAudit({
+      action:
+        newStatus === "Disabled"
+          ? "Disabled Evaluation"
+          : "Enabled Evaluation",
+      module: "Evaluation",
+      documentId: ev.id,
+      documentTitle: ev.eventName,
+      performedBy: getPerformedBy(),
+      oldData: { status: currentStatus },
+      newData: { status: newStatus },
+      description: `${
+        newStatus === "Disabled" ? "Disabled" : "Re-enabled"
+      } evaluation "${ev.eventName}".`,
+    });
+  } catch (err) {
+    alert(err.message);
+  } finally {
+    setTogglingStatus(false);
+  }
+};
   // FETCH EVALUATIONS
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "evaluations"), (snap) => {
@@ -417,7 +460,7 @@ const responsesQuery = query(
 
         <button
           onClick={addQuestion}
-          className="px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-xl shadow-sm transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98] w-full sm:w-auto"
+          className="px-4 py-2 bg-pink-600 text-white text-sm font-medium rounded-xl shadow-sm transition-all duration-200 hover:bg-pink-600 active:scale-[0.98] w-full sm:w-auto"
         >
           + Add Question
         </button>
@@ -586,6 +629,13 @@ const responsesQuery = query(
                   darkMode ? "text-slate-400" : "text-gray-500"
                 }`}
               >
+                Status
+              </th>
+              <th
+                className={`py-3 px-2 text-xs font-semibold uppercase tracking-wider ${
+                  darkMode ? "text-slate-400" : "text-gray-500"
+                }`}
+              >
                 Actions
               </th>
             </tr>
@@ -638,6 +688,20 @@ const responsesQuery = query(
                   <td className={`py-3.5 px-2 ${darkMode ? "text-pink-400" : "text-pink-600"}`}>
                     {avg}
                   </td>
+
+                  <td className="py-3.5 px-2">
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                        (ev.status || "Active") === "Disabled"
+                          ? "bg-gray-200 text-gray-500"
+                          : "bg-emerald-100 text-emerald-600"
+                      }`}
+                    >
+                      {ev.status || "Active"}
+                    </span>
+                  </td>
+
+
                   <td className="py-3.5 px-2 rounded-r-xl">
                     <div
                       className="flex gap-2 flex-wrap"
@@ -664,6 +728,7 @@ const responsesQuery = query(
                                 >
                                   <FaChartBar />
                                 </button>
+                                
 
                       <button
                         onClick={() => handleDelete(ev.id)}
@@ -792,7 +857,7 @@ const responsesQuery = query(
                   {isEditingView && (
                     <button
                       onClick={addViewQuestion}
-                      className="px-3 py-1.5 bg-pink-600 text-white text-xs font-medium rounded-lg shadow-sm transition-all duration-200 hover:bg-emerald-600 active:scale-[0.98]"
+                      className="px-3 py-1.5 bg-pink-600 text-white text-xs font-medium rounded-lg shadow-sm transition-all duration-200 hover:bg-pink-600 active:scale-[0.98]"
                     >
                       + Add Question
                     </button>
@@ -877,13 +942,34 @@ const responsesQuery = query(
                       </button>
                     </>
                   ) : (
-                    <button
-                      type="button"
-                      onClick={closeViewModal}
-                      className="px-6 py-3 rounded-xl border border-red-700 bg-red-700 text-white font-medium transition-all duration-200 hover:bg-red-600 active:scale-[0.98]"
-                    >
-                      Close
-                    </button>
+                    
+                   <>
+                          <button
+                            onClick={() => handleToggleStatus(viewingEvent)}
+                            disabled={togglingStatus}
+                            className={`px-6 py-3 rounded-xl text-white font-medium transition-all duration-200 ${
+                              togglingStatus
+                                ? "bg-gray-400 cursor-not-allowed opacity-70"
+                                : (viewingEvent?.status || "Active") === "Disabled"
+                                ? "bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98]"
+                                : "bg-amber-500 hover:bg-amber-600 active:scale-[0.98]"
+                            }`}
+                          >
+                            {togglingStatus
+                              ? "Updating..."
+                              : (viewingEvent?.status || "Active") === "Disabled"
+                              ? "Enable"
+                              : "Disable"}
+                          </button>
+
+                      <button
+                        type="button"
+                        onClick={closeViewModal}
+                        className="px-6 py-3 rounded-xl border border-red-700 bg-red-700 text-white font-medium transition-all duration-200 hover:bg-red-600 active:scale-[0.98]"
+                      >
+                        Close
+                      </button>
+                    </>
                   )}
                 </div>
               </div>

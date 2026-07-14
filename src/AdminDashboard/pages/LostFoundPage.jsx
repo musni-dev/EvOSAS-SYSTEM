@@ -92,7 +92,7 @@ const S = {
   btn: (variant = "primary") => ({
     display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 18px",
     borderRadius: 10, fontWeight: 600, fontSize: 14, cursor: "pointer", border: "none",
-    background: variant === "primary" ? "#EC4899" : variant === "danger" ? "#EF4444" : "#F3F4F6",
+    background: variant === "primary" ? "#ed00d8" : variant === "danger" ? "#EF4444" : "#F3F4F6",
     color: variant === "primary" ? "#fff" : variant === "danger" ? "#fff" : "#374151",
     transition: "opacity .15s",
   }),
@@ -518,7 +518,7 @@ return (
           className={`px-5 py-2.5 rounded-xl font-semibold transition ${
               darkMode
                 ? "bg-pink-600 hover:bg-pink-500 text-white"
-                : "bg-pink-500 hover:bg-pink-600 text-white"
+                : "bg-pink-600 hover:bg-pink-500 text-white"
             }`}
       >
         ＋ Add Report

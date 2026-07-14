@@ -161,79 +161,82 @@ export default function SDOProfile({ darkMode }) {
 
   if (loading) {
     return (
-      <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className={`h-64 rounded-2xl animate-pulse ${darkMode ? "bg-slate-900" : "bg-gray-100"}`} />
-        <div className={`lg:col-span-2 h-64 rounded-2xl animate-pulse ${darkMode ? "bg-slate-900" : "bg-gray-100"}`} />
+      <div className="h-full overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-10 sm:pb-12 grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
+          <div className={`h-56 sm:h-64 rounded-2xl animate-pulse ${darkMode ? "bg-slate-900" : "bg-gray-100"}`} />
+          <div className={`lg:col-span-2 h-56 sm:h-64 rounded-2xl animate-pulse ${darkMode ? "bg-slate-900" : "bg-gray-100"}`} />
+        </div>
       </div>
     );
   }
 
   const strength = passwordStrength(pwForm.next);
 
-  const cardClass = `rounded-2xl p-6 shadow-sm border ${
-    darkMode ? "bg-slate-900 border-slate-700 shadow-black/30" : "bg-white "
+  const cardClass = `rounded-2xl p-5 sm:p-6 shadow-sm border ${
+    darkMode ? "bg-slate-900 border-slate-700 shadow-black/30" : "bg-white border-gray-100"
   }`;
 
-  const inputClass = `w-full px-3.5 py-2.5 pr-11 rounded-lg text-sm border transition-colors duration-150 outline-none ${
+  const inputClass = `w-full px-3.5 py-2.5 pr-11 rounded-lg text-base sm:text-sm border transition-colors duration-150 outline-none ${
     darkMode
       ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500 focus:ring-2 focus:ring-pink-500/40 focus:border-pink-500"
       : "bg-gray-50 border-gray-200 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-pink-500/50 focus:border-pink-500"
   }`;
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="mb-6">
-        <h1 className={`text-xl font-semibold ${darkMode ? "text-white" : "text-pink-600"}`}>Profile</h1>
-        <p className={`text-sm mt-0.5 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
-          Manage your personal information and account security
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* LEFT: AVATAR CARD */}
-        <div className="lg:col-span-1">
-          <div className={`${cardClass} text-center sticky top-6`}>
-            <div className="relative inline-block">
-              {photoURL ? (
-                <img
-                  src={photoURL}
-                  alt={displayName}
-                  className={`w-24 h-24 rounded-2xl object-cover mx-auto ring-4 ${
-                    darkMode ? "ring-pink-500/10" : "ring-pink-50"
-                  }`}
-                />
-              ) : (
-                <div
-                  className={`w-24 h-24 rounded-2xl mx-auto flex items-center justify-center text-xl font-semibold text-white bg-gradient-to-br from-pink-500 to-pink-700 ring-4 ${
-                    darkMode ? "ring-pink-500/10" : "ring-pink-50"
-                  }`}
-                >
-                  {getInitials(displayName)}
-                </div>
-              )}
-            </div>
-
-            <h3 className={`mt-4 text-base font-semibold truncate ${darkMode ? "text-white" : "text-gray-900"}`}>
-              {displayName}
-            </h3>
-            <p className={`text-xs truncate ${darkMode ? "text-slate-400" : "text-gray-800"}`}>
-              {profile?.username || "—"}
-            </p>
-
-            {profile?.role && (
-              <span
-                className={`inline-block mt-3 px-3 py-1 rounded-full text-xs font-medium ${
-                  darkMode ? "bg-pink-500/10 text-pink-300" : "bg-pink-50 text-pink-600"
-                }`}
-              >
-                {profile.role}
-              </span>
-            )}
-          </div>
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-10 sm:pb-12">
+        <div className="mb-5 sm:mb-6">
+          <h1 className={`text-lg sm:text-xl font-semibold ${darkMode ? "text-white" : "text-pink-600"}`}>Profile</h1>
+          <p className={`text-xs sm:text-sm mt-0.5 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
+            Manage your personal information and account security
+          </p>
         </div>
 
-        {/* RIGHT: INFO + SECURITY */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 sm:gap-6">
+          {/* LEFT: AVATAR CARD */}
+          <div className="lg:col-span-1">
+            <div className={`${cardClass} text-center lg:sticky lg:top-6`}>
+              <div className="relative inline-block">
+                {photoURL ? (
+                  <img
+                    src={photoURL}
+                    alt={displayName}
+                    className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl object-cover mx-auto ring-4 ${
+                      darkMode ? "ring-pink-500/10" : "ring-pink-50"
+                    }`}
+                  />
+                ) : (
+                  <div
+                    className={`w-20 h-20 sm:w-24 sm:h-24 rounded-2xl mx-auto flex items-center justify-center text-lg sm:text-xl font-semibold text-white bg-gradient-to-br from-pink-500 to-pink-700 ring-4 ${
+                      darkMode ? "ring-pink-500/10" : "ring-pink-50"
+                    }`}
+                  >
+                    {getInitials(displayName)}
+                  </div>
+                )}
+              </div>
+
+              <h3 className={`mt-4 text-base font-semibold truncate px-2 ${darkMode ? "text-white" : "text-gray-900"}`}>
+                {displayName}
+              </h3>
+              <p className={`text-xs truncate px-2 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
+                {profile?.username || "—"}
+              </p>
+
+              {profile?.role && (
+                <span
+                  className={`inline-block mt-3 px-3 py-1 rounded-full text-xs font-medium max-w-full truncate ${
+                    darkMode ? "bg-pink-500/10 text-pink-300" : "bg-pink-50 text-pink-600"
+                  }`}
+                >
+                  {profile.role}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* RIGHT: INFO + SECURITY */}
+          <div className="lg:col-span-2 space-y-5 sm:space-y-6">
           {/* PERSONAL INFORMATION */}
           <div className={cardClass}>
             <h3 className={`text-sm font-semibold mb-4 ${darkMode ? "text-white" : "text-pink-600"}`}>
@@ -256,13 +259,14 @@ export default function SDOProfile({ darkMode }) {
             <h3 className={`text-sm font-semibold mb-1 ${darkMode ? "text-white" : "text-pink-600"}`}>
               Change password
             </h3>
-            <p className={`text-xs mb-4 ${darkMode ? "text-slate-400" : "text-black"}`}>
+            <p className={`text-xs mb-4 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
               Use a strong password you don't use elsewhere
             </p>
 
-            <form onSubmit={handlePwSubmit} className="space-y-4">
+            <form onSubmit={handlePwSubmit} className="space-y-4" noValidate>
               <PasswordField
                 label="Current password"
+                autoComplete="current-password"
                 value={pwForm.current}
                 onChange={(v) => setPwForm((f) => ({ ...f, current: v }))}
                 visible={showPw.current}
@@ -272,6 +276,7 @@ export default function SDOProfile({ darkMode }) {
               />
               <PasswordField
                 label="New password"
+                autoComplete="new-password"
                 value={pwForm.next}
                 onChange={(v) => setPwForm((f) => ({ ...f, next: v }))}
                 visible={showPw.next}
@@ -300,6 +305,7 @@ export default function SDOProfile({ darkMode }) {
 
               <PasswordField
                 label="Confirm new password"
+                autoComplete="new-password"
                 value={pwForm.confirm}
                 onChange={(v) => setPwForm((f) => ({ ...f, confirm: v }))}
                 visible={showPw.confirm}
@@ -310,6 +316,7 @@ export default function SDOProfile({ darkMode }) {
 
               {pwStatus.message && (
                 <div
+                  role="alert"
                   className={`flex items-start gap-2 px-3.5 py-2.5 rounded-lg text-xs font-medium ${
                     pwStatus.type === "success"
                       ? darkMode
@@ -328,13 +335,15 @@ export default function SDOProfile({ darkMode }) {
                 type="submit"
                 disabled={pwSubmitting}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-pink-600 text-white text-sm font-medium
-                  hover:bg-pink-700 active:scale-[0.98] transition-all duration-150 shadow-sm shadow-pink-600/30 disabled:opacity-60"
+                  hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2
+                  active:scale-[0.98] transition-all duration-150 shadow-sm shadow-pink-600/30 disabled:opacity-60 disabled:active:scale-100"
               >
                 {pwSubmitting ? "Updating…" : "Update password"}
               </button>
             </form>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
@@ -344,19 +353,21 @@ export default function SDOProfile({ darkMode }) {
 
 function InfoField({ label, value, darkMode }) {
   return (
-    <div>
-      <dt className={`text-[11px] font-medium uppercase tracking-wide mb-0.5 ${darkMode ? "text-pink-600" : "text-pink-600"}`}>
+    <div className="min-w-0">
+      <dt className="text-[11px] font-medium uppercase tracking-wide mb-0.5 text-pink-600">
         {label}
       </dt>
-      <dd className={`text-sm truncate ${darkMode ? "text-white" : "text-gray-900"}`}>{value}</dd>
+      <dd className={`text-sm truncate ${darkMode ? "text-white" : "text-gray-900"}`} title={typeof value === "string" ? value : undefined}>
+        {value}
+      </dd>
     </div>
   );
 }
 
-function PasswordField({ label, value, onChange, visible, onToggleVisible, darkMode, inputClass }) {
+function PasswordField({ label, value, onChange, visible, onToggleVisible, darkMode, inputClass, autoComplete }) {
   return (
     <div>
-      <label className={`block text-xs font-medium mb-1.5 ${darkMode ? "text-slate-300" :"text-pink-600"}`}>
+      <label className={`block text-xs font-medium mb-1.5 ${darkMode ? "text-slate-300" : "text-pink-600"}`}>
         {label}
       </label>
       <div className="relative">
@@ -366,11 +377,12 @@ function PasswordField({ label, value, onChange, visible, onToggleVisible, darkM
           onChange={(e) => onChange(e.target.value)}
           className={inputClass}
           placeholder="••••••••"
+          autoComplete={autoComplete}
         />
         <button
           type="button"
           onClick={onToggleVisible}
-          className={`absolute right-2.5 top-1/2 -translate-y-1/2 ${
+          className={`absolute right-2.5 top-1/2 -translate-y-1/2 p-1 rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500 ${
             darkMode ? "text-slate-500 hover:text-slate-300" : "text-gray-400 hover:text-gray-600"
           }`}
           aria-label={visible ? "Hide password" : "Show password"}

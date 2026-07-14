@@ -3,22 +3,7 @@ import { collection, addDoc, serverTimestamp, doc,  updateDoc, deleteDoc, getDoc
 import { db } from "../../firebase/firebase";
 // import PendingApprovalPage from "../Disciplinary/PendingApprovalPage";
 // import CaseRecords from "../Disciplinary/CaseRecords";
-import {
-  FaEye,
-  FaTrash,
-  FaClipboardCheck,
-  FaPlus,
-  FaSearch,
-  FaTimes,
-  FaUserGraduate,
-  FaMapMarkerAlt,
-  FaPhoneAlt,
-  FaCalendarAlt,
-  FaExclamationTriangle,
-  FaCheckCircle,
-  FaHourglassHalf,
-  FaPen,
-} from "react-icons/fa";
+import { FaEye, FaTrash, FaClipboardCheck, FaPlus, FaSearch, FaTimes, FaUserGraduate, FaMapMarkerAlt, FaPhoneAlt, FaCalendarAlt, FaExclamationTriangle, FaCheckCircle, FaHourglassHalf, FaPen,} from "react-icons/fa";
 import { logAudit } from "../../utils/auditTrail";
 
 // AUDIT TRAIL: reads the currently logged-in user (saved by Login.jsx) so
@@ -57,11 +42,9 @@ export default function DisciplinaryPage({ darkMode }) {
   const [cases, setCases] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditing, setIsEditing] = useState(false);
-
-
-   const [selectedCase, setSelectedCase] = useState(null);
-    const [showViewModal, setShowViewModal] = useState(false);
-  
+  const [selectedCase, setSelectedCase] = useState(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleView = (item) => {
   setSelectedCase(item);
@@ -245,6 +228,8 @@ useEffect(() => {
 
 
 const handleSave = async () => {
+  
+  if (isSaving) return;
   // Required fields
   if (
     !student.studentId.trim() ||
@@ -303,6 +288,8 @@ const handleSave = async () => {
     return;
   }
 
+  setIsSaving(true);
+
   try {
     const newCase = {
       ...student,
@@ -331,7 +318,7 @@ const handleSave = async () => {
       },
     ]);
 
-    alert("Disciplinary Case Saved!");
+    alert("Disciplinary Case Created!");
 
     setStudent({
       studentId: "",
@@ -353,7 +340,9 @@ const handleSave = async () => {
 
   } catch (error) {
     console.error("SAVE ERROR:", error);
-    alert("Failed to save case. Please try again.");
+    alert("Failed to create a case. Please try again.");
+  }finally {
+    setIsSaving(false);
   }
 };
 
@@ -472,7 +461,7 @@ const filteredCases = cases.filter((item) => {
 
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-sm shadow-pink-500/30 font-semibold"
+              className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 transition text-white px-5 py-3 rounded-xl shadow-sm shadow-pink-500/30 font-semibold"
             >
               <FaPlus className="text-xs" /> Add Case
             </button>
@@ -1076,9 +1065,10 @@ const filteredCases = cases.filter((item) => {
 
               <button
                 onClick={handleSave}
-                className="px-7 py-3 rounded-xl bg-pink-500 hover:bg-pink-600 transition text-white font-semibold shadow-sm shadow-pink-500/30"
+                disabled={isSaving}
+                className="px-7 py-3 rounded-xl bg-pink-600 hover:bg-pink-500 transition text-white font-semibold shadow-sm shadow-pink-500/30"
               >
-                Save Case
+                {isSaving ? "Creating Case..." : "Create Case"}
               </button>
 
             </div>
