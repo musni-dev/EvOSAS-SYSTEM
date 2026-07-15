@@ -5,7 +5,7 @@ import { db } from "../../firebase/firebase";
 import { doc, getDoc, setDoc, updateDoc, increment, serverTimestamp, collection, query, where, getDocs,} from "firebase/firestore";
 
 const PROGRAMS = [
-  "Bachelor of Arts in Political Science (B.A. Pol. Sci)",
+  "Bachelor of Arts in Political Science (BA Pol Sci)",
   "Bachelor of Elementary Education (BEED)",
   "Bachelor of Secondary Education (BSED) English",
   "Bachelor of Secondary Education (BSED) Mathematics",
@@ -14,7 +14,7 @@ const PROGRAMS = [
   "Bachelor of Science in Information Technology (BSIT)",
   "Bachelor of Science in Business Administration (BSBA)",
   "Bachelor of Science in Accountancy (BSA)",
-  "Bachelor of Science in Criminology (B.S. Crim.)",
+  "Bachelor of Science in Criminology (BS Crim)",
 ];
 
 export default function EvaluationFormPage() {
