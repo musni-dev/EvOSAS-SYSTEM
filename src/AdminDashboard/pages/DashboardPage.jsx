@@ -198,18 +198,6 @@ export default function DashboardPage({ darkMode }) {
         }));
 
         setRecentReports(lostData);
-
-        // Activity
-        const caseSnap = await getDocs(
-          query(collection(db, "cases"), orderBy("createdAt", "desc"), limit(5))
-        );
-
-        const activityData = caseSnap.docs.map((doc) => ({
-          title: `New Case Added`,
-          time: doc.data().createdAt?.toDate()?.toLocaleString(),
-        }));
-
-        setRecentActivities(activityData);
       } catch (err) {
         console.error(err);
       }

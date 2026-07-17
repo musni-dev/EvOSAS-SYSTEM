@@ -46,22 +46,42 @@ export default function DisciplinaryPage({ darkMode }) {
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // DELETE CONFIRMATION MODAL: instead of window.confirm, we store the
+  // case that's pending deletion and show a styled modal to confirm it.
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [caseToDelete, setCaseToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // ADD SUCCESS MODAL: shown instead of alert() after a case is created.
+  const [showAddSuccessModal, setShowAddSuccessModal] = useState(false);
+  const [addedCaseNumber, setAddedCaseNumber] = useState("");
+
   const handleView = (item) => {
   setSelectedCase(item);
   setIsEditing(false);
   setShowViewModal(true);
 };
-  
-  
-const handleDelete = async (id) => {
-  const confirmDelete = window.confirm(
-    "Are you sure you want to delete this case?"
-  );
 
-  if (!confirmDelete) return;
 
-  // AUDIT TRAIL: capture the case data before it's removed from Firestore
-  const caseToDelete = cases.find((c) => c.id === id);
+// Opens the confirmation modal instead of deleting immediately.
+const requestDelete = (item) => {
+  setCaseToDelete(item);
+  setShowDeleteModal(true);
+};
+
+const cancelDelete = () => {
+  if (isDeleting) return;
+  setShowDeleteModal(false);
+  setCaseToDelete(null);
+};
+
+// Runs the actual delete once the user confirms in the modal.
+// Same logic as before, just triggered from the modal's confirm button.
+const handleDelete = async () => {
+  if (!caseToDelete) return;
+  const id = caseToDelete.id;
+
+  setIsDeleting(true);
 
   try {
     await deleteDoc(doc(db, "cases", id));
@@ -82,6 +102,10 @@ const handleDelete = async (id) => {
   } catch (error) {
     console.error(error);
     alert("Failed to delete case.");
+  } finally {
+    setIsDeleting(false);
+    setShowDeleteModal(false);
+    setCaseToDelete(null);
   }
 };
   
@@ -318,8 +342,6 @@ const handleSave = async () => {
       },
     ]);
 
-    alert("Disciplinary Case Created!");
-
     setStudent({
       studentId: "",
       name: "",
@@ -337,6 +359,10 @@ const handleSave = async () => {
     });
 
     setShowModal(false);
+
+    // Show a modal confirmation instead of alert()
+    setAddedCaseNumber(caseNumber);
+    setShowAddSuccessModal(true);
 
   } catch (error) {
     console.error("SAVE ERROR:", error);
@@ -410,29 +436,29 @@ const filteredCases = cases.filter((item) => {
 
   return (
     <div
-        className={`h-screen overflow-hidden flex flex-col space-y-6 p-4 sm:p-6 ${
+        className={`h-screen overflow-hidden flex flex-col space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 ${
           darkMode
             ? "bg-slate-950"
             : "bg-slate-50"
         }`}
       >
-      <div className="flex-1 overflow-y-auto space-y-6 pr-1">
+      <div className="flex-1 overflow-y-auto space-y-4 sm:space-y-6 pr-0 sm:pr-1">
 
       {/* HEADER */}
      <div
-        className={`backdrop-blur-xl rounded-3xl p-6 sm:p-8 shadow-sm border ${
+        className={`backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 shadow-sm border ${
           darkMode
             ? "bg-slate-900/70 border-slate-700"
             : "bg-white/70 border-white/60"
         }`}
       >
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 sm:gap-6">
 
           {/* LEFT */}
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
               <h1
-                className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent"
+                className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent"
               >
                 Disciplinary Management
               </h1>
@@ -461,7 +487,7 @@ const filteredCases = cases.filter((item) => {
 
             <button
               onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-pink-600 hover:bg-pink-500 transition text-white px-5 py-3 rounded-xl shadow-sm shadow-pink-500/30 font-semibold"
+              className="flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-500 transition text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl shadow-sm shadow-pink-500/30 font-semibold text-sm sm:text-base w-full sm:w-auto"
             >
               <FaPlus className="text-xs" /> Add Case
             </button>
@@ -479,66 +505,64 @@ const filteredCases = cases.filter((item) => {
       </div>
 
       {/* STATS */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
         <div
-          className={`rounded-2xl p-5 shadow-sm border ${
+          className={`rounded-2xl p-4 sm:p-5 shadow-sm border ${
             darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
           }`}
         >
           <div className="flex items-center justify-between">
-            <p className={`text-xs font-medium uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
+            <p className={`text-[11px] sm:text-xs font-medium uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
               Total Cases
             </p>
             <FaClipboardCheck className={darkMode ? "text-pink-400" : "text-pink-500"} />
           </div>
-          <h2 className={`text-3xl font-bold mt-2 ${darkMode ? "text-white" : "text-gray-800"}`}>
+          <h2 className={`text-2xl sm:text-3xl font-bold mt-2 ${darkMode ? "text-white" : "text-gray-800"}`}>
             {totalCases}
           </h2>
         </div>
 
         <div
-          className={`rounded-2xl p-5 shadow-sm border ${
+          className={`rounded-2xl p-4 sm:p-5 shadow-sm border ${
             darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
           }`}
         >
           <div className="flex items-center justify-between">
-            <p className={`text-xs font-medium uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
+            <p className={`text-[11px] sm:text-xs font-medium uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
               In Progress
             </p>
             <FaHourglassHalf className="text-yellow-500" />
           </div>
-          <h2 className={`text-3xl font-bold mt-2 ${darkMode ? "text-white" : "text-gray-800"}`}>
+          <h2 className={`text-2xl sm:text-3xl font-bold mt-2 ${darkMode ? "text-white" : "text-gray-800"}`}>
             {inProgressCount}
           </h2>
         </div>
 
         <div
-          className={`col-span-2 sm:col-span-1 rounded-2xl p-5 shadow-sm border ${
+          className={`col-span-2 sm:col-span-1 rounded-2xl p-4 sm:p-5 shadow-sm border ${
             darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
           }`}
         >
           <div className="flex items-center justify-between">
-            <p className={`text-xs font-medium uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
+            <p className={`text-[11px] sm:text-xs font-medium uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
               Closed
             </p>
             <FaCheckCircle className="text-emerald-500" />
           </div>
-          <h2 className={`text-3xl font-bold mt-2 ${darkMode ? "text-white" : "text-gray-800"}`}>
+          <h2 className={`text-2xl sm:text-3xl font-bold mt-2 ${darkMode ? "text-white" : "text-gray-800"}`}>
             {closedCount}
           </h2>
         </div>
       </div>
 
-          {/* TABLE */}
+          {/* TABLE / RECORDS */}
           <div
-            className={`rounded-3xl shadow-sm border p-4 sm:p-6 overflow-x-auto ${
+            className={`rounded-2xl sm:rounded-3xl shadow-sm border p-3 sm:p-4 md:p-6 ${
               darkMode
                 ? "bg-slate-900 border-slate-700"
                 : "bg-white border-gray-100"
             }`}
           >
-            <div className="min-w-[1100px]">
-
               {/* HEADER */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
                 <h2
@@ -569,121 +593,204 @@ const filteredCases = cases.filter((item) => {
                 </div>
               </div>
 
-              <table className="w-full text-left border-separate border-spacing-0">
-                <thead>
-                  <tr>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Case Number</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Student ID</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Name</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Program</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Year & Section</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Incident Type</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Contact</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Status</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Offense Level</th>
-                    <th className={`p-3 text-xs font-semibold uppercase tracking-wider text-center ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Actions</th>
-                  </tr>
-                </thead>
+              {/* EMPTY STATE */}
+              {cases.length === 0 && (
+                <p
+                  className={`text-center p-10 ${
+                    darkMode ? "text-slate-500" : "text-gray-400"
+                  }`}
+                >
+                  No disciplinary records yet.
+                </p>
+              )}
 
-                <tbody>
-                  {cases.length === 0 ? (
-                    <tr>
-                      <td
-                        colSpan="10"
-                        className={`text-center p-10 ${
-                          darkMode ? "text-slate-500" : "text-gray-400"
-                        }`}
-                      >
-                        No disciplinary records yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    [...filteredCases].reverse().map((item, idx) => {
-                      const level = getOffenseLevel(item);
+              {/* DESKTOP / TABLET TABLE VIEW (md and up) */}
+              {cases.length > 0 && (
+                <div className="hidden md:block overflow-x-auto">
+                  <div className="min-w-[1100px]">
+                    <table className="w-full text-left border-separate border-spacing-0">
+                      <thead>
+                        <tr>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Case Number</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Student ID</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Name</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Program</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Year & Section</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Incident Type</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Contact</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Status</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Offense Level</th>
+                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider text-center ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Actions</th>
+                        </tr>
+                      </thead>
 
-                      return (
-                        <tr
-                          key={item.id}
-                          onClick={() => handleView(item)}
-                          className={`cursor-pointer transition-colors duration-150 ${
-                            darkMode
-                              ? `hover:bg-slate-800/60 ${idx % 2 === 0 ? "bg-slate-800/30" : "bg-transparent"}`
-                              : `hover:bg-pink-50/60 ${idx % 2 === 0 ? "bg-gray-50/60" : "bg-transparent"}`
-                          }`}
-                        >
-                          <td className={`p-3.5 rounded-l-xl font-semibold ${darkMode ? "text-pink-400" : "text-pink-600"}`}>
-                            {item.caseNumber}
-                          </td>
+                      <tbody>
+                        {[...filteredCases].reverse().map((item, idx) => {
+                          const level = getOffenseLevel(item);
 
-                          <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
-                            {item.studentId}
-                          </td>
-
-                          <td className={`p-3.5 font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
-                            {item.name}
-                          </td>
-
-                          <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
-                            {item.program}
-                          </td>
-
-                          <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
-                            {item.yearLevel} - {item.section}
-                          </td>
-
-                          <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
-                            {item.incidentType === "Other"
-                              ? item.otherIncident
-                              : item.incidentType}
-                          </td>
-
-                          <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
-                            {item.contactNumber || "N/A"}
-                          </td>
-
-                          <td className="p-3.5">
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                          return (
+                            <tr
+                              key={item.id}
+                              onClick={() => handleView(item)}
+                              className={`cursor-pointer transition-colors duration-150 ${
                                 darkMode
-                                  ? "bg-yellow-900 text-yellow-300"
-                                  : "bg-yellow-100 text-yellow-700"
+                                  ? `hover:bg-slate-800/60 ${idx % 2 === 0 ? "bg-slate-800/30" : "bg-transparent"}`
+                                  : `hover:bg-pink-50/60 ${idx % 2 === 0 ? "bg-gray-50/60" : "bg-transparent"}`
                               }`}
                             >
-                              {item.status}
-                            </span>
-                          </td>
+                              <td className={`p-3.5 rounded-l-xl font-semibold ${darkMode ? "text-pink-400" : "text-pink-600"}`}>
+                                {item.caseNumber}
+                              </td>
 
-                          <td className="p-3.5">
-                            <span
-                              className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${offenseBadgeClasses(level)}`}
-                            >
-                              {level}
-                            </span>
-                          </td>
+                              <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                                {item.studentId}
+                              </td>
 
-                          <td className="p-3.5 rounded-r-xl">
-                            <div
-                              className="flex items-center justify-center gap-2"
-                              onClick={(e) => e.stopPropagation()}
-                            >
+                              <td className={`p-3.5 font-medium ${darkMode ? "text-white" : "text-gray-800"}`}>
+                                {item.name}
+                              </td>
 
-                              <button
-                                onClick={() => handleDelete(item.id)}
-                                className="px-3 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition shadow-sm"
-                                title="Delete"
-                              >
-                                <FaTrash />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
+                              <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                                {item.program}
+                              </td>
 
-            </div>
+                              <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                                {item.yearLevel} - {item.section}
+                              </td>
+
+                              <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                                {item.incidentType === "Other"
+                                  ? item.otherIncident
+                                  : item.incidentType}
+                              </td>
+
+                              <td className={`p-3.5 ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                                {item.contactNumber || "N/A"}
+                              </td>
+
+                              <td className="p-3.5">
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                                    darkMode
+                                      ? "bg-yellow-900 text-yellow-300"
+                                      : "bg-yellow-100 text-yellow-700"
+                                  }`}
+                                >
+                                  {item.status}
+                                </span>
+                              </td>
+
+                              <td className="p-3.5">
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${offenseBadgeClasses(level)}`}
+                                >
+                                  {level}
+                                </span>
+                              </td>
+
+                              <td className="p-3.5 rounded-r-xl">
+                                <div
+                                  className="flex items-center justify-center gap-2"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+
+                                  <button
+                                    onClick={() => requestDelete(item)}
+                                    className="px-3 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition shadow-sm"
+                                    title="Delete"
+                                  >
+                                    <FaTrash />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* MOBILE CARD VIEW (below md) */}
+              {cases.length > 0 && (
+                <div className="md:hidden space-y-3">
+                  {[...filteredCases].reverse().map((item) => {
+                    const level = getOffenseLevel(item);
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => handleView(item)}
+                        className={`rounded-2xl border p-4 cursor-pointer transition-colors ${
+                          darkMode
+                            ? "bg-slate-800/50 border-slate-700 active:bg-slate-800"
+                            : "bg-gray-50 border-gray-100 active:bg-pink-50/60"
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className={`text-sm font-bold truncate ${darkMode ? "text-pink-400" : "text-pink-600"}`}>
+                              {item.caseNumber}
+                            </p>
+                            <p className={`font-semibold mt-0.5 truncate ${darkMode ? "text-white" : "text-gray-800"}`}>
+                              {item.name}
+                            </p>
+                          </div>
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              requestDelete(item);
+                            }}
+                            className="shrink-0 p-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm transition shadow-sm"
+                            title="Delete"
+                          >
+                            <FaTrash />
+                          </button>
+                        </div>
+
+                        <div className={`mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs ${darkMode ? "text-slate-300" : "text-gray-600"}`}>
+                          <div>
+                            <span className={`block text-[10px] uppercase tracking-wider ${darkMode ? "text-slate-500" : "text-gray-400"}`}>Student ID</span>
+                            {item.studentId}
+                          </div>
+                          <div>
+                            <span className={`block text-[10px] uppercase tracking-wider ${darkMode ? "text-slate-500" : "text-gray-400"}`}>Year & Section</span>
+                            {item.yearLevel} - {item.section}
+                          </div>
+                          <div className="col-span-2">
+                            <span className={`block text-[10px] uppercase tracking-wider ${darkMode ? "text-slate-500" : "text-gray-400"}`}>Program</span>
+                            <span className="line-clamp-1">{item.program}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className={`block text-[10px] uppercase tracking-wider ${darkMode ? "text-slate-500" : "text-gray-400"}`}>Incident Type</span>
+                            {item.incidentType === "Other" ? item.otherIncident : item.incidentType}
+                          </div>
+                        </div>
+
+                        <div className="mt-3 flex items-center gap-2 flex-wrap">
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
+                              darkMode
+                                ? "bg-yellow-900 text-yellow-300"
+                                : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+
+                          <span
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${offenseBadgeClasses(level)}`}
+                          >
+                            {level}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
           </div>
 
       {/* ADD CASE MODAL */}
@@ -691,19 +798,19 @@ const filteredCases = cases.filter((item) => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-3 sm:px-4">
 
           <div
-            className={`rounded-3xl shadow-2xl w-full sm:max-w-4xl p-5 sm:p-8 overflow-y-auto max-h-[95vh] border ${
+            className={`rounded-2xl sm:rounded-3xl shadow-2xl w-full sm:max-w-4xl p-4 sm:p-6 md:p-8 overflow-y-auto max-h-[95vh] border ${
               darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
             }`}
           >
 
             {/* HEADER */}
-            <div className="flex justify-between items-start mb-6">
+            <div className="flex justify-between items-start mb-6 gap-3">
 
               <div>
                 <p className={`text-[11px] font-bold uppercase tracking-wider ${darkMode ? "text-pink-400" : "text-pink-500"}`}>
                   New Record
                 </p>
-                <h2 className={`text-2xl sm:text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                <h2 className={`text-xl sm:text-2xl md:text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
                   Add Disciplinary Case
                 </h2>
                 <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
@@ -713,7 +820,7 @@ const filteredCases = cases.filter((item) => {
 
               <button
                 onClick={handleCloseModal}
-                className={`p-2 rounded-full transition ${
+                className={`p-2 rounded-full transition shrink-0 ${
                   darkMode ? "text-slate-400 hover:bg-slate-800 hover:text-red-400" : "text-gray-400 hover:bg-gray-100 hover:text-red-500"
                 }`}
               >
@@ -723,12 +830,12 @@ const filteredCases = cases.filter((item) => {
 
             {/* CASE DETAILS */}
             <div
-              className={`rounded-2xl p-5 mb-6 border ${
+              className={`rounded-2xl p-4 sm:p-5 mb-6 border ${
                 darkMode ? "bg-slate-800/50 border-slate-700" : "bg-pink-50 border-pink-100"
               }`}
             >
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                 {/* CASE NUMBER */}
                 <div>
@@ -768,7 +875,7 @@ const filteredCases = cases.filter((item) => {
                 <FaUserGraduate className="text-pink-500" /> Student Information Records
               </h3>
 
-              <div className="grid md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
 
                 {/* STUDENT ID */}
                 <div>
@@ -782,9 +889,24 @@ const filteredCases = cases.filter((item) => {
                     value={student.studentId}
                     onChange={(e) => {
                       const value = e.target.value.replace(/\D/g, "");
-                      setStudent({
-                        ...student,
-                        studentId: value,
+
+                      setStudent((prev) => {
+                        const updated = { ...prev, studentId: value };
+
+                        // AUTOFILL: if this student ID already has a case on
+                        // record, pull in their name & program automatically.
+                        if (value.length === 9) {
+                          const existing = cases.find(
+                            (c) => c.studentId === value
+                          );
+
+                          if (existing) {
+                            updated.name = existing.name || prev.name;
+                            updated.program = existing.program || prev.program;
+                          }
+                        }
+
+                        return updated;
                       });
                     }}
                     placeholder="9-digit ID Number"
@@ -795,6 +917,13 @@ const filteredCases = cases.filter((item) => {
                     student.studentId.length < 9 && (
                       <p className="text-red-500 text-xs mt-1">
                         Student ID must be 9 digits.
+                      </p>
+                    )}
+
+                  {student.studentId.length === 9 &&
+                    cases.some((c) => c.studentId === student.studentId) && (
+                      <p className="text-emerald-500 text-xs mt-1">
+                        Existing student found — name & program auto-filled.
                       </p>
                     )}
                 </div>
@@ -897,7 +1026,7 @@ const filteredCases = cases.filter((item) => {
                 </div>
 
                 {/* LOCATION */}
-                <div className="md:col-span-2">
+                <div className="sm:col-span-2">
                   <label className={labelBase}>Location of Incident *</label>
 
                   <input
@@ -961,7 +1090,7 @@ const filteredCases = cases.filter((item) => {
                 ].map((type) => (
                   <label
                     key={type}
-                    className={`px-5 py-3 rounded-full border cursor-pointer transition font-medium text-sm
+                    className={`px-4 sm:px-5 py-2.5 sm:py-3 rounded-full border cursor-pointer transition font-medium text-sm
                     ${
                       student.incidentType === type
                         ? "bg-pink-500 text-white border-pink-500 shadow-sm shadow-pink-500/30"
@@ -1052,7 +1181,7 @@ const filteredCases = cases.filter((item) => {
             </div>
 
             {/* FOOTER */}
-            <div className={`flex justify-end gap-3 pt-4 border-t ${darkMode ? "border-slate-700" : "border-gray-100"}`}>
+            <div className={`flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t ${darkMode ? "border-slate-700" : "border-gray-100"}`}>
 
               <button
                 onClick={handleCloseModal}
@@ -1068,7 +1197,7 @@ const filteredCases = cases.filter((item) => {
                 disabled={isSaving}
                 className="px-7 py-3 rounded-xl bg-pink-600 hover:bg-pink-500 transition text-white font-semibold shadow-sm shadow-pink-500/30"
               >
-                {isSaving ? "Creating Case..." : "Create Case"}
+                {isSaving ? "Adding Case..." : "Add Case"}
               </button>
 
             </div>
@@ -1082,7 +1211,7 @@ const filteredCases = cases.filter((item) => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
 
           <div
-            className={`rounded-3xl p-5 sm:p-7 w-full max-w-3xl max-h-[90vh] overflow-y-auto border ${
+            className={`rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-7 w-full max-w-3xl max-h-[90vh] overflow-y-auto border ${
               darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
             }`}
           >
@@ -1090,11 +1219,11 @@ const filteredCases = cases.filter((item) => {
             {/* HEADER */}
             <div className="flex justify-between items-start mb-6 gap-3">
 
-              <div>
+              <div className="min-w-0">
                 <p className={`text-[11px] font-bold uppercase tracking-wider ${darkMode ? "text-pink-400" : "text-pink-500"}`}>
                   {isEditing ? "Editing Record" : "Case Details"}
                 </p>
-                <h2 className={`text-xl sm:text-2xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                <h2 className={`text-lg sm:text-xl md:text-2xl font-bold truncate ${darkMode ? "text-white" : "text-gray-800"}`}>
                   {selectedCase.caseNumber}
                 </h2>
                 <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
@@ -1102,15 +1231,15 @@ const filteredCases = cases.filter((item) => {
                 </p>
               </div>
 
-              <div className="flex items-center gap-2 flex-wrap justify-end">
+              <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
 
                 {!isEditing ? (
 
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm shadow-pink-500/30 transition"
+                    className="flex items-center gap-2 bg-pink-500 hover:bg-pink-600 text-white px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm shadow-pink-500/30 transition"
                   >
-                    <FaPen className="text-xs" /> Edit
+                    <FaPen className="text-xs" /> <span className="hidden sm:inline">Edit</span>
                   </button>
 
                 ) : (
@@ -1118,18 +1247,18 @@ const filteredCases = cases.filter((item) => {
                   <>
                     <button
                       onClick={() => setIsEditing(false)}
-                      className={`px-4 py-2.5 rounded-xl text-sm font-medium transition ${
+                      className={`px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium transition ${
                         darkMode ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-gray-200 hover:bg-gray-300 text-gray-700"
                       }`}
                     >
-                      Cancel Edit
+                      Cancel
                     </button>
 
                     <button
                       onClick={handleUpdate}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm transition"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm transition"
                     >
-                      Save Changes
+                      Save
                     </button>
                   </>
 
@@ -1162,7 +1291,7 @@ const filteredCases = cases.filter((item) => {
 
             {/* GRID INFO */}
             
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
                       {/* Case Number */}
                       <div>
@@ -1312,7 +1441,7 @@ const filteredCases = cases.filter((item) => {
                       </div>
 
                       {/* Location */}
-                      <div className="md:col-span-2">
+                      <div className="sm:col-span-2">
                         <label className={labelBase}>Location</label>
 
                         <input
@@ -1459,7 +1588,100 @@ const filteredCases = cases.filter((item) => {
 
         </div>
       )}
-      
+
+      {/* ADD SUCCESS MODAL (replaces alert() on successful case creation) */}
+      {showAddSuccessModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] px-3 sm:px-4">
+          <div
+            className={`rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-sm p-6 border ${
+              darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+            }`}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div
+                className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${
+                  darkMode ? "bg-emerald-900/40 text-emerald-400" : "bg-emerald-100 text-emerald-500"
+                }`}
+              >
+                <FaCheckCircle className="text-2xl" />
+              </div>
+
+              <h3 className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                Case Created!
+              </h3>
+
+              <p className={`text-sm mt-2 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
+                Disciplinary case{" "}
+                <span className={`font-semibold ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                  {addedCaseNumber}
+                </span>{" "}
+                was successfully added.
+              </p>
+
+              <button
+                onClick={() => setShowAddSuccessModal(false)}
+                className="w-full mt-6 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 transition text-white font-semibold shadow-sm"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL (replaces window.confirm) */}
+      {showDeleteModal && caseToDelete && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] px-3 sm:px-4">
+          <div
+            className={`rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-sm p-6 border ${
+              darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+            }`}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div
+                className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${
+                  darkMode ? "bg-red-900/40 text-red-400" : "bg-red-100 text-red-500"
+                }`}
+              >
+                <FaTrash className="text-xl" />
+              </div>
+
+              <h3 className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                Delete this case?
+              </h3>
+
+              <p className={`text-sm mt-2 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
+                Are you sure you want to delete{" "}
+                <span className={`font-semibold ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                  {caseToDelete.caseNumber}
+                </span>
+                {caseToDelete.name ? ` for ${caseToDelete.name}` : ""}? This action cannot be undone.
+              </p>
+
+              <div className="flex gap-3 mt-6 w-full">
+                <button
+                  onClick={cancelDelete}
+                  disabled={isDeleting}
+                  className={`flex-1 px-4 py-2.5 rounded-xl font-semibold transition disabled:opacity-50 ${
+                    darkMode ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                  }`}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  className="flex-1 px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 transition text-white font-semibold shadow-sm shadow-red-500/30 disabled:opacity-60"
+                >
+                  {isDeleting ? "Deleting..." : "Delete"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       </div>
     </div>
   );
