@@ -265,8 +265,6 @@ useEffect(() => {
         ...doc.data(),
       }));
 
-      console.log("🔥 Realtime attendance:", data);
-
       setRecords(data);
     },
     (error) => {

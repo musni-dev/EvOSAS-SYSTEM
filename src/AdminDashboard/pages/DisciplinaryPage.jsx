@@ -3,8 +3,12 @@ import { collection, addDoc, serverTimestamp, doc,  updateDoc, deleteDoc, getDoc
 import { db } from "../../firebase/firebase";
 // import PendingApprovalPage from "../Disciplinary/PendingApprovalPage";
 // import CaseRecords from "../Disciplinary/CaseRecords";
-import { FaEye, FaTrash, FaClipboardCheck, FaPlus, FaSearch, FaTimes, FaUserGraduate, FaMapMarkerAlt, FaPhoneAlt, FaCalendarAlt, FaExclamationTriangle, FaCheckCircle, FaHourglassHalf, FaPen,} from "react-icons/fa";
+import { FaEye, FaTrash, FaClipboardCheck, FaPlus, FaSearch, FaTimes, FaUserGraduate, FaMapMarkerAlt, FaPhoneAlt, FaCalendarAlt, FaExclamationTriangle, FaCheckCircle, FaHourglassHalf, FaPen, FaPrint,} from "react-icons/fa";
 import { logAudit } from "../../utils/auditTrail";
+// PRINT NOTICE OF COMPLAINT: reusable component that renders the official
+// document layout. Adjust this import path if PrintableNotice.jsx ends up
+// in a different folder than DisciplinaryPage.jsx in your project.
+import PrintableNotice from "./Printablenotice";
 
 // AUDIT TRAIL: reads the currently logged-in user (saved by Login.jsx) so
 // every audit log entry records who actually performed the action.
@@ -28,7 +32,7 @@ const getCurrentUser = () => {
     return {
       uid: localStorage.getItem("uid") || "",
       name: "Administrator",
-      email: "",
+      email:  "",
       role: localStorage.getItem("role") || "",
       department: "",
       photoURL: "",
@@ -55,6 +59,13 @@ export default function DisciplinaryPage({ darkMode }) {
   // ADD SUCCESS MODAL: shown instead of alert() after a case is created.
   const [showAddSuccessModal, setShowAddSuccessModal] = useState(false);
   const [addedCaseNumber, setAddedCaseNumber] = useState("");
+
+  // PRINT NOTICE OF COMPLAINT: controls the print-preview modal, and holds
+  // the preliminary-meeting date/time the admin types in by hand. This value
+  // is only used for the printed document — it is never sent to Firestore.
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [investigationDateTime, setInvestigationDateTime] = useState("");
+  const [responseDays, setResponseDays] = useState("");
 
   const handleView = (item) => {
   setSelectedCase(item);
@@ -108,6 +119,24 @@ const handleDelete = async () => {
     setCaseToDelete(null);
   }
 };
+
+const handleOpenPrintNotice = () => {
+  setInvestigationDateTime("");
+  setResponseDays("");
+  setShowPrintModal(true);
+};
+
+const closePrintNotice = () => {
+  setShowPrintModal(false);
+  setInvestigationDateTime("");
+  setResponseDays("");
+};
+
+
+const handlePrintNotice = () => {
+  window.print();
+};
+
   
     const handleUpdate = async () => {
       try {
@@ -435,8 +464,9 @@ const filteredCases = cases.filter((item) => {
   }`;
 
   return (
+    <>
     <div
-        className={`h-screen overflow-hidden flex flex-col space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 ${
+        className={`h-screen overflow-hidden flex flex-col space-y-4 sm:space-y-6 p-3 sm:p-4 md:p-6 print:hidden ${
           darkMode
             ? "bg-slate-950"
             : "bg-slate-50"
@@ -963,7 +993,7 @@ const filteredCases = cases.filter((item) => {
                   >
                     <option value="">Select Program</option>
 
-                    <option>Bachelor of Arts in Political Science (B.A. Pol. Sci)</option>
+                    <option>Bachelor of Arts in Political Science (BA Pol Sci)</option>
                     <option>Bachelor of Elementary Education (BEED)</option>
                     <option>Bachelor of Secondary Education (BSED) English</option>
                     <option>Bachelor of Secondary Education (BSED) Mathematics</option>
@@ -972,7 +1002,7 @@ const filteredCases = cases.filter((item) => {
                     <option>Bachelor of Science in Information Technology (BSIT)</option>
                     <option>Bachelor of Science in Business Administration (BSBA)</option>
                     <option>Bachelor of Science in Accountancy (BSA)</option>
-                    <option>Bachelor of Science in Criminology (B.S. Crim.)</option>
+                    <option>Bachelor of Science in Criminology (BS Crim)</option>
                   </select>
                 </div>
 
@@ -1232,6 +1262,20 @@ const filteredCases = cases.filter((item) => {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
+
+                {/* PRINT NOTICE OF COMPLAINT: opens the print-preview modal for
+                    this same `selectedCase` object. Always visible, in both
+                    view mode and edit mode. */}
+                <button
+                  onClick={handleOpenPrintNotice}
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium border transition ${
+                    darkMode
+                      ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
+                      : "bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200"
+                  }`}
+                >
+                  <FaPrint className="text-xs" /> <span className="hidden sm:inline">Print Notice</span>
+                </button>
 
                 {!isEditing ? (
 
@@ -1682,7 +1726,147 @@ const filteredCases = cases.filter((item) => {
         </div>
       )}
 
+      {/* PRINT PREVIEW MODAL: lets the admin type the preliminary meeting
+          date/time, preview the finished Notice of Complaint on-screen, and
+          send it to the browser's print dialog. This value is NOT saved to
+          Firestore — it only lives in the `investigationDateTime` state and
+          is used purely for the printed page. */}
+      {showPrintModal && selectedCase && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[70] p-3 sm:p-4">
+          <div
+            className={`rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto border ${
+              darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+            }`}
+          >
+            {/* HEADER */}
+            <div
+              className={`flex justify-between items-start gap-3 p-4 sm:p-6 border-b sticky top-0 z-10 ${
+                darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+              }`}
+            >
+              <div>
+                <p className={`text-[11px] font-bold uppercase tracking-wider ${darkMode ? "text-pink-400" : "text-pink-500"}`}>
+                  Print Preview
+                </p>
+                <h2 className={`text-lg sm:text-xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                  Notice of Complaint — {selectedCase.caseNumber}
+                </h2>
+              </div>
+
+              <button
+                onClick={closePrintNotice}
+                className={`p-2 rounded-full transition shrink-0 ${
+                  darkMode ? "text-slate-400 hover:bg-slate-800 hover:text-red-400" : "text-gray-400 hover:bg-gray-100 hover:text-red-500"
+                }`}
+              >
+                <FaTimes className="text-lg" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-6">
+              {/* Editable, print-only field. Never written to Firestore. */}
+           
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+
+                  {/* LEFT: Response Period */}
+                  <div
+                    className={`rounded-xl p-4 border ${
+                      darkMode ? "bg-slate-800/50 border-slate-700" : "bg-pink-50 border-pink-100"
+                    }`}
+                  >
+                    <label className={labelBase}>
+                      Response Period (for this printout only)
+                    </label>
+                    <select
+                      value={responseDays}
+                      onChange={(e) => setResponseDays(e.target.value)}
+                      className={inputBase}
+                    >
+                      <option value="">Select number of working days</option>
+                      <option value="1 working day">1 working day</option>
+                      <option value="2 working days">2 working days</option>
+                      <option value="3 working days">3 working days</option>
+                      <option value="4 working days">4 working days</option>
+                      <option value="5 working days">5 working days</option>
+                    </select>
+                    <p className={`text-xs mt-1.5 ${darkMode ? "text-slate-500" : "text-gray-400"}`}>
+                      This is only used on the printed document and is not saved to the case record.
+                    </p>
+                  </div>
+
+                  {/* RIGHT: Preliminary Meeting Date & Time */}
+                  <div
+                    className={`rounded-xl p-4 border ${
+                      darkMode ? "bg-slate-800/50 border-slate-700" : "bg-pink-50 border-pink-100"
+                    }`}
+                  >
+                    <label className={labelBase}>
+                      Preliminary Meeting Date &amp; Time (for this printout only)
+                    </label>
+                    <input
+                      type="text"
+                      value={investigationDateTime}
+                      onChange={(e) => setInvestigationDateTime(e.target.value)}
+                      placeholder='e.g. "August 5, 2026, 10:00 AM"'
+                      className={inputBase}
+                    />
+                    <p className={`text-xs mt-1.5 ${darkMode ? "text-slate-500" : "text-gray-400"}`}>
+                      This is only used on the printed document and is not saved to the case record.
+                    </p>
+                  </div>
+
+                </div>
+
+              {/* On-screen preview of the document */}
+              <div className={`border rounded-xl overflow-hidden ${darkMode ? "border-slate-700" : "border-gray-200"}`}>
+                <div className="bg-white p-6 sm:p-8 overflow-x-auto">
+                  <PrintableNotice
+                    caseData={selectedCase}
+                    investigationDateTime={investigationDateTime}
+                    responseDays={responseDays}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* FOOTER */}
+            <div className={`flex flex-col-reverse sm:flex-row justify-end gap-3 p-4 sm:p-6 border-t ${darkMode ? "border-slate-700" : "border-gray-100"}`}>
+              <button
+                onClick={closePrintNotice}
+                className={`px-6 py-3 rounded-xl font-semibold transition ${
+                  darkMode ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-gray-100 hover:bg-gray-200 text-gray-700"
+                }`}
+              >
+                Close
+              </button>
+
+              <button
+                onClick={handlePrintNotice}
+                className="px-7 py-3 rounded-xl bg-pink-600 hover:bg-pink-500 transition text-white font-semibold shadow-sm shadow-pink-500/30 flex items-center justify-center gap-2"
+              >
+                <FaPrint className="text-xs" /> Print
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       </div>
     </div>
+
+    {/* PRINT-ONLY BLOCK: hidden on screen (`hidden`), only shown by the
+        browser's print stylesheet (`print:block`). Rendered as a sibling of
+        the main `print:hidden` page wrapper above so it is NOT hidden along
+        with the rest of the dashboard when window.print() runs. */}
+    {showPrintModal && selectedCase && (
+      <div className="hidden print:block bg-white text-black p-6">
+        <PrintableNotice
+          caseData={selectedCase}
+          investigationDateTime={investigationDateTime}
+          responseDays={responseDays}
+        />
+      </div>
+    )}
+    </>
   );
 }
