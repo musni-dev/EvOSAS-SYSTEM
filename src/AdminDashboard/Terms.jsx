@@ -13,7 +13,8 @@ export default function Terms() {
   };
 
   const handleClose = () => {
-    navigate("/");
+      localStorage.clear();
+      window.location.href = "/";
   };
 
   const termPoints = [

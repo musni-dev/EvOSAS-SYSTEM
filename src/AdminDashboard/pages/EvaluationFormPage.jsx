@@ -101,12 +101,12 @@ export default function EvaluationFormPage() {
     setStudentId(digitsOnly);
   };
 
-  // Year & Section: letters/numbers/dash only, max 4 characters (e.g. "4A", "4-A")
+  // Year & Section: letters/numbers/
   const handleYearSectionChange = (e) => {
     const cleaned = e.target.value
       .toUpperCase()
       .replace(/[^A-Z0-9-]/g, "")
-      .slice(0, 4);
+      .slice(0, 2);
     setYearSection(cleaned);
   };
 
@@ -361,10 +361,10 @@ if ((event.status || "Active") === "Disabled") {
                     placeholder="e.g. 4A"
                     value={yearSection}
                     onChange={handleYearSectionChange}
-                    maxLength={4}
+                    maxLength={2}
                     className="mt-1.5 border border-gray-200 p-2.5 w-full rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent"
                   />
-                  <p className="text-[11px] text-gray-400 mt-1">Max 4 characters</p>
+                  <p className="text-[11px] text-gray-400 mt-1">Max 2 characters</p>
                 </div>
 
                 <div>

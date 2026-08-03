@@ -359,7 +359,7 @@ export default function DashboardPage({ darkMode }) {
           darkMode={darkMode}
           icon={PackageSearch}
           accent="#4F46E5"
-          label="Lost Items"
+          label="Total Lost Items"
           value={stats.lost}
           delta={
             stats.lostThisWeek > 0
@@ -373,7 +373,7 @@ export default function DashboardPage({ darkMode }) {
           darkMode={darkMode}
           icon={PackageCheck}
           accent="#10B981"
-          label="Found Items"
+          label="Total Found Items"
           value={stats.found}
           delta={
             stats.foundThisWeek > 0
@@ -387,7 +387,7 @@ export default function DashboardPage({ darkMode }) {
           darkMode={darkMode}
           icon={Users}
           accent="#F59E0B"
-          label="Users"
+          label="Total Users"
           value={stats.users}
           delta={
             stats.usersThisMonth > 0

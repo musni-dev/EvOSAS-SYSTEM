@@ -1029,15 +1029,23 @@ const filteredCases = cases.filter((item) => {
                 <div>
                   <label className={labelBase}>Section *</label>
 
-                  <input
-                    type="text"
-                    name="section"
-                    required
-                    value={student.section}
-                    onChange={handleChange}
-                    placeholder="Ex: BSIT-3A"
-                    className={inputBase}
-                  />
+                    <input
+                      type="text"
+                      name="section"
+                      required
+                      value={student.section}
+                      onChange={(e) =>
+                        setStudent({
+                          ...student,
+                          section: e.target.value
+                            .toUpperCase()
+                            .replace(/[^A-Z]/g, ""),
+                        })
+                      }
+                      placeholder="Ex: A/B/C/D/E"
+                      className={inputBase}
+                      maxLength={1}
+                    />
                 </div>
 
                 {/* INCIDENT DATE */}
