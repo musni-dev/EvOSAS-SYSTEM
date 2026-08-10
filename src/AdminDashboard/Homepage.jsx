@@ -118,9 +118,17 @@ useEffect(() => {
           }`}
         >
           {!collapsed && (
+            <div className="flex items-center gap-2">
+
+              <img
+                  src="/osas-logo.png"
+                  alt="OSAS Logo"
+                  className="w-9 h-9 object-contain"
+                />
             <div>
               <h1 className="font-black text-pink-500 text-lg">EvOSAS</h1>
               <p className="text-xs text-gray-400">Admin Portal</p>
+            </div>
             </div>
           )}
 

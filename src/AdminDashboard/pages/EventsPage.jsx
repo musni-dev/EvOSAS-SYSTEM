@@ -399,7 +399,7 @@ const handleToggleStatus = async (ev) => {
                     : "bg-pink-100 text-pink-600 border border-pink-200"
                 }`}
               >
-                Powered by EvOSAS
+                Evaluation
               </span>
             </div>
 

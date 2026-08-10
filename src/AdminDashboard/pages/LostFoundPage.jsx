@@ -1718,7 +1718,7 @@ return (
                     <div style={{ fontSize: 44, marginBottom: 12 }}>🗑️</div>
                     <h2 style={{ fontWeight: 700, fontSize: 17, margin: "0 0 8px" }}>Delete Report?</h2>
                     <p style={{ fontSize: 14, color: "#6B7280", margin: "0 0 24px" }}>
-                      "<strong>{deleteTarget.itemName}</strong>" will be permanently removed from Firestore.
+                      "<strong>{deleteTarget.itemName}</strong>" will be permanently removed.
                     </p>
                     <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
                       <button

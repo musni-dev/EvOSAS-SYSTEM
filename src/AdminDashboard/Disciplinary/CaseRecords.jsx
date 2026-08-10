@@ -392,7 +392,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                 <th className="p-4">Contact</th>
                 <th className="p-4">Status</th>
                 <th className="p-4">Offense Level</th>
-                <th className="p-4 rounded-r-xl">Actions</th>
+                
               </tr>
             </thead>
 
@@ -455,28 +455,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                         {getOffenseLevel(item)}
                       </span>
                     </td>
-                    <td className="p-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <button
-                          onClick={() => handleView(item)}
-                          className="px-3 py-2 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition shadow-sm"
-                          title="View"
-                        >
-                          <FaEye />
-                        </button>
-
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(item.id);
-                          }}
-                          className="px-3 py-2 rounded-lg bg-pink-500 hover:bg-pink-600 text-white text-sm font-medium transition shadow-sm"
-                          title="Delete"
-                        >
-                          <FaTrash />
-                        </button>
-                      </div>
-                    </td>
+  
                   </tr>
                 ))
               )}

@@ -87,9 +87,13 @@ export default function SDOLayout({
             darkMode ? "border-slate-700" : "border-white/60"
           } ${collapsed ? "lg:justify-center lg:px-0" : ""}`}
         >
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white font-semibold text-sm shrink-0">
-            E
-          </div>
+<div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center shrink-0">
+  <img
+    src="/osas-logo.png"
+    alt="OSAS Logo"
+    className="w-full h-full object-cover"
+  />
+</div>
           <div className={`min-w-0 ${collapsed ? "lg:hidden" : ""}`}>
             <p className={`text-sm font-semibold truncate ${darkMode ? "text-white" : "text-gray-800"}`}>
               EvOSAS
