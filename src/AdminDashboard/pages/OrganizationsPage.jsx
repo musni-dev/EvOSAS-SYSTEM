@@ -222,7 +222,7 @@ const handleDelete = async (item) => {
       setUploadOrgName("");
       setUploadFile(null);
     } catch (e) {
-      showToast("Failed to upload document.", "error");
+      showToast("Failed to upload document (Only pdf).", "error");
     } finally {
       setUploading(false);
     }

@@ -38,6 +38,10 @@ export default function Terms() {
       icon: Eye,
       text: "The system logs user activities for monitoring and security purposes to ensure accountability within the administration.",
     },
+    {
+      icon: Lock,
+      text: "All personal and sensitive information collected and processed within this system is handled in accordance with the Data Privacy Act of 2012 (RA 10173) and the institution's official Data Privacy Policy.",
+    },
   ];
 
   return (
@@ -147,7 +151,17 @@ export default function Terms() {
                   By clicking{" "}
                   <span className="font-bold text-[#ff6699]">Accept</span>, you
                   confirm that you fully understand and agree to these terms,
-                  conditions, and privacy policies.
+                  conditions, and privacy policies. For more details, please
+                  read our full{" "}
+                  <a
+                    href="https://dct.edu.ph/data-privacy/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-bold text-[#ff6699] underline hover:text-[#ff77aa]"
+                  >
+                    Data Privacy Policy
+                  </a>
+                  .
                 </p>
               </div>
             </div>

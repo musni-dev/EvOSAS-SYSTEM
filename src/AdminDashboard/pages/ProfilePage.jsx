@@ -405,6 +405,9 @@ function TransferAdminAuthority({ darkMode, currentUser }) {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
+  // Only DCT email addresses are allowed to receive admin authority.
+  const ALLOWED_DOMAIN = "dct.edu.ph";
+
   function resetTransferForm() {
     setTransferCurrentPassword("");
     setNewAdminEmail("");
@@ -414,6 +417,15 @@ function TransferAdminAuthority({ darkMode, currentUser }) {
 
   function validateEmail(email) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  }
+
+  // Checks that the email's domain is exactly ALLOWED_DOMAIN
+  // (case-insensitive), e.g. "someone@dct.edu.ph" passes,
+  // "someone@notdct.edu.ph" or "someone@dct.edu.ph.fake.com" do not.
+  function isAllowedDomain(email) {
+    const parts = email.trim().toLowerCase().split("@");
+    if (parts.length !== 2) return false;
+    return parts[1] === ALLOWED_DOMAIN;
   }
 
   function friendlyFirebaseError(err) {
@@ -468,6 +480,14 @@ function TransferAdminAuthority({ darkMode, currentUser }) {
       setTransferFeedback({
         type: "error",
         message: "Please enter a valid email address for the new admin.",
+      });
+      return;
+    }
+
+    if (!isAllowedDomain(newAdminEmail)) {
+      setTransferFeedback({
+        type: "error",
+        message: `The new admin email must be a ${ALLOWED_DOMAIN} address.`,
       });
       return;
     }
@@ -685,7 +705,7 @@ function TransferAdminAuthority({ darkMode, currentUser }) {
             <input
               id="new-admin-email"
               type="email"
-              placeholder="newadmin@example.com"
+              placeholder="newadmin@dct.edu.ph"
               value={newAdminEmail}
               onChange={(e) => setNewAdminEmail(e.target.value)}
               className={`w-full pl-11 pr-4 py-3 rounded-xl border-2 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-pink-500/15 focus:border-pink-500 transition-all duration-200 ${
@@ -696,6 +716,13 @@ function TransferAdminAuthority({ darkMode, currentUser }) {
               required
             />
           </div>
+          <p
+            className={`text-[11px] pl-0.5 ${
+              darkMode ? "text-gray-500" : "text-gray-400"
+            }`}
+          >
+            Only @{ALLOWED_DOMAIN} email addresses can receive admin authority.
+          </p>
         </div>
 
         <PasswordField

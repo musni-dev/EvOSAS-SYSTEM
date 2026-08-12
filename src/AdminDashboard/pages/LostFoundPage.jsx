@@ -58,7 +58,7 @@ const EMOJI = {
 
 const EMPTY_FORM = {
   reportType: "Lost", itemName: "", category: "", description: "",
-  location: "", date: "", status: "Pending", contactNumber: "", imageFile: null,
+  location: "", date: "", status: "Pending", contactNumber: "", imageFile: null, categoryOther: "",
 };
 
 // ── Sub-components ────────────────────────────────────────────────────────────
@@ -148,9 +148,9 @@ const S = {
   modalFooter: { display: "flex", gap: 10, justifyContent: "flex-end", padding: "14px 20px", borderTop: "1px solid #F3F4F6" },
   field: { marginBottom: 14, },
   label: { display: "block", fontSize: 12, fontWeight: 600, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.05em" },
-  input: { width: "100%", padding: "9px 12px", border: "1px solid #000000", borderRadius: 9, fontSize: 14, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
-  select: { width: "100%", padding: "9px 12px", border: "1px solid #000000", borderRadius: 9, fontSize: 14, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
-  textarea: { width: "100%", padding: "9px 12px", border: "1px solid #000000", borderRadius: 9, fontSize: 14, resize: "vertical", minHeight: 80, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
+  input: { width: "100%", padding: "9px 12px", border: "1px solid #d80891", borderRadius: 9, fontSize: 14, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
+  select: { width: "100%", padding: "9px 12px", border: "1px solid #d80891", borderRadius: 9, fontSize: 14, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
+  textarea: { width: "100%", padding: "9px 12px", border: "1px solid #d80891", borderRadius: 9, fontSize: 14, resize: "vertical", minHeight: 80, boxSizing: "border-box", outline: "none", background: "#FAFAFA" },
   emptyState: { gridColumn: "1/-1", textAlign: "center", padding: "48px 0", color: "#9CA3AF" },
   closeBtn: { background: "none", border: "none", cursor: "pointer", fontSize: 20, color: "#ff0000", lineHeight: 1, padding: 4 },
   errorText: { fontSize: 12, color: "#EF4444", marginTop: 4 },
@@ -194,19 +194,24 @@ const [editValue, setEditValue] = useState({
   name: "",
   description: "",
   category: "",
+  categoryOther: "",
   location: "",
   date: "",
   contact: "",
 });
 
- useEffect(() => {
+useEffect(() => {
   if (viewItem) {
+    const isCustomCategory =
+      viewItem.category && !CATEGORIES.includes(viewItem.category);
+
     setEditValue({
       reportType: viewItem.reportType || "Lost",
       status: viewItem.status || "Pending",
       name: viewItem.itemName || "",
       description: viewItem.description || "",
-      category: viewItem.category || "",
+      category: isCustomCategory ? "Others" : (viewItem.category || ""),
+      categoryOther: isCustomCategory ? viewItem.category : "",
       location: viewItem.location || "",
       date: viewItem.date || "",
       contact: viewItem.contactNumber || "",
@@ -295,7 +300,11 @@ const validate = () => {
     errs.itemName = "Item name is required.";
 
   if (!form.category)
-    errs.category = "Category is required.";
+  errs.category = "Category is required.";
+
+
+  if (form.category === "Others" && !form.categoryOther.trim())
+  errs.categoryOther = "Please specify the category.";
 
   if (!form.description.trim())
     errs.description = "Description is required.";
@@ -356,6 +365,11 @@ const validate = () => {
       let imageUrl = null;
       let imagePath = null;
 
+        const finalCategory =
+        form.category === "Others" && form.categoryOther.trim()
+        ? form.categoryOther.trim()
+        : form.category;
+
       if (form.imageFile) {
         imagePath = `lost_found/${Date.now()}_${form.imageFile.name}`;
 
@@ -370,7 +384,7 @@ const validate = () => {
         const docRef = await addDoc(collection(db, "lost_found"), {
           reportType: form.reportType,
           itemName: form.itemName.trim(),
-          category: form.category,
+          category: finalCategory,
           description: form.description.trim(),
           location: form.location.trim(),
           date: form.date,
@@ -390,7 +404,7 @@ const validate = () => {
         newData: {
           reportType: form.reportType,
           itemName: form.itemName.trim(),
-          category: form.category,
+          category: finalCategory,
           description: form.description.trim(),
           location: form.location.trim(),
           date: form.date,
@@ -811,16 +825,12 @@ return (
                         borderColor: darkMode ? "#4B5563" : "#E5E7EB",
                       }}
                   />
-
-                  {errors.itemName && (
-                    <p style={S.errorText}>{errors.itemName}</p>
-                  )}
                 {errors.itemName && <p style={S.errorText}>{errors.itemName}</p>}
               </div>
 
               {/* Category */}
               <div style={S.field}>
-                <label style={S.label}>Category</label>
+                <label style={S.label}>Category *</label>
                 <select name="category" value={form.category} onChange={handleChange} style={{
                     ...S.select,
                     background: darkMode ? "#1F2937" : "#FFFFFF",
@@ -835,11 +845,35 @@ return (
                     <p style={S.errorText}>{errors.category}</p>
                   )}
 
+                  {form.category === "Others" && (
+                    <div style={{ marginTop: 8 }}>
+                      <input
+                        name="categoryOther"
+                        placeholder="Specify category"
+                        value={form.categoryOther}
+                        maxLength={30}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/[^A-Za-z\s]/g, "");
+                          setForm((prev) => ({ ...prev, categoryOther: value }));
+                        }}
+                        style={{
+                          ...S.input,
+                          background: darkMode ? "#1F2937" : "#FFFFFF",
+                          color: darkMode ? "#F9FAFB" : "#111827",
+                          borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                        }}
+                      />
+                      {errors.categoryOther && (
+                        <p style={S.errorText}>{errors.categoryOther}</p>
+                      )}
+                    </div>
+                  )}
+
               </div>
 
               {/* Description */}
               <div style={S.field}>
-                <label style={S.label}>Description</label>
+                <label style={S.label}>Description *</label>
                 <textarea
                   name="description"
                   placeholder="Describe the item in detail…"
@@ -852,6 +886,10 @@ return (
                     borderColor: darkMode ? "#4B5563" : "#E5E7EB",
                   }}
                 />
+
+                   {errors.description && (
+                      <p style={S.errorText}>{errors.description}</p>
+                    )}
               </div>
 
               {/* Location & Date */}
@@ -907,7 +945,7 @@ return (
               {/* Contact & Status */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div style={S.field}>
-                  <label style={S.label}>Contact Number</label>
+                  <label style={S.label}>Contact Number (optional) </label>
 
                   <input
                     type="text"
@@ -1226,86 +1264,108 @@ return (
 
             {/* CATEGORY (EDITABLE) */}
               {editing.category ? (
-                <select
-                  value={editValue.category}
-                  onChange={async (e) => {
-                    const value = e.target.value;
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <select
+                    value={editValue.category}
+                    onChange={async (e) => {
+                      const value = e.target.value;
 
-                    setEditValue((prev) => ({
-                      ...prev,
-                      category: value,
-                    }));
+                      if (value === "Others") {
+                        // wait for the custom text instead of saving immediately
+                        setEditValue((prev) => ({ ...prev, category: value }));
+                        return;
+                      }
 
-                    await updateDoc(doc(db, "lost_found", viewItem.id), {
-                      category: value,
-                    });
+                      setEditValue((prev) => ({ ...prev, category: value, categoryOther: "" }));
 
-                    await logAudit({
-                      action: "Edited Lost & Found Item",
-                      module: "Lost & Found",
-                      documentId: viewItem.id,
-                      documentTitle: viewItem.itemName || "",
-                      performedBy: getCurrentUser(),
-                      oldData: { category: viewItem.category },
-                      newData: { category: value },
-                      description: `Category of "${viewItem.itemName}" changed to ${value}.`,
-                    });
+                      await updateDoc(doc(db, "lost_found", viewItem.id), { category: value });
 
-                    setViewItem((prev) => ({
-                      ...prev,
-                      category: value,
-                    }));
+                      await logAudit({
+                        action: "Edited Lost & Found Item",
+                        module: "Lost & Found",
+                        documentId: viewItem.id,
+                        documentTitle: viewItem.itemName || "",
+                        performedBy: getCurrentUser(),
+                        oldData: { category: viewItem.category },
+                        newData: { category: value },
+                        description: `Category of "${viewItem.itemName}" changed to ${value}.`,
+                      });
 
-                    setEditing((prev) => ({
-                      ...prev,
-                      category: false,
-                    }));
-                  }}
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: "4px 10px",
-                    borderRadius: 999,
-                    border: "1px solid #ddd",
-                    color: "#111827",
-                    background: darkMode ? "#1F2937" : "#fff",
+                      setViewItem((prev) => ({ ...prev, category: value }));
+                      setEditing((prev) => ({ ...prev, category: false }));
+                    }}
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      padding: "4px 10px",
+                      borderRadius: 999,
                       color: darkMode ? "#F9FAFB" : "#111827",
-                      border: `1px solid ${
-                        darkMode ? "#4B5563" : "#ddd"
-                      }`,
-                  }}
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
+                      background: darkMode ? "#1F2937" : "#fff",
+                      border: `1px solid ${darkMode ? "#4B5563" : "#ddd"}`,
+                    }}
+                  >
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+
+                  {editValue.category === "Others" && (
+                    <input
+                      autoFocus
+                      placeholder="Specify category"
+                      value={editValue.categoryOther}
+                      maxLength={30}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/[^A-Za-z\s]/g, "");
+                        setEditValue((prev) => ({ ...prev, categoryOther: value }));
+                      }}
+                      onBlur={async () => {
+                        const custom = editValue.categoryOther.trim();
+                        if (!custom) return;
+
+                        await updateDoc(doc(db, "lost_found", viewItem.id), { category: custom });
+
+                        await logAudit({
+                          action: "Edited Lost & Found Item",
+                          module: "Lost & Found",
+                          documentId: viewItem.id,
+                          documentTitle: viewItem.itemName || "",
+                          performedBy: getCurrentUser(),
+                          oldData: { category: viewItem.category },
+                          newData: { category: custom },
+                          description: `Category of "${viewItem.itemName}" changed to ${custom}.`,
+                        });
+
+                        setViewItem((prev) => ({ ...prev, category: custom }));
+                        setEditing((prev) => ({ ...prev, category: false }));
+                      }}
+                      style={{
+                        fontSize: 12,
+                        padding: "5px 10px",
+                        borderRadius: 8,
+                        background: darkMode ? "#1F2937" : "#fff",
+                        color: darkMode ? "#F9FAFB" : "#111827",
+                        border: `1px solid ${darkMode ? "#4B5563" : "#ddd"}`,
+                      }}
+                    />
+                  )}
+                </div>
               ) : (
                 <span
                   onClick={() =>
-                    setEditing((prev) => ({
-                      ...prev,
-                      category: true,
-                    }))
+                    setEditing((prev) => ({ ...prev, category: true }))
                   }
-                    style={{
-                      cursor:"pointer",
-                      fontSize:11,
-                      fontWeight:600,
-                      padding:"3px 10px",
-                      borderRadius:99,
-                      textTransform:"uppercase",
-                      letterSpacing:"0.04em",
-
-                      background: darkMode
-                        ? "#374151"
-                        : "#F3F4F6",
-
-                      color: darkMode
-                        ? "#F9FAFB"
-                        : "#111827",
-                    }}
+                  style={{
+                    cursor: "pointer",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: "3px 10px",
+                    borderRadius: 99,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.04em",
+                    background: darkMode ? "#374151" : "#F3F4F6",
+                    color: darkMode ? "#F9FAFB" : "#111827",
+                  }}
                 >
                   {viewItem.category}
                 </span>

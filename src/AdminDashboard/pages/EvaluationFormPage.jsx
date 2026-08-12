@@ -43,6 +43,12 @@ export default function EvaluationFormPage() {
     "1 Strongly Disagree",
   ];
 
+  // 🆕 helper: get the type of a question by index ("rating" | "text"),
+  // falls back to "rating" for older evaluations saved before question types existed.
+  const getQuestionType = (index) => {
+    return (event?.questionTypes && event.questionTypes[index]) || "rating";
+  };
+
   useEffect(() => {
     const fetchEvent = async () => {
       const ref = doc(db, "evaluations", eventId);
@@ -148,7 +154,13 @@ export default function EvaluationFormPage() {
 
 
      // CHECK IF ALL QUESTIONS ARE ANSWERED
-      if (Object.keys(answers).length !== event.questions.length) {
+      // 🆕 also makes sure text answers aren't just blank/whitespace
+      const unanswered = event.questions.some((_, index) => {
+        const val = answers[index];
+        return val === undefined || val === null || String(val).trim() === "";
+      });
+
+      if (unanswered) {
         return alert("Please answer all questions before submitting.");
       }
 
@@ -195,6 +207,11 @@ const scoreMap = {
       let totalCount = 0;
 
       event.questions.forEach((q, index) => {
+        // 🆕 only Likert-type questions contribute to the numeric average;
+        // text answers are stored in `answers` but skipped here so they
+        // don't distort the aggregated score.
+        if (getQuestionType(index) !== "rating") return;
+
         const rating = answers[index];
         if (!rating) return;
 
@@ -396,42 +413,59 @@ if ((event.status || "Active") === "Disabled") {
 
             {/* QUESTIONS */}
             <div className="space-y-4">
-              {event.questions.map((q, index) => (
-                <div
-                  key={index}
-                  className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"
-                >
-                  <p className="font-semibold text-gray-800 mb-3">
-                    {index + 1}. {q}
-                  </p>
+              {event.questions.map((q, index) => {
+                // 🆕 decide how to render this question based on its saved type
+                const qType = getQuestionType(index);
 
-                  <div className="flex flex-wrap gap-2.5">
-                    {ratings.map((r) => {
-                      const active = answers[index] === r;
-                      return (
-                        <label
-                          key={r}
-                          className={`text-xs sm:text-sm px-3 py-2 rounded-xl border cursor-pointer transition-all duration-150 ${
-                            active
-                              ? "bg-pink-500 border-pink-500 text-white shadow-sm shadow-pink-500/30"
-                              : "border-gray-200 text-gray-600 hover:border-pink-300"
-                          }`}
-                        >
-                          <input
-                            type="radio"
-                            name={`q-${index}`}
-                            value={r}
-                            checked={active}
-                            onChange={() => handleAnswer(index, r)}
-                            className="hidden"
-                          />
-                          {r}
-                        </label>
-                      );
-                    })}
+                return (
+                  <div
+                    key={index}
+                    className="bg-white rounded-2xl shadow-sm border border-gray-100 p-5"
+                  >
+                    <p className="font-semibold text-gray-800 mb-3">
+                      {index + 1}. {q}
+                    </p>
+
+                    {qType === "text" ? (
+                      // 🆕 TEXT / OPEN-ENDED ANSWER
+                      <textarea
+                        value={answers[index] || ""}
+                        onChange={(e) => handleAnswer(index, e.target.value)}
+                        placeholder="Type your answer here..."
+                        rows={3}
+                        className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-pink-400 focus:border-transparent resize-none"
+                      />
+                    ) : (
+                      // LIKERT SCALE (unchanged)
+                      <div className="flex flex-wrap gap-2.5">
+                        {ratings.map((r) => {
+                          const active = answers[index] === r;
+                          return (
+                            <label
+                              key={r}
+                              className={`text-xs sm:text-sm px-3 py-2 rounded-xl border cursor-pointer transition-all duration-150 ${
+                                active
+                                  ? "bg-pink-500 border-pink-500 text-white shadow-sm shadow-pink-500/30"
+                                  : "border-gray-200 text-gray-600 hover:border-pink-300"
+                              }`}
+                            >
+                              <input
+                                type="radio"
+                                name={`q-${index}`}
+                                value={r}
+                                checked={active}
+                                onChange={() => handleAnswer(index, r)}
+                                className="hidden"
+                              />
+                              {r}
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <button

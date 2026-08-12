@@ -310,11 +310,15 @@ export default function DashboardPage({ darkMode }) {
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
         <div className="flex items-center gap-4">
           <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${
-              darkMode ? "bg-[#E0245E]/15" : "bg-[#E0245E]/10"
+            className={`w-15 h-15 rounded-xl flex items-center justify-center shrink-0 ${
+              darkMode ? "bg-[#ffffff]" : "bg-[#E0245E]/10"
             }`}
           >
-            <LayoutDashboard className="w-6 h-6 text-[#E0245E]" strokeWidth={2} />
+            <img
+  src="/osas-logo.png"
+  alt="OSAS Logo"
+  className="w-50 h-50 object-contain"
+/>
           </div>
 
           <div>

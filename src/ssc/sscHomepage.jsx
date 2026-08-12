@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import jsQR from "jsqr";
 import { collection, query, where, getDocs, addDoc, updateDoc, getDoc, doc, serverTimestamp, Timestamp,} from "firebase/firestore";
-import { ScanLine, Camera, AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Home, QrCode,} from "lucide-react";
+import { ScanLine, Camera, AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Home, QrCode, MoreVertical,} from "lucide-react";
 import { db, auth } from "../firebase/firebase"; // adjust path to your firebase config
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import bcrypt from "bcryptjs";
@@ -16,6 +16,7 @@ import {
   FiX,
   FiBriefcase,
   FiAward,
+  FiLogOut,
 } from "react-icons/fi";
 
 
@@ -83,6 +84,8 @@ function HomeView({ onScanPress, darkMode }) {
 
   const officerName = getOfficerName();
   const [showProfile, setShowProfile] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
 
 const handleLogout = async () => {
   try {
@@ -97,25 +100,63 @@ const handleLogout = async () => {
   }
 };
 
+  // Close the dropdown when clicking outside of it
+  useEffect(() => {
+    if (!showMenu) return;
+
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setShowMenu(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showMenu]);
 
   return (
     <div className="min-h-screen w-full flex flex-col px-4 py-6 sm:py-10">
       <div className="w-full max-w-sm sm:max-w-md mx-auto flex-1 flex flex-col">
 
-        <div className="w-full flex justify-end gap-2 mb-4">
+        <div className="w-full flex justify-end mb-4 relative" ref={menuRef}>
           <button
-            onClick={() => setShowProfile(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-pink-600 hover:bg-pink-700 active:bg-pink-800 text-white font-semibold shadow-md shadow-pink-200 transition"
+            onClick={() => setShowMenu((v) => !v)}
+            className="p-2 rounded-full text-gray-500 hover:bg-pink-100 active:bg-pink-200 transition"
+            aria-label="More options"
+            aria-expanded={showMenu}
           >
-            <FiUser className="w-4 h-4" />
-            My Profile
+            <MoreVertical className="w-5 h-5" />
           </button>
-          <button
-            onClick={handleLogout}
-            className="px-4 py-2 rounded-xl bg-red-500 hover:bg-red-600 text-white font-semibold"
-          >
-            Logout
-          </button>
+
+          {showMenu && (
+            <div
+              className="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-lg shadow-pink-200/50 border border-pink-100 overflow-hidden z-20 animate-scale-in"
+              role="menu"
+            >
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  setShowProfile(true);
+                }}
+                role="menuitem"
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-pink-50 transition"
+              >
+                <FiUser className="w-4 h-4 text-pink-600" />
+                My Profile
+              </button>
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  handleLogout();
+                }}
+                role="menuitem"
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-50 transition border-t border-pink-100"
+              >
+                <FiLogOut className="w-4 h-4" />
+                Logout
+              </button>
+            </div>
+          )}
         </div>
         {/* Greeting */}
         <div className="mb-8 sm:mb-12 text-center">
@@ -158,6 +199,13 @@ const handleLogout = async () => {
         }
         .animate-ping-slow {
           animation: ping-slow 2.4s cubic-bezier(0,0,0.2,1) infinite;
+        }
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.96) translateY(-4px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-scale-in {
+          animation: scale-in 0.15s ease-out;
         }
       `}</style>
     </div>

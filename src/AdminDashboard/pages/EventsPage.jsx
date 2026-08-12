@@ -43,6 +43,8 @@ export default function EventsPage({ darkMode }) {
   const [viewEventName, setViewEventName] = useState("");
   const [viewEventDate, setViewEventDate] = useState("");
   const [viewQuestions, setViewQuestions] = useState([]);
+  // 🆕 per-question type for the view/edit modal ("rating" | "text")
+  const [viewQuestionTypes, setViewQuestionTypes] = useState([]);
 
   const [togglingStatus, setTogglingStatus] = useState(false);
 
@@ -50,6 +52,10 @@ export default function EventsPage({ darkMode }) {
     "The event was well organized.",
     "Overall, I am satisfied with this event.",
   ]);
+
+  // 🆕 per-question type for the create form ("rating" | "text")
+  // Kept as a parallel array so existing `questions` logic is untouched.
+  const [questionTypes, setQuestionTypes] = useState(["rating", "rating"]);
 
   const ratings = [
     "5 Strongly Agree",
@@ -67,12 +73,23 @@ export default function EventsPage({ darkMode }) {
 
   const addQuestion = () => {
     setQuestions([...questions, `New Question ${questions.length + 1}`]);
+    // 🆕 keep questionTypes in sync with questions
+    setQuestionTypes([...questionTypes, "rating"]);
   };
 
   const deleteQuestion = (index) => {
     const updated = questions.filter((_, i) => i !== index);
     setQuestions(updated);
+    // 🆕 keep questionTypes in sync with questions
+    setQuestionTypes(questionTypes.filter((_, i) => i !== index));
     if (editingIndex === index) setEditingIndex(null);
+  };
+
+  // 🆕 toggle a question between Likert Scale and Text/open-ended (create form)
+  const toggleQuestionType = (index) => {
+    const updated = [...questionTypes];
+    updated[index] = updated[index] === "text" ? "rating" : "text";
+    setQuestionTypes(updated);
   };
 
   // SAVE FORM
@@ -87,6 +104,7 @@ export default function EventsPage({ darkMode }) {
         eventName,
         eventDate,
         questions,
+        questionTypes, // 🆕 saved alongside questions
         createdAt: Timestamp.now(),
         status: "Active",
       });
@@ -98,7 +116,7 @@ export default function EventsPage({ darkMode }) {
         documentId: docRef.id,
         documentTitle: eventName,
         performedBy: getPerformedBy(),
-        newData: { eventName, eventDate, questions },
+        newData: { eventName, eventDate, questions, questionTypes },
         description: `Created evaluation form "${eventName}".`,
       });
 
@@ -173,6 +191,7 @@ const responsesQuery = query(
             eventName: eventToDelete.eventName,
             eventDate: eventToDelete.eventDate,
             questions: eventToDelete.questions,
+            questionTypes: eventToDelete.questionTypes,
           }
         : null,
       description: `Deleted evaluation "${eventToDelete?.eventName || id}" and all responses.`,
@@ -285,6 +304,8 @@ const handleToggleStatus = async (ev) => {
     "The event was well organized.",
     "Overall, I am satisfied with this event.",
   ]);
+  // 🆕 reset types alongside the default questions
+  setQuestionTypes(["rating", "rating"]);
 
   setEditingIndex(null);
 };
@@ -303,6 +324,12 @@ const handleToggleStatus = async (ev) => {
     setViewEventName(ev.eventName);
     setViewEventDate(ev.eventDate);
     setViewQuestions(ev.questions || []);
+    // 🆕 fall back to "rating" for older evaluations saved before this feature existed
+    setViewQuestionTypes(
+      ev.questionTypes && ev.questionTypes.length === (ev.questions || []).length
+        ? ev.questionTypes
+        : (ev.questions || []).map(() => "rating")
+    );
     setIsEditingView(false);
     setShowViewModal(true);
   };
@@ -321,10 +348,21 @@ const handleToggleStatus = async (ev) => {
 
   const addViewQuestion = () => {
     setViewQuestions([...viewQuestions, `New Question ${viewQuestions.length + 1}`]);
+    // 🆕 keep viewQuestionTypes in sync
+    setViewQuestionTypes([...viewQuestionTypes, "rating"]);
   };
 
   const deleteViewQuestion = (index) => {
     setViewQuestions(viewQuestions.filter((_, i) => i !== index));
+    // 🆕 keep viewQuestionTypes in sync
+    setViewQuestionTypes(viewQuestionTypes.filter((_, i) => i !== index));
+  };
+
+  // 🆕 toggle a question between Likert Scale and Text/open-ended (view/edit modal)
+  const toggleViewQuestionType = (index) => {
+    const updated = [...viewQuestionTypes];
+    updated[index] = updated[index] === "text" ? "rating" : "text";
+    setViewQuestionTypes(updated);
   };
 
   const saveViewEdits = async () => {
@@ -339,6 +377,7 @@ const handleToggleStatus = async (ev) => {
         eventName: viewEventName,
         eventDate: viewEventDate,
         questions: viewQuestions,
+        questionTypes: viewQuestionTypes, // 🆕
       });
 
       // 🔎 Audit log: evaluation edited
@@ -352,11 +391,13 @@ const handleToggleStatus = async (ev) => {
           eventName: viewingEvent.eventName,
           eventDate: viewingEvent.eventDate,
           questions: viewingEvent.questions,
+          questionTypes: viewingEvent.questionTypes,
         },
         newData: {
           eventName: viewEventName,
           eventDate: viewEventDate,
           questions: viewQuestions,
+          questionTypes: viewQuestionTypes,
         },
         description: `Edited evaluation "${viewEventName}".`,
       });
@@ -510,6 +551,31 @@ const handleToggleStatus = async (ev) => {
               }`}
             />
 
+            {/* 🆕 QUESTION TYPE SELECTOR */}
+            <div className="flex items-center gap-2 mt-3">
+              <span
+                className={`text-[11px] font-semibold uppercase tracking-wide ${
+                  darkMode ? "text-slate-400" : "text-gray-500"
+                }`}
+              >
+                Answer Type:
+              </span>
+              <select
+                value={questionTypes[i] || "rating"}
+                onChange={(e) => {
+                  const updated = [...questionTypes];
+                  updated[i] = e.target.value;
+                  setQuestionTypes(updated);
+                }}
+                className={`text-xs border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-pink-400 ${
+                  darkMode ? "border-pink-500 bg-slate-900 text-white" : "border-pink-600 bg-white"
+                }`}
+              >
+                <option value="rating">Likert Scale</option>
+                <option value="text">Text Answer</option>
+              </select>
+            </div>
+
             <button
               onClick={() => deleteQuestion(i)}
               className= " px-3 py-1.5 bg-red-600 text-white text-xs font-medium mt-3 rounded-lg transition-all duration-200 hover:bg-red-700 active:scale-[0.98]"
@@ -517,18 +583,34 @@ const handleToggleStatus = async (ev) => {
               Delete Question
             </button>
 
-            <div className="flex gap-4 flex-wrap mt-3">
-              {ratings.map((r) => (
-                <label
-                  key={r}
-                  className={`text-xs sm:text-sm flex items-center gap-1.5 ${
-                    darkMode ? "text-slate-300" : "text-gray-600"
+            {/* 🆕 show ratings only for Likert questions, otherwise show a text-input preview */}
+            {(questionTypes[i] || "rating") === "rating" ? (
+              <div className="flex gap-4 flex-wrap mt-3">
+                {ratings.map((r) => (
+                  <label
+                    key={r}
+                    className={`text-xs sm:text-sm flex items-center gap-1.5 ${
+                      darkMode ? "text-slate-300" : "text-gray-600"
+                    }`}
+                  >
+                    <input type="radio" name={`q-${i}`} className="accent-pink-500" /> {r}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-3">
+                <input
+                  type="text"
+                  disabled
+                  placeholder="Respondent will type their answer here"
+                  className={`w-full text-xs sm:text-sm border rounded-lg px-3 py-2 cursor-not-allowed ${
+                    darkMode
+                      ? "border-slate-700 bg-slate-900 text-slate-500 placeholder-slate-500"
+                      : "border-gray-200 bg-white text-gray-400"
                   }`}
-                >
-                  <input type="radio" name={`q-${i}`} className="accent-pink-500" /> {r}
-                </label>
-              ))}
-            </div>
+                />
+              </div>
+            )}
 
           </div>
         ))}
@@ -883,6 +965,32 @@ const handleToggleStatus = async (ev) => {
                               darkMode ? "border-pink-500 bg-slate-900 text-white" : "border-pink-600 bg-white"
                             }`}
                           />
+
+                          {/* 🆕 QUESTION TYPE SELECTOR (edit mode) */}
+                          <div className="flex items-center gap-2 mt-3">
+                            <span
+                              className={`text-[11px] font-semibold uppercase tracking-wide ${
+                                darkMode ? "text-slate-400" : "text-gray-500"
+                              }`}
+                            >
+                              Answer Type:
+                            </span>
+                            <select
+                              value={viewQuestionTypes[i] || "rating"}
+                              onChange={(e) => {
+                                const updated = [...viewQuestionTypes];
+                                updated[i] = e.target.value;
+                                setViewQuestionTypes(updated);
+                              }}
+                              className={`text-xs border rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-pink-400 ${
+                                darkMode ? "border-pink-500 bg-slate-900 text-white" : "border-pink-600 bg-white"
+                              }`}
+                            >
+                              <option value="rating">Likert Scale</option>
+                              <option value="text">Text Answer</option>
+                            </select>
+                          </div>
+
                           <button
                             onClick={() => deleteViewQuestion(i)}
                             className="px-3 py-1.5 bg-red-600 text-white text-xs font-medium mt-3 rounded-lg transition-all duration-200 hover:bg-red-700 active:scale-[0.98]"
@@ -891,23 +999,51 @@ const handleToggleStatus = async (ev) => {
                           </button>
                         </>
                       ) : (
-                        <p className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
-                          {i + 1}. {q}
-                        </p>
-                      )}
-
-                      <div className="flex gap-4 flex-wrap mt-3">
-                        {ratings.map((r) => (
-                          <label
-                            key={r}
-                            className={`text-xs sm:text-sm flex items-center gap-1.5 ${
-                              darkMode ? "text-slate-400" : "text-gray-500"
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className={`text-sm font-medium ${darkMode ? "text-slate-200" : "text-gray-700"}`}>
+                            {i + 1}. {q}
+                          </p>
+                          {/* 🆕 small badge showing the saved type in read-only view */}
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wide ${
+                              (viewQuestionTypes[i] || "rating") === "text"
+                                ? "bg-blue-100 text-blue-600"
+                                : "bg-pink-100 text-pink-600"
                             }`}
                           >
-                            <input type="radio" disabled className="accent-pink-500" /> {r}
-                          </label>
-                        ))}
-                      </div>
+                            {(viewQuestionTypes[i] || "rating") === "text" ? "Text Answer" : "Likert Scale"}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* 🆕 show ratings only for Likert questions, otherwise a text-input preview */}
+                      {(viewQuestionTypes[i] || "rating") === "rating" ? (
+                        <div className="flex gap-4 flex-wrap mt-3">
+                          {ratings.map((r) => (
+                            <label
+                              key={r}
+                              className={`text-xs sm:text-sm flex items-center gap-1.5 ${
+                                darkMode ? "text-slate-400" : "text-gray-500"
+                              }`}
+                            >
+                              <input type="radio" disabled className="accent-pink-500" /> {r}
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3">
+                          <input
+                            type="text"
+                            disabled
+                            placeholder="Respondent will type their answer here"
+                            className={`w-full text-xs sm:text-sm border rounded-lg px-3 py-2 cursor-not-allowed ${
+                              darkMode
+                                ? "border-slate-700 bg-slate-900 text-slate-500 placeholder-slate-500"
+                                : "border-gray-200 bg-white text-gray-400"
+                            }`}
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -926,6 +1062,12 @@ const handleToggleStatus = async (ev) => {
                           setViewEventName(viewingEvent.eventName);
                           setViewEventDate(viewingEvent.eventDate);
                           setViewQuestions(viewingEvent.questions || []);
+                          // 🆕 also revert types on cancel
+                          setViewQuestionTypes(
+                            viewingEvent.questionTypes && viewingEvent.questionTypes.length === (viewingEvent.questions || []).length
+                              ? viewingEvent.questionTypes
+                              : (viewingEvent.questions || []).map(() => "rating")
+                          );
                           setIsEditingView(false);
                         }}
                         className="px-6 py-3 rounded-xl border border-gray-400 text-gray-500 font-medium transition-all duration-200 hover:bg-gray-100 active:scale-[0.98]"

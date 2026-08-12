@@ -78,13 +78,20 @@ export default function Footer() {
             <h4 className="text-white font-semibold mb-4 text-sm tracking-wide uppercase">
               Contact
             </h4>
-            <p className="text-sm text-gray-400 leading-relaxed mb-5">
-              Dominican College of Tarlac
-              <br />
-              Office of Student Affairs and Services
-            </p>
+                <a
+                  href="https://www.facebook.com/dctofficeofstudentaffairs"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-gray-400 leading-relaxed mb-5 hover:text-pink-400 transition-colors duration-200"
+                >
+                  Dominican College of Tarlac
+                  <br />
+                  Office of Student Affairs and Services
+                </a>
+
             <div className="flex items-center gap-4">
               <div className="w-11 h-11 rounded-full bg-white/95 shadow-md flex items-center justify-center overflow-hidden">
+              
                 <img src={osasLogo} alt="OSAS logo" className="w-9 h-9 object-contain" />
               </div>
               <div className="w-11 h-11 rounded-full bg-white/95 shadow-md flex items-center justify-center overflow-hidden">

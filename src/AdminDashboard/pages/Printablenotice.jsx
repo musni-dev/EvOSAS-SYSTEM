@@ -26,8 +26,8 @@ export default function Printablenotice({
   caseData,
   investigationDateTime,
   responseDays, // e.g. "3 working days" — optional, blank line shown if omitted
-  coordinatorName = "Mr. Allan Moises P. Lomibao",
-  headName = "Mr. Renel L. Samson",
+  coordinatorName = "Mr. Renel L. Samson",
+  headName = "Mr. Jan Hanz S. Huet",
 }) {
   if (!caseData) return null;
 

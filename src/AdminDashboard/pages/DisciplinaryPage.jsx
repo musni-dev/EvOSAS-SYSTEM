@@ -66,6 +66,9 @@ export default function DisciplinaryPage({ darkMode }) {
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [investigationDateTime, setInvestigationDateTime] = useState("");
   const [responseDays, setResponseDays] = useState("");
+  const [coordinatorName, setCoordinatorName] = useState("Mr. Renel L. Samson");
+  const [headName, setHeadName] = useState("Mr. Jan Hanz S. Huet");
+
 
   const handleView = (item) => {
   setSelectedCase(item);
@@ -446,11 +449,11 @@ const filteredCases = cases.filter((item) => {
     return darkMode ? "bg-red-900 text-red-300" : "bg-red-100 text-red-700";
   };
 
-  const inputBase = `w-full mt-1.5 border rounded-xl p-3 text-sm outline-none transition-all duration-150 focus:ring-2 focus:ring-pink-400 focus:border-transparent ${
-    darkMode
-      ? "bg-slate-800 border-slate-700 text-white placeholder-slate-500"
-      : "bg-white border-gray-200 text-gray-800 placeholder-gray-400"
-  }`;
+const inputBase = `w-full mt-1.5 border-2 rounded-xl p-3 text-sm outline-none transition-all duration-150 focus:ring-2 focus:ring-pink-400 focus:border-pink-500 ${
+  darkMode
+    ? "bg-slate-800 border-slate-500 text-white placeholder-slate-400"
+    : "bg-white border-pink-300 text-gray-800 placeholder-gray-400"
+}`;
 
   const disabledInputBase = (editing) =>
     `w-full mt-1.5 border rounded-xl p-3 text-sm outline-none transition-all duration-150 focus:ring-2 focus:ring-pink-400 focus:border-transparent ${
@@ -1771,10 +1774,10 @@ const filteredCases = cases.filter((item) => {
               </button>
             </div>
 
-            <div className="p-4 sm:p-6">
-              {/* Editable, print-only field. Never written to Firestore. */}
+            <div className="p-4 sm:p-3">
+              {/* Editable, print-only field. */}
            
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
 
                   {/* LEFT: Response Period */}
                   <div
@@ -1823,6 +1826,31 @@ const filteredCases = cases.filter((item) => {
                     </p>
                   </div>
 
+
+               
+                      <div className={`rounded-xl p-4 border ${darkMode ? "bg-slate-800/50 border-slate-700" : "bg-pink-50 border-pink-100"}`}>
+                        <label className={labelBase}>Coordinator Name (for this printout only)</label>
+                        <input
+                          type="text"
+                          value={coordinatorName}
+                          onChange={(e) => setCoordinatorName(e.target.value)}
+                          placeholder="e.g. Mr. Allan Moises P. Lomibao"
+                          className={inputBase}
+                        />
+                      </div>
+
+                      <div className={`rounded-xl p-4 border ${darkMode ? "bg-slate-800/50 border-slate-700" : "bg-pink-50 border-pink-100"}`}>
+                        <label className={labelBase}>Head Name (for this printout only)</label>
+                        <input
+                          type="text"
+                          value={headName}
+                          onChange={(e) => setHeadName(e.target.value)}
+                          placeholder="e.g. Mr. Renel L. Samson"
+                          className={inputBase}
+                        />
+                      </div>
+                 
+
                 </div>
 
               {/* On-screen preview of the document */}
@@ -1832,6 +1860,8 @@ const filteredCases = cases.filter((item) => {
                     caseData={selectedCase}
                     investigationDateTime={investigationDateTime}
                     responseDays={responseDays}
+                    coordinatorName={coordinatorName}
+                    headName={headName}
                   />
                 </div>
               </div>

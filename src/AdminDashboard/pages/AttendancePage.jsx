@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import {  addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch,} from "firebase/firestore";
-import { CalendarDays, Check, CheckCircle2, ChevronDown, Clock, Download, GraduationCap, Plus, QrCode, Search, StopCircle, Trash2, Users, X,
+import { CalendarDays, Check, CheckCircle2, ChevronDown, Clock, Download, GraduationCap, Plus, QrCode, Search, StopCircle, Trash2, Users, X, Pencil 
 } from "lucide-react";
 import { db } from "../../firebase/firebase";
 import { logAudit } from "../../utils/auditTrail"; // ← adjust path if needed
@@ -166,7 +166,14 @@ export default function AttendancePage( {darkMode} ) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editTitle, setEditTitle] = useState("");
+  const [editEventDate, setEditEventDate] = useState("");
+  const [editEventTime, setEditEventTime] = useState("");
+  const [editQrEndTime, setEditQrEndTime] = useState("");
+  const [editLoading, setEditLoading] = useState(false);
   const qrRef = useRef(null);
+
 
   const selectedSession = useMemo(
     () => sessions.find((s) => s.id === selectedSessionId),
@@ -318,6 +325,57 @@ useEffect(() => {
     if (!sessionId) return;
     await updateDoc(doc(db, "sessions", sessionId), { status: "ended" });
   }
+
+  function openEditSession(session) {
+  if (!session) return;
+  setEditTitle(session.title || "");
+  setEditEventDate(session.eventDate || "");
+  setEditEventTime(session.eventTime || "");
+  setEditQrEndTime(session.qrEndTime || "");
+  setShowEditModal(true);
+}
+
+async function handleUpdateSession(e) {
+  e.preventDefault();
+  if (!selectedSession) return;
+  if (!editTitle.trim() || !editEventDate || !editEventTime || !editQrEndTime) return;
+
+  setEditLoading(true);
+
+  try {
+    const oldData = {
+      title: selectedSession.title,
+      eventDate: selectedSession.eventDate,
+      eventTime: selectedSession.eventTime,
+      qrEndTime: selectedSession.qrEndTime,
+    };
+
+    const newData = {
+      title: editTitle.trim(),
+      eventDate: editEventDate,
+      eventTime: editEventTime,
+      qrEndTime: editQrEndTime,
+    };
+
+    await updateDoc(doc(db, "sessions", selectedSession.id), newData);
+
+    // 🔎 Audit log: session updated
+    await logAudit({
+      action: "Updated Attendance Session",
+      module: "Attendance",
+      documentId: selectedSession.id,
+      documentTitle: newData.title,
+      performedBy: getPerformedBy(),
+      oldData,
+      newData,
+      description: `Updated attendance session "${oldData.title}".`,
+    });
+
+    setShowEditModal(false);
+  } finally {
+    setEditLoading(false);
+  }
+}
 
   async function deleteSessions(sessionIds) {
     if (!sessionIds.length) return;
@@ -689,6 +747,16 @@ useEffect(() => {
                         <StopCircle size={13} /> End
                       </button>
                     )}
+                    <button
+  onClick={() => openEditSession(selectedSession)}
+  className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition ${
+    darkMode
+      ? "border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+      : "border-pink-200 text-pink-700 hover:bg-pink-50"
+  }`}
+>
+  <Pencil size={13} /> Edit
+</button>
 
                     <button
                       onClick={() => handleDeleteSession(selectedSession.id)}
@@ -1098,6 +1166,143 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+      {showEditModal && selectedSession && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            onClick={() => setShowEditModal(false)}
+          >
+            <div
+              className={`relative w-full max-w-md rounded-2xl p-6 shadow-2xl ${
+                darkMode ? "bg-gray-900 border border-gray-700" : "bg-white"
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className={`absolute right-4 top-4 transition ${
+                  darkMode ? "text-gray-500 hover:text-gray-300" : "text-gray-400 hover:text-gray-600"
+                }`}
+              >
+                <X size={20} />
+              </button>
+
+              <div className={`mb-5 flex items-center gap-2 ${darkMode ? "text-pink-400" : "text-pink-700"}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${darkMode ? "bg-pink-500/10" : "bg-pink-50"}`}>
+                  <Pencil size={18} />
+                </div>
+                <div>
+                  <h2 className={`text-sm font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                    Edit Attendance Session
+                  </h2>
+                  <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    Update the schedule or QR expiration time.
+                  </p>
+                </div>
+              </div>
+
+              <form onSubmit={handleUpdateSession} className="space-y-3">
+                <div>
+                  <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
+                    Session title
+                  </label>
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    required
+                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
+                      darkMode
+                        ? "border-gray-700 bg-gray-800 text-white placeholder:text-gray-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                        : "border-pink-200 bg-white text-black focus:border-pink-500 focus:ring-2 focus:ring-pink-100 placeholder:text-gray-400"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
+                    Event date
+                  </label>
+                  <input
+                    type="date"
+                    value={editEventDate}
+                    onChange={(e) => setEditEventDate(e.target.value)}
+                    min={getToday()}
+                    required
+                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
+                      darkMode
+                        ? "border-gray-700 bg-gray-800 text-white [color-scheme:dark] focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                        : "border-pink-200 bg-white text-black focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
+                    Event time
+                  </label>
+                  <input
+                    type="time"
+                    value={editEventTime}
+                    onChange={(e) => setEditEventTime(e.target.value)}
+                    required
+                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
+                      darkMode
+                        ? "border-gray-700 bg-gray-800 text-white [color-scheme:dark] focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                        : "border-pink-200 bg-white text-black focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                    }`}
+                  />
+                </div>
+
+                <div>
+                  <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
+                    QR code end time
+                  </label>
+                  <input
+                    type="time"
+                    value={editQrEndTime}
+                    onChange={(e) => setEditQrEndTime(e.target.value)}
+                    required
+                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
+                      darkMode
+                        ? "border-gray-700 bg-gray-800 text-white [color-scheme:dark] focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                        : "border-pink-200 bg-white text-black focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                    }`}
+                  />
+                </div>
+
+                <div className="flex gap-2 pt-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowEditModal(false)}
+                    className={`flex-1 rounded-lg border px-4 py-2.5 text-sm font-medium transition ${
+                      darkMode
+                        ? "border-red-500/40 text-red-400 hover:bg-gray-800"
+                        : "border-red-500 text-red-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    Cancel
+                  </button>
+
+                  <button
+                    type="submit"
+                    disabled={
+                      editLoading ||
+                      !editTitle.trim() ||
+                      !editEventDate ||
+                      !editEventTime ||
+                      !editQrEndTime
+                    }
+                    className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-pink-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-pink-700 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Pencil size={16} />
+                    {editLoading ? "Saving..." : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
       {showSessionModal && (
         <div

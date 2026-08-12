@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { signInWithEmailAndPassword } from "firebase/auth";
@@ -23,6 +23,58 @@ import {
 } from "firebase/firestore";
 import { logLogin } from "../utils/auditTrail";
 
+// ===== Login throttling config =====
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_BASE_MIN = 10;   // first lockout duration
+const LOCKOUT_STEP_MIN = 15;   // added each time it happens again
+
+const LS_ATTEMPTS = "loginFailedAttempts";
+const LS_LOCKOUT_UNTIL = "loginLockoutUntil";
+const LS_LOCKOUT_STAGE = "loginLockoutStage";
+
+function getLockoutStatus() {
+  const lockoutUntil = parseInt(localStorage.getItem(LS_LOCKOUT_UNTIL) || "0", 10);
+  const now = Date.now();
+  if (lockoutUntil && now < lockoutUntil) {
+    return { locked: true, remainingMs: lockoutUntil - now };
+  }
+  return { locked: false, remainingMs: 0 };
+}
+
+// Call this whenever a login attempt fails with wrong credentials
+function registerFailedAttempt() {
+  const attempts = parseInt(localStorage.getItem(LS_ATTEMPTS) || "0", 10) + 1;
+
+  if (attempts >= MAX_ATTEMPTS) {
+    const stage = parseInt(localStorage.getItem(LS_LOCKOUT_STAGE) || "0", 10) + 1;
+    const durationMin = LOCKOUT_BASE_MIN + (stage - 1) * LOCKOUT_STEP_MIN;
+    const lockoutUntil = Date.now() + durationMin * 60 * 1000;
+
+    localStorage.setItem(LS_LOCKOUT_STAGE, String(stage));
+    localStorage.setItem(LS_LOCKOUT_UNTIL, String(lockoutUntil));
+    localStorage.setItem(LS_ATTEMPTS, "0"); // reset counter for the next round
+
+    return { justLocked: true, durationMin };
+  }
+
+  localStorage.setItem(LS_ATTEMPTS, String(attempts));
+  return { justLocked: false, attemptsLeft: MAX_ATTEMPTS - attempts };
+}
+
+// Call this on a successful login
+function resetLoginThrottle() {
+  localStorage.removeItem(LS_ATTEMPTS);
+  localStorage.removeItem(LS_LOCKOUT_UNTIL);
+  localStorage.removeItem(LS_LOCKOUT_STAGE);
+}
+
+function formatRemaining(ms) {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
 export default function Login() {
   const navigate = useNavigate();
 
@@ -30,8 +82,37 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 const [showPassword, setShowPassword] = useState(false);
+
+  // ===== Login throttling state =====
+  const [lockoutRemainingMs, setLockoutRemainingMs] = useState(0);
+
+  const refreshLockoutStatus = useCallback(() => {
+    const { locked, remainingMs } = getLockoutStatus();
+    setLockoutRemainingMs(locked ? remainingMs : 0);
+  }, []);
+
+  useEffect(() => {
+    refreshLockoutStatus();
+    const interval = setInterval(refreshLockoutStatus, 1000);
+    return () => clearInterval(interval);
+  }, [refreshLockoutStatus]);
+
+  const isLockedOut = lockoutRemainingMs > 0;
+
   const handleLogin = async (e) => {
     e.preventDefault();
+
+    // ===== Block login while locked out =====
+    const { locked, remainingMs } = getLockoutStatus();
+    if (locked) {
+      alert(
+        `Too many failed login attempts. Please try again in ${formatRemaining(
+          remainingMs
+        )}.`
+      );
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -52,6 +133,9 @@ const [showPassword, setShowPassword] = useState(false);
         role: "Administrator",
         name: "Administrator",
       });
+
+      // successful login — clear any throttle state
+      resetLoginThrottle();
 
       const accepted = localStorage.getItem("acceptedTerms");
 
@@ -79,7 +163,17 @@ const [showPassword, setShowPassword] = useState(false);
           });
 
         if (!foundUser) {
-          alert("Invalid username or password");
+          const result = registerFailedAttempt();
+          refreshLockoutStatus();
+          if (result.justLocked) {
+            alert(
+              `Invalid username or password. Too many failed attempts — please try again in ${result.durationMin} minutes.`
+            );
+          } else {
+            alert(
+              `Invalid username or password. ${result.attemptsLeft} attempt(s) left before lockout.`
+            );
+          }
           return;
         }
 
@@ -91,7 +185,17 @@ const [showPassword, setShowPassword] = useState(false);
         );
 
         if (!passwordMatch) {
-          alert("Invalid username or password");
+          const result = registerFailedAttempt();
+          refreshLockoutStatus();
+          if (result.justLocked) {
+            alert(
+              `Invalid username or password. Too many failed attempts — please try again in ${result.durationMin} minutes.`
+            );
+          } else {
+            alert(
+              `Invalid username or password. ${result.attemptsLeft} attempt(s) left before lockout.`
+            );
+          }
           return;
         }
         await updateDoc(
@@ -108,6 +212,9 @@ const [showPassword, setShowPassword] = useState(false);
         // pages (e.g. the Profile modal) can look up and update their
         // own "users" record.
         localStorage.setItem("uid", foundUser.id);
+
+        // successful login — clear any throttle state
+        resetLoginThrottle();
 
 
 
@@ -273,6 +380,17 @@ const [showPassword, setShowPassword] = useState(false);
                 Sign in to continue to your EvOSAS account.
               </p>
 
+              {isLockedOut && (
+                <div className="mb-5 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-center">
+                  <p className="text-xs font-bold text-red-600">
+                    Account temporarily locked due to too many failed attempts.
+                  </p>
+                  <p className="text-sm font-extrabold text-red-700 mt-1">
+                    Try again in {formatRemaining(lockoutRemainingMs)}
+                  </p>
+                </div>
+              )}
+
               <form onSubmit={handleLogin} className="space-y-5">
                 {/* Username / Email */}
                 <div className="space-y-1.5 text-left">
@@ -295,6 +413,7 @@ const [showPassword, setShowPassword] = useState(false);
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-11 pr-4 py-3.5 rounded-xl bg-white border-2 border-[#1a1a1a]/15 text-[#1a1a1a] placeholder-[#1a1a1a]/45 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#ff6699]/15 focus:border-[#ff6699] transition-all duration-200"
                       required
+                      disabled={isLockedOut}
                     />
                   </div>
                 </div>
@@ -320,6 +439,7 @@ const [showPassword, setShowPassword] = useState(false);
                       onChange={(e) => setPassword(e.target.value)}
                       className="w-full pl-11 pr-11 py-3.5 rounded-xl bg-white border-2 border-[#1a1a1a]/15 text-[#1a1a1a] placeholder-[#1a1a1a]/45 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-[#ff6699]/15 focus:border-[#ff6699] transition-all duration-200"
                       required
+                      disabled={isLockedOut}
                     />
 
                     {password && (
@@ -347,10 +467,14 @@ const [showPassword, setShowPassword] = useState(false);
 
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || isLockedOut}
                   className="w-full py-3.5 rounded-xl text-white font-bold text-sm bg-gradient-to-r from-[#ff6699] to-[#ff77aa] shadow-lg shadow-[#ff6699]/35 hover:shadow-xl hover:shadow-[#ff6699]/45 hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-lg"
                 >
-                  {loading ? "Logging in..." : "Login"}
+                  {isLockedOut
+                    ? `Locked (${formatRemaining(lockoutRemainingMs)})`
+                    : loading
+                    ? "Logging in..."
+                    : "Login"}
                 </button>
               </form>
             </div>
