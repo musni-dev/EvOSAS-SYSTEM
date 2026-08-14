@@ -598,21 +598,21 @@ function generateUniqueUsername(firstName, lastName, users) {
           </button>
         </div>
 
-        {(notice || error) && (
-          <div
-            className={`mb-4 rounded-md border px-4 py-3 text-sm ${
-              error
-                ? darkMode
-                  ? "border-red-500/30 bg-red-500/10 text-red-300"
-                  : "border-red-200 bg-red-50 text-red-700"
-                : darkMode
-                ? "border-pink-500/30 bg-slate-900 text-pink-300"
-                : "border-pink-200 bg-white text-pink-700"
-            }`}
-          >
-            {error || notice}
-          </div>
-        )}
+            {(notice || error) && (
+              <div
+                className={`fixed left-1/2 top-20 z-[100] w-[92%] max-w-md -translate-x-1/2 rounded-md border px-4 py-3 text-sm shadow-lg sm:w-full ${
+                  error
+                    ? darkMode
+                      ? "border-red-500/30 bg-slate-900 text-red-300 shadow-black/60"
+                      : "border-red-200 bg-white text-red-700 shadow-red-200/60"
+                    : darkMode
+                    ? "border-pink-500/30 bg-slate-900 text-pink-300 shadow-black/60"
+                    : "border-pink-200 bg-white text-pink-700 shadow-pink-200/60"
+                }`}
+              >
+                {error || notice}
+              </div>
+            )}
 
         <section className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat label="Total users" value={stats.total} darkMode={darkMode} />

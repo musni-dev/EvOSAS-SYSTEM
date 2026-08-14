@@ -4,7 +4,16 @@ import { useNavigate } from "react-router-dom";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth, db } from "../firebase/firebase";
 import bcrypt from "bcryptjs";
-import { FaEye, FaEyeSlash, FaUser, FaLock, FaShieldAlt } from "react-icons/fa";
+import {
+  FaEye,
+  FaEyeSlash,
+  FaUser,
+  FaLock,
+  FaShieldAlt,
+  FaExclamationTriangle,
+  FaTimesCircle,
+  FaTimes,
+} from "react-icons/fa";
 import { FaBookOpen, FaClipboardCheck, FaBoxOpen, FaStar,} from "react-icons/fa";
 import { IoDocumentAttach } from "react-icons/io5";
 
@@ -86,6 +95,26 @@ const [showPassword, setShowPassword] = useState(false);
   // ===== Login throttling state =====
   const [lockoutRemainingMs, setLockoutRemainingMs] = useState(0);
 
+  // ===== Toast notification state (replaces window.alert) =====
+  const [notification, setNotification] = useState(null); // { id, type: 'error' | 'warning', title, message }
+
+  const showNotification = useCallback((message, type = "error", title) => {
+    setNotification({
+      id: Date.now(),
+      type,
+      title: title || (type === "warning" ? "Attention" : "Login Failed"),
+      message,
+    });
+  }, []);
+
+  const dismissNotification = useCallback(() => setNotification(null), []);
+
+  useEffect(() => {
+    if (!notification) return;
+    const timer = setTimeout(() => setNotification(null), 5000);
+    return () => clearTimeout(timer);
+  }, [notification]);
+
   const refreshLockoutStatus = useCallback(() => {
     const { locked, remainingMs } = getLockoutStatus();
     setLockoutRemainingMs(locked ? remainingMs : 0);
@@ -105,10 +134,12 @@ const [showPassword, setShowPassword] = useState(false);
     // ===== Block login while locked out =====
     const { locked, remainingMs } = getLockoutStatus();
     if (locked) {
-      alert(
+      showNotification(
         `Too many failed login attempts. Please try again in ${formatRemaining(
           remainingMs
-        )}.`
+        )}.`,
+        "warning",
+        "Account Locked"
       );
       return;
     }
@@ -166,12 +197,15 @@ const [showPassword, setShowPassword] = useState(false);
           const result = registerFailedAttempt();
           refreshLockoutStatus();
           if (result.justLocked) {
-            alert(
-              `Invalid username or password. Too many failed attempts — please try again in ${result.durationMin} minutes.`
+            showNotification(
+              `Invalid username or password. Too many failed attempts — please try again in ${result.durationMin} minutes.`,
+              "warning",
+              "Account Locked"
             );
           } else {
-            alert(
-              `Invalid username or password. ${result.attemptsLeft} attempt(s) left before lockout.`
+            showNotification(
+              `Invalid username or password. ${result.attemptsLeft} attempt(s) left before lockout.`,
+              "error"
             );
           }
           return;
@@ -188,12 +222,15 @@ const [showPassword, setShowPassword] = useState(false);
           const result = registerFailedAttempt();
           refreshLockoutStatus();
           if (result.justLocked) {
-            alert(
-              `Invalid username or password. Too many failed attempts — please try again in ${result.durationMin} minutes.`
+            showNotification(
+              `Invalid username or password. Too many failed attempts — please try again in ${result.durationMin} minutes.`,
+              "warning",
+              "Account Locked"
             );
           } else {
-            alert(
-              `Invalid username or password. ${result.attemptsLeft} attempt(s) left before lockout.`
+            showNotification(
+              `Invalid username or password. ${result.attemptsLeft} attempt(s) left before lockout.`,
+              "error"
             );
           }
           return;
@@ -254,11 +291,11 @@ const [showPassword, setShowPassword] = useState(false);
             navigate("/soc/homepage");
             break;
           default:
-            alert("Role not recognized.");
+            showNotification("Role not recognized.", "error");
         }
       } catch (err) {
         console.error("Firestore Login Error:", err);
-        alert("Login failed");
+        showNotification("Login failed. Please try again.", "error");
       }
     } finally {
       setLoading(false);
@@ -275,6 +312,69 @@ const [showPassword, setShowPassword] = useState(false);
 
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-white font-sans">
+      {/* ===== Toast notification (replaces window.alert) ===== */}
+      {notification && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] w-[calc(100%-2rem)] max-w-sm animate-toast-in">
+          <div
+            className={`flex items-start gap-3 rounded-2xl shadow-2xl border px-4 py-3.5 backdrop-blur-md ${
+              notification.type === "warning"
+                ? "bg-amber-50/95 border-amber-200 shadow-amber-500/10"
+                : "bg-white/95 border-[#ff6699]/25 shadow-[#ff6699]/15"
+            }`}
+          >
+            <div
+              className={`flex-shrink-0 mt-0.5 flex items-center justify-center w-8 h-8 rounded-full ${
+                notification.type === "warning"
+                  ? "bg-amber-100 text-amber-600"
+                  : "bg-[#ffe4ee] text-[#ff6699]"
+              }`}
+            >
+              {notification.type === "warning" ? (
+                <FaExclamationTriangle size={14} />
+              ) : (
+                <FaTimesCircle size={14} />
+              )}
+            </div>
+
+            <div className="flex-1 min-w-0 pt-0.5">
+              <p
+                className={`text-xs font-extrabold tracking-wide uppercase ${
+                  notification.type === "warning" ? "text-amber-700" : "text-[#e04f80]"
+                }`}
+              >
+                {notification.title}
+              </p>
+              <p className="text-sm font-medium text-[#1a1a1a]/85 leading-snug mt-0.5">
+                {notification.message}
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={dismissNotification}
+              aria-label="Dismiss notification"
+              className="flex-shrink-0 mt-0.5 text-[#1a1a1a]/35 hover:text-[#1a1a1a]/70 transition-colors"
+            >
+              <FaTimes size={13} />
+            </button>
+          </div>
+
+          {/* auto-dismiss progress bar */}
+          <div
+            className={`h-0.5 rounded-full mt-1 overflow-hidden ${
+              notification.type === "warning" ? "bg-amber-200/60" : "bg-[#ff6699]/20"
+            }`}
+          >
+            <div
+              key={notification.id}
+              className={`h-full animate-toast-progress ${
+                notification.type === "warning" ? "bg-amber-500" : "bg-[#ff6699]"
+              }`}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ===== LEFT — solid dark branding panel (desktop only) ===== */}
       <div className="hidden md:flex md:w-[46%] lg:w-1/2 relative flex-col justify-center px-14 lg:px-20 py-16 bg-[#171018] overflow-hidden">
         {/* ambient glow accents */}
@@ -503,6 +603,22 @@ const [showPassword, setShowPassword] = useState(false);
       <style>{`
         @media (prefers-reduced-motion: reduce) {
           * { transition: none !important; }
+        }
+
+        @keyframes toast-in {
+          from { opacity: 0; transform: translate(-50%, -14px); }
+          to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        .animate-toast-in {
+          animation: toast-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes toast-progress {
+          from { width: 100%; }
+          to { width: 0%; }
+        }
+        .animate-toast-progress {
+          animation: toast-progress 5s linear forwards;
         }
       `}</style>
     </div>

@@ -50,6 +50,29 @@ export default function DisciplinaryPage({ darkMode }) {
   const [showViewModal, setShowViewModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
+  // EDIT/UPDATE GUARD: prevents the "Save" button in the view/edit modal
+  // from being spammed / double-submitted while an update is in flight.
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  // STATUS MODAL: single reusable modal used to replace every alert()/
+  // error-catch message in this page (success AND error states) so the
+  // user always sees a centered, theme-consistent popup instead of the
+  // native browser alert().
+  const [statusModal, setStatusModal] = useState({
+    show: false,
+    type: "success", // "success" | "error"
+    title: "",
+    message: "",
+  });
+
+  const showStatus = (type, title, message) => {
+    setStatusModal({ show: true, type, title, message });
+  };
+
+  const closeStatusModal = () => {
+    setStatusModal((prev) => ({ ...prev, show: false }));
+  };
+
   // DELETE CONFIRMATION MODAL: instead of window.confirm, we store the
   // case that's pending deletion and show a styled modal to confirm it.
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -91,6 +114,8 @@ const cancelDelete = () => {
 
 // Runs the actual delete once the user confirms in the modal.
 // Same logic as before, just triggered from the modal's confirm button.
+// NOTE: window.location.reload() removed — replaced with a local state
+// update so the page doesn't flash back to the default theme on reload.
 const handleDelete = async () => {
   if (!caseToDelete) return;
   const id = caseToDelete.id;
@@ -110,16 +135,25 @@ const handleDelete = async () => {
       description: `Disciplinary case ${caseToDelete?.caseNumber || id} was deleted.`,
     });
 
-    alert("Case deleted successfully.");
+    setCases((prev) => prev.filter((c) => c.id !== id));
 
-    window.location.reload();
-  } catch (error) {
-    console.error(error);
-    alert("Failed to delete case.");
-  } finally {
-    setIsDeleting(false);
     setShowDeleteModal(false);
     setCaseToDelete(null);
+
+    showStatus(
+      "success",
+      "Case Deleted",
+      "The case was deleted successfully."
+    );
+  } catch (error) {
+    console.error(error);
+    showStatus(
+      "error",
+      "Delete Failed",
+      "Failed to delete the case. Please try again."
+    );
+  } finally {
+    setIsDeleting(false);
   }
 };
 
@@ -141,7 +175,15 @@ const handlePrintNotice = () => {
 };
 
   
+    // NOTE: guarded by isUpdating so the Save button can't be spammed/double
+    // submitted, and window.location.reload() has been removed — replaced
+    // with a local state update so light/dark mode stays consistent after
+    // saving instead of flashing to the default theme.
     const handleUpdate = async () => {
+      if (isUpdating) return;
+
+      setIsUpdating(true);
+
       try {
         const caseRef = doc(db, "cases", selectedCase.id);
 
@@ -176,15 +218,27 @@ const handlePrintNotice = () => {
           description: `Disciplinary case ${selectedCase.caseNumber} was updated.`,
         });
 
-        alert("Case updated successfully.");
+        setCases((prev) =>
+          prev.map((c) => (c.id === selectedCase.id ? { ...c, ...selectedCase } : c))
+        );
 
         setIsEditing(false);
         setShowViewModal(false);
 
-        window.location.reload();
+        showStatus(
+          "success",
+          "Case Updated",
+          "The case was updated successfully."
+        );
       } catch (error) {
         console.error("Update Error:", error);
-        alert(error.message);
+        showStatus(
+          "error",
+          "Update Failed",
+          error.message || "Failed to update the case. Please try again."
+        );
+      } finally {
+        setIsUpdating(false);
       }
     };
   
@@ -300,19 +354,21 @@ const handleSave = async () => {
     !student.sanctions.trim() ||
     !student.decision.trim()
   ) {
-    alert("Please fill in all required fields.");
+    showStatus("error", "Missing Fields", "Please fill in all required fields.");
     return;
   }
 
   // Student ID must be exactly 9 digits
   if (!/^\d{9}$/.test(student.studentId)) {
-    alert("Student ID must be exactly 9 digits.");
+    showStatus("error", "Invalid Student ID", "Student ID must be exactly 9 digits.");
     return;
   }
 
   // Student Name: letters, spaces, comma and period only
   if (!/^[A-Za-z\s,.]+$/.test(student.name)) {
-    alert(
+    showStatus(
+      "error",
+      "Invalid Student Name",
       "Student Name can only contain letters, spaces, commas, and periods."
     );
     return;
@@ -323,7 +379,7 @@ const handleSave = async () => {
     student.incidentType === "Other" &&
     !student.otherIncident.trim()
   ) {
-    alert("Please specify the incident type.");
+    showStatus("error", "Missing Incident Type", "Please specify the incident type.");
     return;
   }
 
@@ -331,7 +387,7 @@ const handleSave = async () => {
   const today = new Date().toISOString().split("T")[0];
 
   if (student.incidentDate > today) {
-    alert("Date of Incident cannot be a future date.");
+    showStatus("error", "Invalid Date", "Date of Incident cannot be a future date.");
     return;
   }
 
@@ -340,7 +396,11 @@ const handleSave = async () => {
     student.contactNumber &&
     !/^09\d{9}$/.test(student.contactNumber)
   ) {
-    alert("Contact Number must be a valid 11-digit mobile number.");
+    showStatus(
+      "error",
+      "Invalid Contact Number",
+      "Contact Number must be a valid 11-digit mobile number."
+    );
     return;
   }
 
@@ -398,7 +458,11 @@ const handleSave = async () => {
 
   } catch (error) {
     console.error("SAVE ERROR:", error);
-    alert("Failed to create a case. Please try again.");
+    showStatus(
+      "error",
+      "Save Failed",
+      "Failed to create a case. Please try again."
+    );
   }finally {
     setIsSaving(false);
   }
@@ -1236,7 +1300,9 @@ const inputBase = `w-full mt-1.5 border-2 rounded-xl p-3 text-sm outline-none tr
               <button
                 onClick={handleSave}
                 disabled={isSaving}
-                className="px-7 py-3 rounded-xl bg-pink-600 hover:bg-pink-500 transition text-white font-semibold shadow-sm shadow-pink-500/30"
+                className={`px-7 py-3 rounded-xl bg-pink-600 hover:bg-pink-500 transition text-white font-semibold shadow-sm shadow-pink-500/30 ${
+                  isSaving ? "opacity-60 cursor-not-allowed" : ""
+                }`}
               >
                 {isSaving ? "Adding Case..." : "Add Case"}
               </button>
@@ -1279,11 +1345,12 @@ const inputBase = `w-full mt-1.5 border-2 rounded-xl p-3 text-sm outline-none tr
                     view mode and edit mode. */}
                 <button
                   onClick={handleOpenPrintNotice}
+                  disabled={isUpdating}
                   className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium border transition ${
                     darkMode
                       ? "bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700"
                       : "bg-gray-100 hover:bg-gray-200 text-gray-700 border-gray-200"
-                  }`}
+                  } ${isUpdating ? "opacity-60 cursor-not-allowed" : ""}`}
                 >
                   <FaPrint className="text-xs" /> <span className="hidden sm:inline">Print Notice</span>
                 </button>
@@ -1302,18 +1369,25 @@ const inputBase = `w-full mt-1.5 border-2 rounded-xl p-3 text-sm outline-none tr
                   <>
                     <button
                       onClick={() => setIsEditing(false)}
+                      disabled={isUpdating}
                       className={`px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium transition ${
                         darkMode ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-gray-200 hover:bg-gray-300 text-gray-700"
-                      }`}
+                      } ${isUpdating ? "opacity-60 cursor-not-allowed" : ""}`}
                     >
                       Cancel
                     </button>
 
+                    {/* SAVE BUTTON: guarded by isUpdating so it can't be
+                        spammed — disabled + label change while the update
+                        request is in flight. */}
                     <button
                       onClick={handleUpdate}
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm transition"
+                      disabled={isUpdating}
+                      className={`bg-emerald-600 hover:bg-emerald-700 text-white px-3 sm:px-4 py-2.5 rounded-xl text-sm font-medium shadow-sm transition ${
+                        isUpdating ? "opacity-60 cursor-not-allowed" : ""
+                      }`}
                     >
-                      Save
+                      {isUpdating ? "Saving..." : "Save"}
                     </button>
                   </>
 
@@ -1321,12 +1395,14 @@ const inputBase = `w-full mt-1.5 border-2 rounded-xl p-3 text-sm outline-none tr
 
                 <button
                   onClick={() => {
+                    if (isUpdating) return;
                     setShowViewModal(false);
                     setIsEditing(false);
                   }}
+                  disabled={isUpdating}
                   className={`p-2 rounded-full transition ${
                     darkMode ? "text-slate-400 hover:bg-slate-800 hover:text-red-400" : "text-gray-400 hover:bg-gray-100 hover:text-red-500"
-                  }`}
+                  } ${isUpdating ? "opacity-60 cursor-not-allowed" : ""}`}
                 >
                   <FaTimes className="text-lg" />
                 </button>
@@ -1676,6 +1752,59 @@ const inputBase = `w-full mt-1.5 border-2 rounded-xl p-3 text-sm outline-none tr
               <button
                 onClick={() => setShowAddSuccessModal(false)}
                 className="w-full mt-6 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 transition text-white font-semibold shadow-sm"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* STATUS MODAL: shared success/error popup that replaces every
+          alert() and error-catch message across this page (validation
+          errors, delete result, update result, etc.). Fully theme-aware
+          so it never mismatches light/dark mode. */}
+      {statusModal.show && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] px-3 sm:px-4">
+          <div
+            className={`rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-sm p-6 border ${
+              darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-gray-100"
+            }`}
+          >
+            <div className="flex flex-col items-center text-center">
+              <div
+                className={`w-14 h-14 rounded-full flex items-center justify-center mb-4 ${
+                  statusModal.type === "success"
+                    ? darkMode
+                      ? "bg-emerald-900/40 text-emerald-400"
+                      : "bg-emerald-100 text-emerald-500"
+                    : darkMode
+                    ? "bg-red-900/40 text-red-400"
+                    : "bg-red-100 text-red-500"
+                }`}
+              >
+                {statusModal.type === "success" ? (
+                  <FaCheckCircle className="text-2xl" />
+                ) : (
+                  <FaExclamationTriangle className="text-2xl" />
+                )}
+              </div>
+
+              <h3 className={`text-lg font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
+                {statusModal.title}
+              </h3>
+
+              <p className={`text-sm mt-2 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>
+                {statusModal.message}
+              </p>
+
+              <button
+                onClick={closeStatusModal}
+                className={`w-full mt-6 px-4 py-2.5 rounded-xl font-semibold shadow-sm transition text-white ${
+                  statusModal.type === "success"
+                    ? "bg-emerald-600 hover:bg-emerald-700"
+                    : "bg-red-600 hover:bg-red-500"
+                }`}
               >
                 OK
               </button>

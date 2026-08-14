@@ -921,7 +921,7 @@ return (
                     )}
                 </div>
                 <div style={S.field}>
-                  <label style={S.label}>Date</label>
+                  <label style={S.label}>Date *</label>
                   <input
                       type="date"
                       name="date"
