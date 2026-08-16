@@ -67,12 +67,12 @@ export default function sscHomepage({ darkMode = false }) {
 
 function HomeView({ onScanPress, darkMode }) {
   // This app doesn't use Firebase Authentication for SSC Officer accounts —
-  // login stores the user's info in localStorage under "userData" instead,
+  // login stores the user's info in sessionStorage under "userData" instead,
   // so we read the greeting name from there (auth.currentUser is always
   // empty for this login path).
   const getOfficerName = () => {
     try {
-      const userData = JSON.parse(localStorage.getItem("userData"));
+      const userData = JSON.parse(sessionStorage.getItem("userData"));
       const fullName = [userData?.firstName, userData?.lastName].filter(Boolean).join(" ");
       if (fullName) return fullName;
       if (userData?.username) return userData.username;
@@ -237,15 +237,15 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
     let isMounted = true;
 
     // This app doesn't use Firebase Authentication for user identity — login
-    // stores the Firestore "users" document id in localStorage instead.
+    // stores the Firestore "users" document id in sessionStorage instead.
     // We check a few likely keys so this keeps working regardless of exactly
     // how the login screen saved it.
     const getLoggedInUid = () => {
-      const directUid = localStorage.getItem("uid");
+      const directUid = sessionStorage.getItem("uid");
       if (directUid) return directUid;
 
       try {
-        const userData = JSON.parse(localStorage.getItem("userData"));
+        const userData = JSON.parse(sessionStorage.getItem("userData"));
         if (userData?.uid) return userData.uid;
         if (userData?.id) return userData.id;
       } catch {
@@ -853,7 +853,7 @@ function ConfirmView({ payload, onScanAgain, onDone }) {
  const recordAttendance = async () => {
   const { sessionId } = payload;
 
-  const user = JSON.parse(localStorage.getItem("userData"));
+  const user = JSON.parse(sessionStorage.getItem("userData"));
 
   if (!user) {
     setStatus("error");

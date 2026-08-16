@@ -252,7 +252,12 @@ export default function Homepage() {
 
             <button
               onClick={() => {
+                // Auth state (isLoggedIn/role/uid/userData) now lives in
+                // sessionStorage, so it must be cleared on logout too —
+                // localStorage.clear() alone only wiped acceptedTerms/theme
+                // and left the session looking "logged in".
                 localStorage.clear();
+                sessionStorage.clear();
                 window.location.href = "/";
               }}
               className="bg-pink-600 hover:bg-pink-500 text-white px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-medium shadow-md transition"

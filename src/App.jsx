@@ -29,7 +29,7 @@ import Terms from "./AdminDashboard/Terms";
 import Homepage from "./AdminDashboard/Homepage";
 
 /* AUTH */
-const isLoggedIn = () => localStorage.getItem("isLoggedIn") === "true";
+const isLoggedIn = () => sessionStorage.getItem("isLoggedIn") === "true";
 const hasAcceptedTerms = () => localStorage.getItem("acceptedTerms") === "true";
 
 /* PROTECTED ROUTE */
@@ -56,7 +56,7 @@ function LayoutWrapper() {
     location.pathname === "/about";
 
   const getHomeRoute = () => {
-    const role = localStorage.getItem("role");
+    const role = sessionStorage.getItem("role");
 
     switch (role) {
       case "Administrator":

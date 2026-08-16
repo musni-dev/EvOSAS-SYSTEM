@@ -61,7 +61,8 @@ export default function SOCHomepage() {
 
   // Profile modal state
   // NOTE: the logged-in user's Firestore document ID ("uid") in the
-  // "users" collection is saved to localStorage at login time under the key "uid".
+  // "users" collection is saved to sessionStorage at login time under the key "uid"
+  // (so it clears automatically when the tab/browser closes).
   // This same uid is now also used as the ownership key for uploaded documents
   // (see "uploadedBy" field below), so each SOC account only ever sees its own files.
   // If your login screen stores it under a different key, update the line below.
@@ -87,11 +88,14 @@ export default function SOCHomepage() {
   }, [darkMode]);
 
   const handleLogout = () => {
-    localStorage.removeItem("isLoggedIn");
+    // Auth state (isLoggedIn/uid/role/userData) lives in sessionStorage now
+    // (see Login.jsx), so that's what actually needs to be cleared on logout.
+    sessionStorage.removeItem("isLoggedIn");
+    sessionStorage.removeItem("uid");
+    sessionStorage.removeItem("role");
+    sessionStorage.removeItem("userData");
+    // acceptedTerms is a persistent preference kept in localStorage.
     localStorage.removeItem("acceptedTerms");
-    localStorage.removeItem("uid");
-    localStorage.removeItem("role");
-    localStorage.removeItem("userData");
     navigate("/login");
   };
 
@@ -101,10 +105,10 @@ export default function SOCHomepage() {
   // regardless of who uploaded them — that's why every account saw every file.
   //
   // Fix: only load documents whose "uploadedBy" field matches the currently
-  // logged-in user's uid (the same uid saved to localStorage at login,
-  // see Login.jsx -> localStorage.setItem("uid", foundUser.id)).
+  // logged-in user's uid (the same uid saved to sessionStorage at login,
+  // see Login.jsx -> sessionStorage.setItem("uid", foundUser.id)).
   useEffect(() => {
-    const uid = localStorage.getItem("uid");
+    const uid = sessionStorage.getItem("uid");
 
     // No logged-in user identified -> show nothing rather than everything.
     if (!uid) {
@@ -172,7 +176,7 @@ export default function SOCHomepage() {
     // ---- DATA ISOLATION FIX ----
     // Require a logged-in uid before allowing an upload, and stamp the new
     // document with "uploadedBy" so it can later be filtered per-account.
-    const uid = localStorage.getItem("uid");
+    const uid = sessionStorage.getItem("uid");
     if (!uid) {
       alert("You must be logged in to upload a document.");
       return;
@@ -239,7 +243,7 @@ export default function SOCHomepage() {
     // is already scoped to the current user's own documents via the filtered
     // query above, double-check ownership here before writing, in case of
     // stale state.
-    const uid = localStorage.getItem("uid");
+    const uid = sessionStorage.getItem("uid");
     if (!uid || resubmitItem.uploadedBy !== uid) {
       alert("You can only re-submit your own documents.");
       return;
@@ -298,7 +302,7 @@ export default function SOCHomepage() {
     setConfirmPassword("");
     setPasswordMsg(null);
 
-    const uid = localStorage.getItem("uid");
+    const uid = sessionStorage.getItem("uid");
     if (!uid) {
       setProfileError("No logged-in user found. Please log in again.");
       return;

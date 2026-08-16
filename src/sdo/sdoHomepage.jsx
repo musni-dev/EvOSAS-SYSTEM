@@ -28,6 +28,7 @@ export default function sdoHomepage() {
 
   const handleLogout = () => {
     localStorage.clear();
+    sessionStorage.clear()
     window.location.href = "/";
   };
 

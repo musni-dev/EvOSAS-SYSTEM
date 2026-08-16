@@ -149,12 +149,12 @@ const [showPassword, setShowPassword] = useState(false);
     try {
       await signInWithEmailAndPassword(auth, email, password);
 
-      localStorage.setItem("isLoggedIn", "true");
-      localStorage.setItem("role", "Administrator");
+      sessionStorage.setItem("isLoggedIn", "true");
+      sessionStorage.setItem("role", "Administrator");
       // Firebase Auth admin login also gets a uid saved, in case any admin
       // screens later need to look up their own Firestore user record.
       if (auth.currentUser?.uid) {
-        localStorage.setItem("uid", auth.currentUser.uid);
+        sessionStorage.setItem("uid", auth.currentUser.uid);
       }
 
       window.dispatchEvent(new Event("authChanged"));
@@ -242,13 +242,13 @@ const [showPassword, setShowPassword] = useState(false);
           }
         );
 
-        localStorage.setItem("isLoggedIn", "true");
-        localStorage.setItem("role", userData.role);
-        localStorage.setItem("userData", JSON.stringify(userData));
+        sessionStorage.setItem("isLoggedIn", "true");
+        sessionStorage.setItem("role", userData.role);
+        sessionStorage.setItem("userData", JSON.stringify(userData));
         // Save the Firestore document ID of the logged-in user so other
         // pages (e.g. the Profile modal) can look up and update their
         // own "users" record.
-        localStorage.setItem("uid", foundUser.id);
+        sessionStorage.setItem("uid", foundUser.id);
 
         // successful login — clear any throttle state
         resetLoginThrottle();

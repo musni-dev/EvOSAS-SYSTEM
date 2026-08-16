@@ -24,9 +24,11 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close the mobile menu whenever the route changes
+  // Close the mobile menu whenever the route changes, and jump the page
+  // back to the top so the user actually sees the new page from the start
   useEffect(() => {
     setMobileOpen(false);
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [location.pathname]);
 
   return (

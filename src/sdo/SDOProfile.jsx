@@ -7,7 +7,8 @@ import bcrypt from "bcryptjs";
   This account (SDO) does NOT log in through Firebase Auth — per Login.jsx,
   only Administrator uses signInWithEmailAndPassword. SSC Officer / SDO / SOC
   accounts log in through the Firestore "users" collection + bcrypt password
-  check, and the session is kept in localStorage ("uid", "role", "userData").
+  check, and the session is kept in sessionStorage ("uid", "role", "userData")
+  so it clears automatically when the tab/browser is closed.
 
   So this page reads the logged-in user the same way UsersPage.jsx's
   getCurrentUser() does, and changes the password by bcrypt-comparing /
@@ -17,16 +18,16 @@ import bcrypt from "bcryptjs";
 
 function getSessionUser() {
   try {
-    const stored = JSON.parse(localStorage.getItem("userData") || "{}");
+    const stored = JSON.parse(sessionStorage.getItem("userData") || "{}");
     return {
-      uid: localStorage.getItem("uid") || stored.uid || "",
-      role: localStorage.getItem("role") || stored.role || "",
+      uid: sessionStorage.getItem("uid") || stored.uid || "",
+      role: sessionStorage.getItem("role") || stored.role || "",
       ...stored,
     };
   } catch {
     return {
-      uid: localStorage.getItem("uid") || "",
-      role: localStorage.getItem("role") || "",
+      uid: sessionStorage.getItem("uid") || "",
+      role: sessionStorage.getItem("role") || "",
     };
   }
 }
