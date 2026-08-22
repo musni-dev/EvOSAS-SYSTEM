@@ -80,6 +80,8 @@ const positions = [
   "Executive Associate on Documentations",
   "Executive Associate on Technical Support",
   "Executive Associate on Student Affairs",
+  "Executive Associate on Student Discipline",
+  "Executive Associate on Culture & Arts",
 ];
 
 const roleStyles = {
