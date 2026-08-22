@@ -14,6 +14,7 @@ export default function Terms() {
 
   const handleClose = () => {
       localStorage.clear();
+      sessionStorage.clear();
       window.location.href = "/";
   };
 
