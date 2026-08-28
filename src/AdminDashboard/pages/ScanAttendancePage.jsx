@@ -3,14 +3,10 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import {
   doc,
   getDoc,
-  addDoc,
-  collection,
   serverTimestamp,
-  query,
-  where,
-  getDocs,
+  runTransaction,
 } from "firebase/firestore";
-import { db, auth } from "../../firebase/firebase";
+import { db } from "../../firebase/firebase";
 
 export default function ScanAttendancePage() {
   const [searchParams] = useSearchParams();
@@ -27,6 +23,24 @@ export default function ScanAttendancePage() {
   useEffect(() => {
     loadSession();
   }, []);
+
+  const getLoggedInUser = () => {
+    try {
+      const userData = JSON.parse(sessionStorage.getItem("userData"));
+      if (userData) {
+        const uid =
+          userData.uid ||
+          userData.id ||
+          sessionStorage.getItem("uid") ||
+          null;
+
+        if (uid) return { ...userData, uid };
+      }
+    } catch {
+      // ignore parse errors, fall through
+    }
+    return null;
+  };
 
   const loadSession = async () => {
     try {
@@ -79,35 +93,79 @@ export default function ScanAttendancePage() {
     try {
       setSaving(true);
 
-      const currentUser = auth.currentUser;
+      const user = getLoggedInUser();
 
-      if (!currentUser) {
+      if (!user) {
         alert("Please login first.");
+        setSaving(false);
         return;
       }
 
-      // duplicate check
-      const attendanceQuery = query(
-        collection(db, "attendance"),
-        where("sessionId", "==", sessionId),
-        where("studentId", "==", currentUser.uid)
-      );
+      // Deterministic, per-officer, per-session doc id (sessionId_uid).
+      // Guarantees this officer only ever touches THEIR OWN attendance
+      // record for THIS session — no shared query, no chance that a
+      // different officer scanning on another device at the same time
+      // ends up updating this record (or vice versa). The transaction
+      // makes the check-then-write atomic.
+      const attendanceDocId = `${sessionId}_${user.uid}`;
+      const attendanceRef = doc(db, "attendance", attendanceDocId);
 
-      const existing = await getDocs(attendanceQuery);
+      const result = await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(attendanceRef);
 
-      if (!existing.empty) {
-        alert("Attendance already recorded.");
-        return;
-      }
+        if (!snap.exists()) {
+          transaction.set(attendanceRef, {
+            sessionId,
+            userId: user.uid,
+            studentId: user.studentId || "",
+            studentName: `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Unknown User",
+            position: user.position || "SSC Officer",
+            role: user.role || null,
+            timeIn: serverTimestamp(),
+            timeOut: null,
+            createdAt: serverTimestamp(),
+          });
+          return { type: "timein" };
+        }
 
-      await addDoc(collection(db, "attendance"), {
-        sessionId,
-        studentId: currentUser.uid,
-        studentName: currentUser.displayName || "Unknown User",
-        position: "SSC Officer",
-        timeIn: serverTimestamp(),
-        createdAt: serverTimestamp(),
+        const data = snap.data();
+
+        // Ownership guard: don't rely on uid alone. If two different
+        // officers ever resolve to the same uid upstream (stale/shared
+        // session data, login bug, etc.), the deterministic doc id would
+        // collide and this uid-only check would silently pass, letting
+        // one officer's scan mutate another officer's record. Cross-check
+        // against studentId too — it's effectively impossible for two
+        // different officers to share both.
+        const sameOwner =
+          data.userId === user.uid &&
+          (!user.studentId || data.studentId === user.studentId);
+
+        if (!sameOwner) {
+          return { type: "mismatch" };
+        }
+
+        if (data.timeOut) {
+          return { type: "already" };
+        }
+
+        transaction.update(attendanceRef, {
+          timeOut: serverTimestamp(),
+        });
+        return { type: "timeout" };
       });
+
+      if (result.type === "mismatch") {
+        alert("Attendance record mismatch. Please try again.");
+        setSaving(false);
+        return;
+      }
+
+      if (result.type === "already") {
+        alert("Attendance already recorded.");
+        setSaving(false);
+        return;
+      }
 
       setSuccess(true);
     } catch (err) {

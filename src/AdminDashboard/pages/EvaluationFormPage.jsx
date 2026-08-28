@@ -108,13 +108,21 @@ export default function EvaluationFormPage() {
   };
 
   // Year & Section: letters/numbers/
-  const handleYearSectionChange = (e) => {
-    const cleaned = e.target.value
-      .toUpperCase()
-      .replace(/[^A-Z0-9-]/g, "")
-      .slice(0, 2);
-    setYearSection(cleaned);
-  };
+const handleYearSectionChange = (e) => {
+  let value = e.target.value.toUpperCase();
+
+  // First character: 1-4 only
+  if (value.length >= 1 && !/[1-4]/.test(value[0])) {
+    value = "";
+  }
+
+  // Second character: A-G only
+  if (value.length >= 2 && !/[A-G]/.test(value[1])) {
+    value = value.slice(0, 1);
+  }
+
+  setYearSection(value.slice(0, 2));
+};
 
   // Name: letters, spaces, periods, and commas only (no numbers/other special characters)
   const handleNameChange = (e) => {

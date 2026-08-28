@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { db } from "../../firebase/firebase";
-import { doc, onSnapshot, getDoc } from "firebase/firestore";
+import { doc, onSnapshot, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 
 export default function EvaluationResultsPage() {
   const { id } = useParams();
@@ -89,6 +89,93 @@ export default function EvaluationResultsPage() {
   URL.revokeObjectURL(url);
 };
 
+  const handleDownloadSectionRespondents = async (sectionKey, sectionLabel) => {
+    try {
+      const q = query(
+        collection(db, "evaluationResponses"),
+        where("eventId", "==", id)
+      );
+      const snap = await getDocs(q);
+
+      // "Section" = a respondent's program + yearSection, same way
+      // EvaluationFormPage computes it when writing aggregated scores.
+      const scoreMap = {
+        "5 Strongly Agree": 5,
+        "4 Agree": 4,
+        "3 Neutral": 3,
+        "2 Disagree": 2,
+        "1 Strongly Disagree": 1,
+      };
+
+      const rows = [];
+      snap.forEach((docSnap) => {
+        const data = docSnap.data();
+
+        const rawKey = `${data.program || ""} ${data.yearSection || ""}`.trim();
+        const respondentSectionKey = rawKey.toLowerCase();
+
+        if (respondentSectionKey !== sectionKey) return; // different section
+
+        let totalScore = 0;
+        let totalCount = 0;
+
+        (event?.questions || []).forEach((_, index) => {
+          const qType = (event?.questionTypes && event.questionTypes[index]) || "rating";
+          if (qType !== "rating") return; // text answers don't contribute to the score
+
+          const rating = data.answers?.[index];
+          if (!rating) return;
+
+          totalScore += scoreMap[rating] || 0;
+          totalCount += 1;
+        });
+
+        const avg = totalCount ? (totalScore / totalCount).toFixed(2) : "0.00";
+
+        // 🆕 each question's own answer, in order, alongside the overall average
+        const perQuestionAnswers = (event?.questions || []).map((_, index) => {
+          const ans = data.answers?.[index];
+          return ans === undefined || ans === null || ans === "" ? "—" : ans;
+        });
+
+        rows.push([
+          data.studentId || "N/A",
+          data.name || "N/A",
+          ...perQuestionAnswers,
+          avg,
+        ]);
+      });
+
+      if (rows.length === 0) {
+        alert("No respondents found for this section.");
+        return;
+      }
+
+      // 🆕 headers now list every question, so each answer has its own column
+      const headers = [
+        "Student ID",
+        "Name",
+        ...(event?.questions || []).map((qText, i) => `Q${i + 1}: ${qText}`),
+        `${sectionLabel} Score`,
+      ];
+      let csv = headers.join(",") + "\n";
+      rows.forEach((r) => {
+        csv += r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(",") + "\n";
+      });
+
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${event?.eventName || "evaluation"}-${sectionLabel}-respondents.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Error fetching section respondents:", err);
+      alert("Failed to load respondents. Please try again.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 pb-16">
 
@@ -163,6 +250,12 @@ export default function EvaluationResultsPage() {
                         <p className="text-xs text-gray-400 mt-0.5">
                           {s.respondents} respondent{s.respondents === 1 ? "" : "s"}
                         </p>
+                        <button
+                          onClick={() => handleDownloadSectionRespondents(s.key, s.label)}
+                          className="text-[11px] font-medium text-pink-600 hover:text-pink-700 hover:underline mt-1"
+                        >
+                          Download Respondents Results
+                        </button>
                       </div>
 
                       <div className="flex items-center gap-3">

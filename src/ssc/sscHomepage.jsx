@@ -1,22 +1,15 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import jsQR from "jsqr";
-import { collection, query, where, getDocs, addDoc, updateDoc, getDoc, doc, serverTimestamp, Timestamp,} from "firebase/firestore";
+import {
+  collection, query, where, getDocs, addDoc, updateDoc, getDoc, doc,
+  serverTimestamp, Timestamp, runTransaction,
+} from "firebase/firestore";
 import { ScanLine, Camera, AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Home, QrCode, MoreVertical,} from "lucide-react";
 import { db, auth } from "../firebase/firebase"; // adjust path to your firebase config
 import { signOut, onAuthStateChanged } from "firebase/auth";
 import bcrypt from "bcryptjs";
 import {
-  FiUser,
-  FiLock,
-  FiEye,
-  FiEyeOff,
-  FiMail,
-  FiShield,
-  FiHash,
-  FiX,
-  FiBriefcase,
-  FiAward,
-  FiLogOut,
+  FiUser, FiLock, FiEye, FiEyeOff, FiMail, FiShield, FiHash, FiX, FiBriefcase, FiAward, FiLogOut,
 } from "react-icons/fi";
 
 
@@ -66,10 +59,6 @@ export default function sscHomepage({ darkMode = false }) {
 /* ---------------------------------------------------------------------- */
 
 function HomeView({ onScanPress, darkMode }) {
-  // This app doesn't use Firebase Authentication for SSC Officer accounts —
-  // login stores the user's info in sessionStorage under "userData" instead,
-  // so we read the greeting name from there (auth.currentUser is always
-  // empty for this login path).
   const getOfficerName = () => {
     try {
       const userData = JSON.parse(sessionStorage.getItem("userData"));
@@ -84,6 +73,7 @@ function HomeView({ onScanPress, darkMode }) {
 
   const officerName = getOfficerName();
   const [showProfile, setShowProfile] = useState(false);
+  const [showRecords, setShowRecords] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
 
@@ -100,7 +90,6 @@ const handleLogout = async () => {
   }
 };
 
-  // Close the dropdown when clicking outside of it
   useEffect(() => {
     if (!showMenu) return;
 
@@ -143,6 +132,17 @@ const handleLogout = async () => {
               >
                 <FiUser className="w-4 h-4 text-pink-600" />
                 My Profile
+              </button>
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  setShowRecords(true);
+                }}
+                role="menuitem"
+                className="w-full flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-gray-700 hover:bg-pink-50 transition border-t border-pink-100"
+              >
+                <Clock className="w-4 h-4 text-pink-600" />
+                View Records
               </button>
               <button
                 onClick={() => {
@@ -191,6 +191,12 @@ const handleLogout = async () => {
         darkMode={darkMode}
       />
 
+      <RecordsModal
+        isOpen={showRecords}
+        onClose={() => setShowRecords(false)}
+        darkMode={darkMode}
+      />
+
       <style>{`
         @keyframes ping-slow {
           0% { transform: scale(1); opacity: 0.5; }
@@ -236,10 +242,6 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
 
     let isMounted = true;
 
-    // This app doesn't use Firebase Authentication for user identity — login
-    // stores the Firestore "users" document id in sessionStorage instead.
-    // We check a few likely keys so this keeps working regardless of exactly
-    // how the login screen saved it.
     const getLoggedInUid = () => {
       const directUid = sessionStorage.getItem("uid");
       if (directUid) return directUid;
@@ -286,7 +288,6 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
     };
   }, [isOpen]);
 
-  // Reset password fields & messages whenever the modal closes
   useEffect(() => {
     if (!isOpen) {
       setCurrentPassword("");
@@ -355,9 +356,6 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
 
     setUpdating(true);
     try {
-      // Passwords are stored bcrypt-hashed in Firestore (see the users
-      // collection), so we compare against the hash instead of using
-      // Firebase Auth reauthentication.
       const isCurrentCorrect = await bcrypt.compare(currentPassword, profile.password || "");
       if (!isCurrentCorrect) {
         setPasswordMessage({ type: "error", text: "Current password is incorrect." });
@@ -404,7 +402,6 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
         className={`w-full max-w-[500px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border ${borderColor} ${cardBg} transition-all duration-200 animate-scale-in`}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className={`sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-4 border-b ${borderColor} ${cardBg}`}>
           <h2 className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${textPrimary}`}>
             <FiUser className="text-pink-500" />
@@ -435,7 +432,6 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
 
           {!loading && !fetchError && profile && (
             <>
-              {/* Account Details */}
               <div>
                 <p className={`text-xs font-semibold uppercase tracking-wide mb-3 ${textSecondary}`}>
                   Account Details
@@ -451,7 +447,6 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
                 </div>
               </div>
 
-              {/* Information */}
               <div className={`rounded-xl border ${borderColor} ${sectionBg} p-4 space-y-3`}>
                 <p className={`text-xs font-semibold uppercase tracking-wide ${textSecondary}`}>
                   Information
@@ -474,7 +469,6 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
                 </div>
               </div>
 
-              {/* Change Password */}
               <div>
                 <p className={`text-xs font-semibold uppercase tracking-wide mb-3 flex items-center gap-2 ${textSecondary}`}>
                   <FiLock />
@@ -604,6 +598,218 @@ function PasswordField({ label, value, onChange, show, onToggle, error, inputCla
 }
 
 /* ---------------------------------------------------------------------- */
+/* RECORDS MODAL (view logged-in user's own attendance records)            */
+/* ---------------------------------------------------------------------- */
+
+function RecordsModal({ isOpen, onClose, darkMode }) {
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+
+    const getLoggedInUid = () => {
+      const directUid = sessionStorage.getItem("uid");
+      if (directUid) return directUid;
+
+      try {
+        const userData = JSON.parse(sessionStorage.getItem("userData"));
+        if (userData?.uid) return userData.uid;
+        if (userData?.id) return userData.id;
+      } catch {
+        // ignore parse errors, fall through
+      }
+
+      return auth.currentUser?.uid || null;
+    };
+
+    const fetchRecords = async () => {
+      setLoading(true);
+      setFetchError("");
+      try {
+        const uid = getLoggedInUid();
+        if (!uid) {
+          throw new Error("No logged-in user found. Please log in again.");
+        }
+
+        const recordsQuery = query(
+          collection(db, "attendance"),
+          where("userId", "==", uid)
+        );
+        const snap = await getDocs(recordsQuery);
+
+        let data = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+        // Attach session title / event date for display, without
+        // touching how attendance docs themselves are read or written.
+        const sessionIds = [...new Set(data.map((r) => r.sessionId).filter(Boolean))];
+        const sessionMap = {};
+        await Promise.all(
+          sessionIds.map(async (sid) => {
+            try {
+              const sSnap = await getDoc(doc(db, "sessions", sid));
+              if (sSnap.exists()) sessionMap[sid] = sSnap.data();
+            } catch {
+              // ignore individual session fetch errors
+            }
+          })
+        );
+
+        data = data.map((r) => ({
+          ...r,
+          sessionTitle: sessionMap[r.sessionId]?.title || "Unknown Session",
+          eventDate: sessionMap[r.sessionId]?.eventDate || null,
+        }));
+
+        // Most recent first
+        data.sort((a, b) => {
+          const ta = a.timeIn?.toMillis ? a.timeIn.toMillis() : 0;
+          const tb = b.timeIn?.toMillis ? b.timeIn.toMillis() : 0;
+          return tb - ta;
+        });
+
+        if (isMounted) setRecords(data);
+      } catch (err) {
+        console.error("Failed to fetch records:", err);
+        if (isMounted) setFetchError(err.message || "Failed to load records.");
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchRecords();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  const cardBg = darkMode ? "bg-gray-900" : "bg-white";
+  const textPrimary = darkMode ? "text-gray-100" : "text-gray-900";
+  const textSecondary = darkMode ? "text-gray-400" : "text-gray-500";
+  const borderColor = darkMode ? "border-gray-700" : "border-pink-100";
+  const sectionBg = darkMode ? "bg-gray-800" : "bg-pink-50";
+
+  const formatEventDate = (value) => {
+    if (!value) return "—";
+    const [y, m, d] = value.split("-");
+    return new Date(y, m - 1, d).toLocaleDateString("en-PH", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  };
+
+  const formatTime = (ts) => {
+    if (!ts) return "—";
+    const date = ts.toDate ? ts.toDate() : new Date(ts);
+    return date.toLocaleTimeString("en-PH", { hour: "2-digit", minute: "2-digit" });
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/50 backdrop-blur-sm transition-opacity duration-200 animate-fade-in"
+      onClick={onClose}
+    >
+      <div
+        className={`w-full max-w-[500px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border ${borderColor} ${cardBg} transition-all duration-200 animate-scale-in`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className={`sticky top-0 z-10 flex items-center justify-between px-5 sm:px-6 py-4 border-b ${borderColor} ${cardBg}`}>
+          <h2 className={`text-lg sm:text-xl font-bold flex items-center gap-2 ${textPrimary}`}>
+            <Clock className="w-5 h-5 text-pink-500" />
+            My Attendance Records
+          </h2>
+          <button
+            onClick={onClose}
+            className={`p-2 rounded-full transition ${darkMode ? "hover:bg-gray-800" : "hover:bg-pink-50"}`}
+            aria-label="Close"
+          >
+            <FiX className={textPrimary} />
+          </button>
+        </div>
+
+        <div className="px-5 sm:px-6 py-5 space-y-3">
+          {loading && (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <div className="w-8 h-8 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin" />
+              <p className={`text-sm ${textSecondary}`}>Loading records...</p>
+            </div>
+          )}
+
+          {!loading && fetchError && (
+            <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">
+              <span>{fetchError}</span>
+            </div>
+          )}
+
+          {!loading && !fetchError && records.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
+              <Clock className={`w-8 h-8 ${darkMode ? "text-pink-500/40" : "text-pink-300"}`} />
+              <p className={`text-sm font-medium ${textPrimary}`}>No attendance records yet</p>
+              <p className={`text-xs ${textSecondary}`}>
+                Records will appear here after you scan an attendance QR code.
+              </p>
+            </div>
+          )}
+
+          {!loading && !fetchError && records.length > 0 && (
+            <div className="space-y-3">
+              {records.map((r) => (
+                <div
+                  key={r.id}
+                  className={`rounded-xl border ${borderColor} ${sectionBg} p-4 space-y-2`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className={`font-semibold text-sm truncate ${textPrimary}`}>
+                      {r.sessionTitle}
+                    </span>
+                    <span className={`text-xs flex-shrink-0 ${textSecondary}`}>
+                      {formatEventDate(r.eventDate)}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-sm pt-1 border-t border-pink-100/60">
+                    <span className={textSecondary}>Time In</span>
+                    <span className={`font-semibold ${textPrimary}`}>{formatTime(r.timeIn)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className={textSecondary}>Time Out</span>
+                    <span className={`font-semibold ${textPrimary}`}>{formatTime(r.timeOut)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out;
+        }
+        @keyframes scale-in {
+          from { opacity: 0; transform: scale(0.96) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .animate-scale-in {
+          animation: scale-in 0.2s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------------------- */
 /* SCAN VIEW (camera + jsQR)                                               */
 /* ---------------------------------------------------------------------- */
 
@@ -646,7 +852,6 @@ const handleDecodedRaw = useCallback(
       return;
     }
 
-    // 🔥 CHECK SESSION FROM FIRESTORE
     const sessionRef = doc(db, "sessions", sessionId);
     const snap = await getDoc(sessionRef);
 
@@ -672,7 +877,6 @@ const handleDecodedRaw = useCallback(
       return;
     }
 
-    // ✅ PASS ONLY VALID
     onDecoded({ sessionId });
   },
   [onDecoded, stopCamera]
@@ -740,7 +944,6 @@ const handleDecodedRaw = useCallback(
 
   return (
     <div className="min-h-screen w-full bg-gray-950 flex flex-col">
-      {/* Top bar */}
       <div className="flex items-center gap-3 px-4 py-3 sm:py-4 z-10">
         <button
           onClick={() => {
@@ -757,7 +960,6 @@ const handleDecodedRaw = useCallback(
         </div>
       </div>
 
-      {/* Camera viewport */}
       <div className="relative flex-1 flex items-center justify-center overflow-hidden">
         {permissionState === "denied" ? (
           <div className="text-center px-6 max-w-sm">
@@ -788,7 +990,6 @@ const handleDecodedRaw = useCallback(
             />
             <canvas ref={canvasRef} className="hidden" />
 
-            {/* Scan frame overlay */}
             <div className="relative z-10 w-[70vw] max-w-[280px] aspect-square">
               <div className="absolute inset-0 rounded-2xl border-2 border-pink-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
               <div className="absolute -top-1 -left-1 w-8 h-8 border-t-4 border-l-4 border-pink-400 rounded-tl-2xl" />
@@ -812,7 +1013,6 @@ const handleDecodedRaw = useCallback(
         )}
       </div>
 
-      {/* Error toast */}
       {scanError && (
         <div className="absolute bottom-6 left-4 right-4 sm:max-w-md sm:mx-auto sm:left-0 sm:right-0">
           <div className="flex items-start gap-2 bg-red-500/95 text-white text-sm px-4 py-3 rounded-xl shadow-lg">
@@ -850,74 +1050,105 @@ function ConfirmView({ payload, onScanAgain, onDone }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
- const recordAttendance = async () => {
-  const { sessionId } = payload;
+  const recordAttendance = async () => {
+    const { sessionId } = payload;
 
-  const user = JSON.parse(sessionStorage.getItem("userData"));
+    const userData = JSON.parse(sessionStorage.getItem("userData"));
+    const uid =
+      userData?.uid ||
+      userData?.id ||
+      sessionStorage.getItem("uid") ||
+      null;
 
-  if (!user) {
-    setStatus("error");
-    setMessage("Not logged in.");
-    return;
-  }
+    if (!userData || !uid) {
+      setStatus("error");
+      setMessage("Not logged in.");
+      return;
+    }
 
-  try {
-    const attendanceRef = collection(db, "attendance");
+    try {
+      // Deterministic, per-officer, per-session doc id (sessionId_uid).
+      // This guarantees each officer only ever reads/writes THEIR OWN
+      // attendance record for THIS session — no query race, no chance
+      // that one officer's scan updates a different officer's
+      // timeIn/timeOut, even if several officers scan on different
+      // devices at the same time. The read + write happen inside a
+      // Firestore transaction so the check-then-write is atomic.
+      const attendanceDocId = `${sessionId}_${uid}`;
+      const attendanceRef = doc(db, "attendance", attendanceDocId);
 
-    const q = query(
-      attendanceRef,
-      where("sessionId", "==", sessionId),
-      where("studentId", "==", user.studentId)
-    );
+      const result = await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(attendanceRef);
 
-    const snap = await getDocs(q);
+        // CASE 1: NO RECORD → TIME IN
+        if (!snap.exists()) {
+          transaction.set(attendanceRef, {
+            sessionId,
+            userId: uid,
+            studentId: userData.studentId || "",
+            studentName: `${userData.firstName} ${userData.lastName}`,
+            position: userData.position,
+            role: userData.role,
+            timeIn: serverTimestamp(),
+            timeOut: null,
+            createdAt: serverTimestamp(),
+          });
+          return { type: "timein" };
+        }
 
-    // =========================
-    // CASE 1: NO RECORD → TIME IN
-    // =========================
-    if (snap.empty) {
-      const newRecord = {
-        sessionId,
-        studentId: user.studentId,
-        studentName: `${user.firstName} ${user.lastName}`,
-        position: user.position,
-        role: user.role,
-        timeIn: serverTimestamp(),
-        timeOut: null,
-        createdAt: serverTimestamp(),
-      };
+        const data = snap.data();
 
-      await addDoc(attendanceRef, newRecord);
+        // Ownership guard: don't rely on uid alone. The doc id already
+        // encodes sessionId+uid, but if two different officers were ever
+        // to resolve to the same uid upstream (stale/shared session data,
+        // login bug, etc.), a uid-only check would silently treat them as
+        // the same person and let one officer's scan mutate another
+        // officer's record. Cross-check against studentId too — it's
+        // effectively impossible for two different officers to share both.
+        const sameOwner =
+          data.userId === uid &&
+          (!userData.studentId || data.studentId === userData.studentId);
+
+        if (!sameOwner) {
+          return { type: "mismatch" };
+        }
+
+        // CASE 2: ALREADY TIMED OUT
+        if (data.timeOut) {
+          return { type: "already" };
+        }
+
+        // CASE 3: EXISTING RECORD → TIME OUT
+        transaction.update(attendanceRef, {
+          timeOut: serverTimestamp(),
+        });
+        return { type: "timeout" };
+      });
+
+      if (result.type === "mismatch") {
+        setStatus("error");
+        setMessage("Attendance record mismatch. Please try again.");
+        return;
+      }
+
+      if (result.type === "already") {
+        setStatus("already");
+        setMessage("Already timed out.");
+        return;
+      }
 
       setStatus("success");
-      setMessage("Time-in recorded successfully.");
-      return;
+      setMessage(
+        result.type === "timein"
+          ? "Time-in recorded successfully."
+          : "Time-out recorded successfully."
+      );
+    } catch (err) {
+      console.error(err);
+      setStatus("error");
+      setMessage("Failed to record attendance.");
     }
-
-    // =========================
-    // CASE 2: EXISTING RECORD → TIME OUT
-    // =========================
-    const docRef = snap.docs[0].ref;
-    const data = snap.docs[0].data();
-
-    if (data.timeOut) {
-      setStatus("already");
-      setMessage("Already timed out.");
-      return;
-    }
-
-    await updateDoc(docRef, {
-      timeOut: serverTimestamp(),
-    });
-
-    setStatus("success");
-    setMessage("Time-out recorded successfully.");
-  } catch (err) {
-    console.error(err);
-    setStatus("error");
-    setMessage("Failed to record attendance.");
-  }
-};
+  };
 
   const formatTime = (ts) => {
     if (!ts) return "—";

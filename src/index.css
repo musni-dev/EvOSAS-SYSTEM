@@ -13,6 +13,13 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+html {
+  background-color: #F6F7FB;
+}
+
+html.dark {
+  background-color: #0A0E17;
+}
 
 
 
