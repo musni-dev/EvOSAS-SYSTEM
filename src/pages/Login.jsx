@@ -588,13 +588,19 @@ const [showPassword, setShowPassword] = useState(false);
             <p className="text-[11px] font-extrabold text-[#1a1a1a] tracking-wide uppercase">
               Data Privacy Notice
             </p>
-            <p className="text-xs font-medium text-[#1a1a1a]/75 leading-relaxed">
-              By signing in, you acknowledge that your personal information will
-              be processed in accordance with the Data Privacy Act of 2012
-              (Republic Act No. 10173). EvOSAS collects and uses your
-              information solely for legitimate educational and administrative
-              purposes while ensuring the confidentiality, integrity, and
-              security of your personal data.
+              <p className="text-xs font-medium text-[#1a1a1a]/75 leading-relaxed">
+              By signing in, you acknowledge that your personal information will be
+              processed in accordance with the{" "}
+              <a
+                href="https://dct.edu.ph/data-privacy/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold text-[#ff6699] hover:underline"
+              >
+                Data Privacy Act of 2012 (Republic Act No. 10173)
+              </a>
+              .  EvOSAS Portal System — All Rights Reserved © 
+              Powered by DCT - OSAS Department
             </p>
           </div>
         </footer>

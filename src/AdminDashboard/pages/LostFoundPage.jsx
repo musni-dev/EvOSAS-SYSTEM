@@ -504,7 +504,7 @@ return (
     <div className="flex flex-col gap-2.5">
   <div className="flex items-center gap-2.5 flex-wrap">
     <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent">
-      Lost &amp; Found
+      Lost &amp; Found Management
     </h1>
 
     <span

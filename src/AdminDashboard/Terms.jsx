@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, ShieldCheck, FileText, Lock, Eye } from "lucide-react";
 
@@ -6,6 +6,8 @@ export default function Terms() {
   const navigate = useNavigate();
 
   const [checked, setChecked] = useState(false);
+  const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
+  const scrollRef = useRef(null);
 
   const handleAccept = () => {
     localStorage.setItem("acceptedTerms", "true");
@@ -17,6 +19,27 @@ export default function Terms() {
       sessionStorage.clear();
       window.location.href = "/";
   };
+
+  // Detect when user has scrolled to (near) the bottom of the terms body
+  const handleScroll = useCallback((e) => {
+    const el = e.target;
+    const threshold = 24; // px tolerance so it doesn't require pixel-perfect scrolling
+    const reachedBottom =
+      el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+
+    if (reachedBottom) {
+      setHasScrolledToEnd(true);
+    }
+  }, []);
+
+  // On mount / when content is short enough to not need scrolling,
+  // check once if the panel is already "fully visible"
+  const checkInitialFit = useCallback((node) => {
+    scrollRef.current = node;
+    if (node && node.scrollHeight <= node.clientHeight + 24) {
+      setHasScrolledToEnd(true);
+    }
+  }, []);
 
   const termPoints = [
     {
@@ -124,21 +147,25 @@ export default function Terms() {
           </div>
 
           {/* Scrollable body */}
-          <div className="overflow-y-auto px-6 sm:px-8 py-6 space-y-5">
+          <div
+            ref={checkInitialFit}
+            onScroll={handleScroll}
+            className="overflow-y-auto px-6 sm:px-8 py-6 space-y-5"
+          >
             <div className="text-center">
               <h2 className="text-xl sm:text-2xl font-extrabold text-[#1a1a1a]">
                 Terms and Conditions
               </h2>
               <p className="text-[#1a1a1a]/70 text-sm font-medium mt-1">
-                Please read carefully before accessing the admin dashboard.
+                Please read carefully before accessing the EvOSAS System.
               </p>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-1">
               {termPoints.map(({ icon: Icon, text }, i) => (
                 <div
                   key={i}
-                  className="flex items-start gap-3 rounded-2xl bg-[#fafafa] border border-black/5 p-4"
+                  className="flex items-start gap-3 rounded-2xl bg-[#fafafa] border border-black/5 p-3"
                 >
                   <div className="h-8 w-8 rounded-lg bg-[#fff1f6] flex items-center justify-center shrink-0">
                     <Icon className="text-[#ff6699]" size={15} />
@@ -170,18 +197,33 @@ export default function Terms() {
 
           {/* Sticky footer: checkbox + button (always reachable, even on short screens) */}
           <div className="shrink-0 border-t border-black/5 px-6 sm:px-8 py-5 space-y-4 bg-white">
-            <label className="flex items-start gap-3 cursor-pointer select-none">
+            <label
+              className={`flex items-start gap-3 select-none ${
+                hasScrolledToEnd ? "cursor-pointer" : "cursor-not-allowed"
+              }`}
+            >
               <input
                 type="checkbox"
                 checked={checked}
+                disabled={!hasScrolledToEnd}
                 onChange={(e) => setChecked(e.target.checked)}
-                className="mt-0.5 h-5 w-5 rounded accent-[#ff6699] cursor-pointer shrink-0"
+                className="mt-0.5 h-5 w-5 rounded accent-[#ff6699] cursor-pointer shrink-0 disabled:cursor-not-allowed disabled:opacity-40"
               />
-              <span className="text-sm font-medium text-[#1a1a1a]/85">
+              <span
+                className={`text-sm font-medium ${
+                  hasScrolledToEnd ? "text-[#1a1a1a]/85" : "text-[#1a1a1a]/40"
+                }`}
+              >
                 I have read and agreed to the Terms and Conditions and Data
                 Privacy Policy.
               </span>
             </label>
+
+            {!hasScrolledToEnd && (
+              <p className="text-xs font-medium text-[#ff6699] -mt-2">
+                Please scroll down and read the full terms to enable this checkbox.
+              </p>
+            )}
 
             <button
               onClick={handleAccept}

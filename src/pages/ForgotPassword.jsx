@@ -53,14 +53,14 @@ export default function ForgotPassword() {
           placeholder="Administrator Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full border rounded-lg px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full  rounded-lg px-4 py-3 mb-6 focus:outline-none focus:ring-2 focus:ring-pink-500"
           required
         />
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg disabled:opacity-50"
+          className="w-full bg-gradient-to-r from-[#ff6699] to-[#ff77aa] text-white py-3 rounded-lg disabled:opacity-50"
         >
           {loading ? "Sending..." : "Send Reset Link"}
         </button>

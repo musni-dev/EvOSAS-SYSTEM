@@ -557,7 +557,7 @@ const inputBase = `w-full mt-1.5 border-2 rounded-xl p-3 text-sm outline-none tr
               <h1
                 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight bg-gradient-to-r from-pink-500 to-rose-500 bg-clip-text text-transparent"
               >
-                Disciplinary Management
+                Disciplinary Case Management
               </h1>
               <span
                 className={`px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase ${

@@ -340,7 +340,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
             )}
 
             <h1 className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
-              Disciplinary Management
+              Disciplinary Case Management
             </h1>
 
             <p className={`mt-2 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>

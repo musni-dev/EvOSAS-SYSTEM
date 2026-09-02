@@ -286,7 +286,7 @@ const handleDelete = async (item) => {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold tracking-tight">
-              Organizations Management
+              Student Organization File/Documents 
             </h1>
             <p className="text-pink-200 text-sm mt-0.5">
               Review and manage submitted organization by-laws

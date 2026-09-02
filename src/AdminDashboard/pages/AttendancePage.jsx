@@ -585,7 +585,7 @@ async function handleUpdateSession(e) {
                   darkMode ? "text-white" : "text-gray-900"
                 }`}
               >
-                SSC Attendance System
+                Attendance Management for SSC officers
               </h1>
 
               <p
@@ -593,7 +593,7 @@ async function handleUpdateSession(e) {
                   darkMode ? "text-gray-400" : "text-gray-500"
                 }`}
               >
-                Student Council Portal
+                Supreme Student Council Portal
               </p>
             </div>
           </div>
