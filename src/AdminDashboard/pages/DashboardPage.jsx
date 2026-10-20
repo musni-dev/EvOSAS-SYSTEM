@@ -1,8 +1,36 @@
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, PieChart, Pie, Cell,} from "recharts";
 import { useEffect, useState } from "react";
+import { QRCodeCanvas } from "qrcode.react";
 import { collection, onSnapshot, query, orderBy, limit, getDocs,} from "firebase/firestore";
 import { db } from "../../firebase/firebase";
-import { LayoutDashboard, CalendarDays, FileWarning, PackageSearch, PackageCheck, Users, ArrowUpRight, Minus, FolderPlus, UserPlus, Bell, Inbox, ClipboardList,} from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileWarning, PackageSearch, PackageCheck, Users, ArrowUpRight, Minus, FolderPlus, UserPlus, Bell, Inbox, ClipboardList, QrCode, Clock, X,} from "lucide-react";
+
+// ─── QR preview helpers (display only) ───────────────────────
+function formatEventDate(value) {
+  if (!value) return "-";
+  const [y, m, d] = value.split("-");
+  return new Date(y, m - 1, d).toLocaleDateString("en-PH", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function formatTime(value) {
+  if (!value) return "-";
+  const [hour, minute] = value.split(":");
+  const date = new Date();
+  date.setHours(Number(hour), Number(minute));
+  return date.toLocaleTimeString("en-PH", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function isSessionExpired(session) {
+  if (!session?.eventDate || !session?.qrEndTime) return false;
+  return new Date() > new Date(`${session.eventDate}T${session.qrEndTime}`);
+}
 
 export default function DashboardPage({ darkMode }) {
   const [stats, setStats] = useState({
@@ -20,6 +48,10 @@ export default function DashboardPage({ darkMode }) {
   const [pieData, setPieData] = useState([]);
   const [recentReports, setRecentReports] = useState([]);
   const [activities, setActivities] = useState([]);
+
+  // QR preview state
+  const [qrSession, setQrSession] = useState(null);
+  const [showQRModal, setShowQRModal] = useState(false);
 
   useEffect(() => {
     const unsub = onSnapshot(collection(db, "lost_found"), (snapshot) => {
@@ -175,6 +207,21 @@ export default function DashboardPage({ darkMode }) {
     return () => unsubUsers();
   }, []);
 
+  // Live listener: show the newest active (not expired) attendance session's QR
+  useEffect(() => {
+    const q = query(collection(db, "sessions"), orderBy("createdAt", "desc"));
+
+    const unsubSessions = onSnapshot(q, (snapshot) => {
+      const list = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const active = list.find(
+        (s) => s.status === "active" && !isSessionExpired(s)
+      );
+      setQrSession(active || null);
+    });
+
+    return () => unsubSessions();
+  }, []);
+
   const COLORS = [
     "#E0245E", // total
     "#10B981", // active
@@ -299,6 +346,8 @@ export default function DashboardPage({ darkMode }) {
 
   const subtleText = darkMode ? "text-gray-500" : "text-gray-400";
   const mutedText = darkMode ? "text-gray-400" : "text-gray-500";
+
+  const qrValue = qrSession ? JSON.stringify({ sessionId: qrSession.id }) : "";
 
   return (
     <div
@@ -503,7 +552,7 @@ export default function DashboardPage({ darkMode }) {
         </div>
       </div>
 
-      {/* TABLE + ACTIVITY */}
+      {/* TABLE + QR + ACTIVITY */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* TABLE */}
         <div className={`xl:col-span-2 rounded-3xl border p-6 shadow-sm ${cardBase}`}>
@@ -614,66 +663,192 @@ export default function DashboardPage({ darkMode }) {
           </div>
         </div>
 
-        {/* ACTIVITY */}
-        <div className={`rounded-3xl border p-6 shadow-sm ${cardBase}`}>
-          <div className="flex items-center gap-2 mb-5">
-            <Bell className="w-4 h-4 text-[#E0245E]" />
-            <h2 className="text-base font-bold">Recent Activity</h2>
-          </div>
+        {/* RIGHT COLUMN: QR PREVIEW + ACTIVITY */}
+        <div className="space-y-6">
+          {/* QR PREVIEW */}
+          <div className={`rounded-3xl border p-6 shadow-sm ${cardBase}`}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-[#E0245E]" />
+                <h2 className="text-base font-bold">Attendance QR Code</h2>
+              </div>
 
-          <div className="space-y-1">
-            {activities.length > 0 ? (
-              activities.map((activity, index) => {
-                const Icon = getActivityIcon(activity.title);
-                return (
-                  <div
-                    key={index}
-                    className={`flex items-start gap-3 py-3 ${
-                      index !== activities.length - 1
-                        ? darkMode
-                          ? "border-b border-[#1E2937]"
-                          : "border-b border-gray-100"
-                        : ""
-                    }`}
-                  >
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
-                        darkMode ? "bg-[#E0245E]/10" : "bg-[#E0245E]/10"
-                      }`}
-                    >
-                      <Icon className="w-4 h-4 text-[#E0245E]" />
-                    </div>
+              {qrSession && (
+                <span
+                  className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium border ${
+                    darkMode
+                      ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                      : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                  }`}
+                >
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Active
+                </span>
+              )}
+            </div>
 
-                    <div className="min-w-0">
-                      <p
-                        className={`font-medium text-sm truncate ${
-                          darkMode ? "text-white" : "text-gray-800"
-                        }`}
-                      >
-                        {activity.title}
-                      </p>
-                      <p className={`text-xs mt-0.5 ${subtleText}`}>
-                        {timeAgo(activity.time)}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })
+            {qrSession ? (
+              <div className="flex flex-col items-center gap-4">
+                <button
+                  type="button"
+                  onClick={() => setShowQRModal(true)}
+                  title="Click to enlarge"
+                  className={`rounded-2xl border p-4 transition hover:shadow-md ${
+                    darkMode ? "bg-white border-[#1E2937]" : "bg-white border-[#E7E9F0]"
+                  }`}
+                >
+                  <QRCodeCanvas
+                    value={qrValue}
+                    size={180}
+                    fgColor="#9d174d"
+                    bgColor="#ffffff"
+                    level="M"
+                  />
+                </button>
+
+                <div className="text-center">
+                  <p className="text-sm font-semibold">{qrSession.title}</p>
+                  <p className={`text-xs mt-1 ${mutedText}`}>
+                    <Clock className="inline w-3 h-3 mr-1 -mt-0.5" />
+                    {formatEventDate(qrSession.eventDate)} at{" "}
+                    {formatTime(qrSession.eventTime)}
+                  </p>
+                  <p className={`text-xs mt-0.5 ${darkMode ? "text-red-400" : "text-red-500"}`}>
+                    QR ends at {formatTime(qrSession.qrEndTime)}
+                  </p>
+                  <p className={`text-[11px] mt-2 ${subtleText}`}>
+                    Click the QR code to enlarge
+                  </p>
+                </div>
+              </div>
             ) : (
-              <div className="flex flex-col items-center gap-3 py-10">
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
                 <div
                   className={`w-11 h-11 rounded-full flex items-center justify-center ${
                     darkMode ? "bg-white/5" : "bg-gray-100"
                   }`}
                 >
-                  <Bell className={`w-5 h-5 ${mutedText}`} />
+                  <QrCode className={`w-5 h-5 ${mutedText}`} />
                 </div>
-                <p className={`text-sm ${mutedText}`}>No recent activity found.</p>
+                <p className={`text-sm ${mutedText}`}>No active QR code.</p>
+                <p className={`text-xs ${subtleText}`}>
+                  Create a new session in Attendance and its QR code will appear here.
+                </p>
               </div>
             )}
           </div>
+
+          {/* ACTIVITY */}
+          <div className={`rounded-3xl border p-6 shadow-sm ${cardBase}`}>
+            <div className="flex items-center gap-2 mb-5">
+              <Bell className="w-4 h-4 text-[#E0245E]" />
+              <h2 className="text-base font-bold">Recent Activity</h2>
+            </div>
+
+            <div className="space-y-1">
+              {activities.length > 0 ? (
+                activities.map((activity, index) => {
+                  const Icon = getActivityIcon(activity.title);
+                  return (
+                    <div
+                      key={index}
+                      className={`flex items-start gap-3 py-3 ${
+                        index !== activities.length - 1
+                          ? darkMode
+                            ? "border-b border-[#1E2937]"
+                            : "border-b border-gray-100"
+                          : ""
+                      }`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                          darkMode ? "bg-[#E0245E]/10" : "bg-[#E0245E]/10"
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 text-[#E0245E]" />
+                      </div>
+
+                      <div className="min-w-0">
+                        <p
+                          className={`font-medium text-sm truncate ${
+                            darkMode ? "text-white" : "text-gray-800"
+                          }`}
+                        >
+                          {activity.title}
+                        </p>
+                        <p className={`text-xs mt-0.5 ${subtleText}`}>
+                          {timeAgo(activity.time)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="flex flex-col items-center gap-3 py-10">
+                  <div
+                    className={`w-11 h-11 rounded-full flex items-center justify-center ${
+                      darkMode ? "bg-white/5" : "bg-gray-100"
+                    }`}
+                  >
+                    <Bell className={`w-5 h-5 ${mutedText}`} />
+                  </div>
+                  <p className={`text-sm ${mutedText}`}>No recent activity found.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
+
+      {/* QR PREVIEW MODAL */}
+      {showQRModal && qrSession && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+          onClick={() => setShowQRModal(false)}
+        >
+          <div
+            className={`relative w-full max-w-sm rounded-2xl p-8 shadow-2xl ${
+              darkMode ? "bg-gray-900 border border-gray-700" : "bg-white"
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setShowQRModal(false)}
+              className={`absolute right-4 top-4 transition ${
+                darkMode ? "text-gray-500 hover:text-gray-300" : "text-gray-400 hover:text-gray-600"
+              }`}
+            >
+              <X size={20} />
+            </button>
+
+            <div className="flex flex-col items-center gap-4">
+              <div className="rounded-xl border border-pink-100 bg-white p-4">
+                <QRCodeCanvas
+                  value={qrValue}
+                  size={260}
+                  fgColor="#9d174d"
+                  bgColor="#ffffff"
+                  level="M"
+                />
+              </div>
+
+              <div className="text-center">
+                <p className={`font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
+                  {qrSession.title}
+                </p>
+                <p className={`text-sm mt-0.5 ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                  {formatEventDate(qrSession.eventDate)} at{" "}
+                  {formatTime(qrSession.eventTime)}
+                </p>
+                <p className={`text-xs mt-0.5 ${darkMode ? "text-red-400" : "text-red-500"}`}>
+                  QR ends at {formatTime(qrSession.qrEndTime)}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

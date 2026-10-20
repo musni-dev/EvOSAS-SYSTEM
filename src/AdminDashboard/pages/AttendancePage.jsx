@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import {  addDoc, collection, doc, getDocs, onSnapshot, orderBy, query, serverTimestamp, updateDoc, where, writeBatch,} from "firebase/firestore";
-import { CalendarDays, Check, CheckCircle2, ChevronDown, Clock, Download, GraduationCap, Plus, QrCode, Search, StopCircle, Trash2, Users, X, Pencil 
+import { CalendarDays, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Clock, Download, GraduationCap, Plus, QrCode, Search, StopCircle, Trash2, Users, X, Pencil 
 } from "lucide-react";
 import { db } from "../../firebase/firebase";
 import { logAudit } from "../../utils/auditTrail"; // ← adjust path if needed
 import { getAuth } from "firebase/auth";
+import useDropdownOptions from "../../hooks/useDropdownOptions";
+import { DEFAULT_SESSION_TITLES } from "../../constants/dropdownDefaults";
+
+// ─── UI constants ────────────────────────────────────────────
+const PAGE_SIZE = 4; // records per page
+
 
 function formatTimestamp(value) {
   if (!value) return "-";
@@ -150,6 +156,11 @@ function SessionBadge({ status, expired, darkMode }) {
 }
 
 export default function AttendancePage( {darkMode} ) {
+  const { options: SESSION_TITLES } = useDropdownOptions(
+    "sessionTitles",
+    DEFAULT_SESSION_TITLES
+  );
+
   const [title, setTitle] = useState("");
   const [eventDate, setEventDate] = useState("");
   const [eventTime, setEventTime] = useState("");
@@ -163,6 +174,7 @@ export default function AttendancePage( {darkMode} ) {
 
   const [search, setSearch] = useState("");
   const [filterPosition, setFilterPosition] = useState("");
+  const [currentPage, setCurrentPage] = useState(1); // pagination (UI only)
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showSessionModal, setShowSessionModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
@@ -223,6 +235,26 @@ const qrValue =
     });
   }, [records, search, filterPosition]);
 
+  // ─── Pagination (display only — filtering/export logic untouched) ───
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageStartIndex = (safePage - 1) * PAGE_SIZE;
+  const paginatedRecords = filteredRecords.slice(
+    pageStartIndex,
+    pageStartIndex + PAGE_SIZE
+  );
+  const pageNumbers = (() => {
+    const start = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+    const end = Math.min(totalPages, start + 4);
+    return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+  })();
+
+  // Titles shown in the Edit dropdown (keeps an older custom title selectable)
+  const editTitleOptions =
+    !editTitle || SESSION_TITLES.includes(editTitle)
+      ? SESSION_TITLES
+      : [editTitle, ...SESSION_TITLES];
+
   const stats = useMemo(() => {
     const total = records.length;
     const positionsCount = new Set(
@@ -281,6 +313,11 @@ useEffect(() => {
 
   return () => unsub();
 }, [selectedSessionId]);
+
+  // Go back to page 1 whenever the search, filter, or session changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filterPosition, selectedSessionId]);
 
   async function handleCreateSession(e) {
     e.preventDefault();
@@ -574,7 +611,7 @@ async function handleUpdateSession(e) {
   return (
     <div className={`h-screen overflow-hidden flex flex-col ${ darkMode  ? "bg-gray-950 text-gray-100" : "bg-pink-50/60" }`}>
       <header className={`sticky top-0 z-20 backdrop-blur-sm border-b ${ darkMode  ? "bg-gray-900/90 border-gray-700"  : "bg-white/80 border-pink-100" }`}>
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 md:px-8">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 md:px-8">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-pink-600">
               <GraduationCap size={18} className="text-white" />
@@ -598,13 +635,16 @@ async function handleUpdateSession(e) {
             </div>
           </div>
 
-          {selectedSession && (
-            <SessionBadge
-              status={selectedSession.status}
-              expired={selectedSessionExpired}
-              darkMode={darkMode}
-            />
-          )}
+          <div className="flex items-center gap-3">
+
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center justify-center gap-2 whitespace-nowrap rounded-lg bg-pink-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-pink-700 active:scale-[0.98]"
+            >
+              <Plus size={16} />
+              Create New Session
+            </button>
+          </div>
         </div>
       </header>
 
@@ -638,14 +678,6 @@ async function handleUpdateSession(e) {
 
         <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
           <div className="space-y-5">
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-pink-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-pink-700 active:scale-[0.98]"
-            >
-              <Plus size={17} />
-              Create Attendance Session
-            </button>
-
             <div
                 className={`rounded-xl p-5 shadow-sm border ${
                   darkMode
@@ -899,7 +931,7 @@ async function handleUpdateSession(e) {
                 </thead>
 
                 <tbody>
-                  {filteredRecords.map((record) => (
+                  {paginatedRecords.map((record) => (
                     <tr
                       key={record.id}
                       className={`border-b transition ${
@@ -1001,15 +1033,15 @@ async function handleUpdateSession(e) {
             </div>
 
             {filteredRecords.length > 0 && (
-              <div className={`border-t px-5 py-2.5 ${darkMode ? "border-gray-700 bg-gray-800/40" : "border-pink-100 bg-pink-50/40"}`}>
+              <div className={`flex flex-col gap-3 border-t px-5 py-3 sm:flex-row sm:items-center sm:justify-between ${darkMode ? "border-gray-700 bg-gray-800/40" : "border-pink-100 bg-pink-50/40"}`}>
                 <p className={`text-xs ${darkMode ? "text-gray-400" : "text-black"}`}>
                   Showing{" "}
                   <span className={darkMode ? "font-medium text-pink-400" : "font-medium text-pink-600"}>
-                    {filteredRecords.length}
+                    {pageStartIndex + 1}–{pageStartIndex + paginatedRecords.length}
                   </span>{" "}
                   of{" "}
                   <span className={darkMode ? "font-medium text-pink-400" : "font-medium text-pink-600"}>
-                    {records.length}
+                    {filteredRecords.length}
                   </span>{" "}
                   records
                   {selectedSession && (
@@ -1022,6 +1054,55 @@ async function handleUpdateSession(e) {
                     </>
                   )}
                 </p>
+
+                {totalPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
+                      disabled={safePage === 1}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                        darkMode
+                          ? "border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+                          : "border-pink-200 text-pink-700 hover:bg-pink-50"
+                      }`}
+                      title="Previous page"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+
+                    {pageNumbers.map((page) => (
+                      <button
+                        key={page}
+                        type="button"
+                        onClick={() => setCurrentPage(page)}
+                        className={`h-8 min-w-[2rem] rounded-lg border px-2 text-xs font-semibold transition ${
+                          page === safePage
+                            ? "border-pink-600 bg-pink-600 text-white"
+                            : darkMode
+                            ? "border-gray-700 text-gray-300 hover:bg-pink-500/10 hover:text-pink-400"
+                            : "border-pink-200 text-pink-700 hover:bg-pink-50"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
+                      disabled={safePage === totalPages}
+                      className={`flex h-8 w-8 items-center justify-center rounded-lg border transition disabled:cursor-not-allowed disabled:opacity-40 ${
+                        darkMode
+                          ? "border-pink-500/30 text-pink-400 hover:bg-pink-500/10"
+                          : "border-pink-200 text-pink-700 hover:bg-pink-50"
+                      }`}
+                      title="Next page"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1056,7 +1137,7 @@ async function handleUpdateSession(e) {
               </div>
               <div>
                 <h2 className={`text-sm font-semibold ${darkMode ? "text-white" : "text-gray-900"}`}>
-                  Create Attendance Session
+                  Create New Session
                 </h2>
                 <p className={`text-xs ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                   Set the event schedule and QR expiration time.
@@ -1069,22 +1150,38 @@ async function handleUpdateSession(e) {
                 <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
                   Session title
                 </label>
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. SSC General Assembly"
-                  required
-                  className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
-                    darkMode
-                      ? "border-gray-700 bg-gray-800 text-white placeholder:text-gray-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                      : "border-pink-200 bg-white text-black focus:border-pink-500 focus:ring-2 focus:ring-pink-100 placeholder:text-gray-400"
-                  }`}
-                />
+                <div className="relative">
+                  <select
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    required
+                    className={`w-full appearance-none rounded-lg border px-3 py-2 pr-9 text-sm outline-none transition ${
+                      darkMode
+                        ? "border-gray-700 bg-gray-800 text-white focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                        : "border-pink-200 bg-white text-black focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                    } ${!title ? (darkMode ? "text-gray-500" : "text-gray-400") : ""}`}
+                  >
+                    <option value="" disabled>
+                      Select session title
+                    </option>
+                    {SESSION_TITLES.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown
+                    size={14}
+                    className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
+                      darkMode ? "text-pink-400" : "text-pink-700"
+                    }`}
+                  />
+                </div>
               </div>
 
                 <div>
                   <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
-                    Event date
+                    Session Date
                   </label>
                   <input
                     type="date"
@@ -1102,7 +1199,7 @@ async function handleUpdateSession(e) {
 
               <div>
                 <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
-                  Event time
+                  Session Time
                 </label>
                 <input
                   type="time"
@@ -1207,21 +1304,38 @@ async function handleUpdateSession(e) {
                   <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
                     Session title
                   </label>
-                  <input
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    required
-                    className={`w-full rounded-lg border px-3 py-2 text-sm outline-none transition ${
-                      darkMode
-                        ? "border-gray-700 bg-gray-800 text-white placeholder:text-gray-500 focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
-                        : "border-pink-200 bg-white text-black focus:border-pink-500 focus:ring-2 focus:ring-pink-100 placeholder:text-gray-400"
-                    }`}
-                  />
+                  <div className="relative">
+                    <select
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      required
+                      className={`w-full appearance-none rounded-lg border px-3 py-2 pr-9 text-sm outline-none transition ${
+                        darkMode
+                          ? "border-gray-700 bg-gray-800 text-white focus:border-pink-500 focus:ring-2 focus:ring-pink-500/20"
+                          : "border-pink-200 bg-white text-black focus:border-pink-500 focus:ring-2 focus:ring-pink-100"
+                      }`}
+                    >
+                      <option value="" disabled>
+                        Select session title
+                      </option>
+                      {editTitleOptions.map((t) => (
+                        <option key={t} value={t}>
+                          {t}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown
+                      size={14}
+                      className={`pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 ${
+                        darkMode ? "text-pink-400" : "text-pink-700"
+                      }`}
+                    />
+                  </div>
                 </div>
 
                 <div>
                   <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
-                    Event date
+                    Session Date
                   </label>
                   <input
                     type="date"
@@ -1239,7 +1353,7 @@ async function handleUpdateSession(e) {
 
                 <div>
                   <label className={`mb-1.5 block text-xs font-medium ${darkMode ? "text-gray-300" : "text-black"}`}>
-                    Event time
+                    Session Time
                   </label>
                   <input
                     type="time"

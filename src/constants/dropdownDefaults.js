@@ -21,3 +21,14 @@ export const DEFAULT_LOST_FOUND_CATEGORIES = [
   "Jewelry",
   "Books",
 ];
+
+export const DEFAULT_SESSION_TITLES = [
+  "Duty Today",
+  "Meeting",
+  "General Assembly",
+  "Officers' Meeting",
+  "Orientation",
+  "Seminar / Training",
+  "Community Outreach",
+  "Special Event",
+];

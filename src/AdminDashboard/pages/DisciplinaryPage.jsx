@@ -827,7 +827,7 @@ const filterInput = `w-full border rounded-xl px-3 py-2.5 text-sm outline-none f
               onClick={() => setShowModal(true)}
               className="flex items-center justify-center gap-2 bg-pink-600 hover:bg-pink-500 transition text-white px-4 sm:px-5 py-2.5 sm:py-3 rounded-xl shadow-sm shadow-pink-500/30 font-semibold text-sm sm:text-base w-full sm:w-auto"
             >
-              <FaPlus className="text-xs" /> Add Case
+              <FaPlus className="text-xs" /> Add New Case
             </button>
 
             {/* <button

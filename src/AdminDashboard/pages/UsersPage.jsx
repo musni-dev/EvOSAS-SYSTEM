@@ -36,7 +36,7 @@ const getCurrentUser = () => {
 };
 
 const USERS_COLLECTION = "users";
-const PAGE_SIZE = 4;
+const PAGE_SIZE = 5;
 
 const emptyForm = {
   studentId: "",
@@ -596,7 +596,7 @@ function generateUniqueUsername(firstName, lastName, users) {
             className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-md bg-pink-600 px-4 text-sm font-semibold text-white shadow-sm shadow-pink-200 transition hover:bg-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
           >
             <Plus size={17} />
-            Create user
+            Create new user
           </button>
         </div>
 

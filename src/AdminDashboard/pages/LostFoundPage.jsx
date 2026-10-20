@@ -61,9 +61,13 @@ const EMOJI = {
 };
 
 const EMPTY_FORM = {
-  reportType: "Lost", itemName: "", category: "", description: "",
+  reportType: "Lost", reporterName: "", itemName: "", category: "", description: "",
   location: "", date: "", status: "Pending", contactNumber: "", imageFile: null, categoryOther: "",
 };
+
+// Reporter name: letters, spaces, period, hyphen, apostrophe (e.g. "Juan Dela Cruz Jr.", "Ma. Cristina", "O'Brien")
+const NAME_STRIP_REGEX = /[^A-Za-zñÑ\s.'-]/g;
+const NAME_VALID_REGEX = /^[A-Za-zñÑ\s.'-]+$/;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 function Badge({ label, config }) {
@@ -187,6 +191,11 @@ export default function LostFoundPage({ darkMode, isSDO }) {
   const [newStatus, setNewStatus] = useState("");
   const [editingStatus, setEditingStatus] = useState(false);
 
+  // Full-screen image preview (lightbox) + change-photo in View modal
+  const [previewImage, setPreviewImage] = useState(null);
+  const [imageUpdating, setImageUpdating] = useState(false);
+  const changeImageRef = useRef(null);
+
 
 const [editing, setEditing] = useState({
   reportType: false,
@@ -197,6 +206,7 @@ const [editing, setEditing] = useState({
   location: false,
   date: false,
   contact: false,
+  reporterName: false,
 });
 
 const [editValue, setEditValue] = useState({
@@ -209,6 +219,7 @@ const [editValue, setEditValue] = useState({
   location: "",
   date: "",
   contact: "",
+  reporterName: "",
 });
 
 useEffect(() => {
@@ -226,6 +237,7 @@ useEffect(() => {
       location: viewItem.location || "",
       date: viewItem.date || "",
       contact: viewItem.contactNumber || "",
+      reporterName: viewItem.reporterName || "",
     });
 
     setEditing({
@@ -237,6 +249,7 @@ useEffect(() => {
       location: false,
       date: false,
       contact: false,
+      reporterName: false,
     });
   }
 }, [viewItem]);
@@ -303,10 +316,81 @@ const handleImage = (e) => {
   reader.readAsDataURL(file);
 };
 
+// Replace the photo of an existing report (View modal).
+// 1) upload the new image  2) update Firestore  3) delete the OLD image from Storage
+const handleChangeImage = async (e) => {
+  const input = e.target;
+  const file = input.files[0];
+  if (!file || !viewItem) return;
+
+  const MAX_SIZE = 3 * 1024 * 1024; // 3MB
+
+  if (file.size > MAX_SIZE) {
+    alert("Image size must not exceed 3MB.");
+    input.value = "";
+    return;
+  }
+
+  setImageUpdating(true);
+
+  const oldPath = viewItem.imagePath || null;
+  const oldUrl = viewItem.imageUrl || null;
+
+  try {
+    const newPath = `lost_found/${Date.now()}_${file.name}`;
+    const storageRef = ref(storage, newPath);
+
+    await uploadBytes(storageRef, file);
+    const newUrl = await getDownloadURL(storageRef);
+
+    await updateDoc(doc(db, "lost_found", viewItem.id), {
+      imageUrl: newUrl,
+      imagePath: newPath,
+    });
+
+    // Delete the previous image from Firebase Storage
+    if (oldPath) {
+      try {
+        await deleteObject(ref(storage, oldPath));
+      } catch (storageErr) {
+        console.error("Old image delete error:", storageErr);
+      }
+    }
+
+    await logAudit({
+      action: "Edited Lost & Found Item",
+      module: "Lost & Found",
+      documentId: viewItem.id,
+      documentTitle: viewItem.itemName || "",
+      performedBy: getCurrentUser(isSDO),
+      oldData: { imageUrl: oldUrl },
+      newData: { imageUrl: newUrl },
+      description: oldUrl
+        ? `Photo of "${viewItem.itemName}" was replaced.`
+        : `Photo was added to "${viewItem.itemName}".`,
+    });
+
+    setViewItem((prev) => ({
+      ...prev,
+      imageUrl: newUrl,
+      imagePath: newPath,
+    }));
+  } catch (err) {
+    console.error("Error changing image:", err);
+    alert("Failed to update photo. Please try again.");
+  } finally {
+    setImageUpdating(false);
+    input.value = "";
+  }
+};
+
 const validate = () => {
   const errs = {};
 
   // Required fields
+  if (!form.reporterName.trim())
+    errs.reporterName = "Reporter name is required.";
+
   if (!form.itemName.trim())
     errs.itemName = "Item name is required.";
 
@@ -325,6 +409,15 @@ const validate = () => {
 
   if (!form.date)
     errs.date = "Date is required.";
+
+  // Reporter Name: letters, spaces, . ' - only
+  if (
+    form.reporterName.trim() &&
+    !NAME_VALID_REGEX.test(form.reporterName.trim())
+  ) {
+    errs.reporterName =
+      "Reporter name must contain letters only.";
+  }
 
   // Item Name: letters & spaces only
   if (
@@ -394,6 +487,7 @@ const validate = () => {
       // Firestore: save document
         const docRef = await addDoc(collection(db, "lost_found"), {
           reportType: form.reportType,
+          reporterName: form.reporterName.trim(),
           itemName: form.itemName.trim(),
           category: finalCategory,
           description: form.description.trim(),
@@ -414,6 +508,7 @@ const validate = () => {
         performedBy: getCurrentUser(isSDO),
         newData: {
           reportType: form.reportType,
+          reporterName: form.reporterName.trim(),
           itemName: form.itemName.trim(),
           category: finalCategory,
           description: form.description.trim(),
@@ -422,7 +517,7 @@ const validate = () => {
           status: form.status,
           contactNumber: form.contactNumber.trim(),
         },
-        description: `${form.reportType} item "${form.itemName.trim()}" was reported.`,
+        description: `${form.reportType} item "${form.itemName.trim()}" was reported by ${form.reporterName.trim()}.`,
       });
 
       closeAdd();
@@ -505,7 +600,7 @@ const validate = () => {
   // ── Render ────────────────────────────────────────────────────────────────
 return (
   <div
-  className={`h-screen overflow-hidden w-full px-4 md:px-6 lg:px-8 flex flex-col ${
+  className={`min-h-screen md:h-screen md:overflow-hidden w-full px-4 md:px-6 lg:px-8 flex flex-col ${
     darkMode ? "bg-gray-950 text-white" : "bg-gray-50"
   }`}
 >
@@ -546,7 +641,7 @@ return (
                 : "bg-pink-600 hover:bg-pink-500 text-white"
             }`}
       >
-        ＋ Add Report
+        ＋ Add New Report
       </button>
     </div>
 
@@ -610,6 +705,8 @@ return (
           />
       </div>
 
+      {/* Type pills — wrapped in one row so they don't stack vertically on mobile */}
+      <div className="flex flex-wrap items-center gap-2">
       {["All", "Lost", "Found"].map((t) => (
         <button
           key={t}
@@ -640,10 +737,12 @@ return (
           <option key={s}>{s}</option>
         ))}
       </select>
+      </div>
     </div>
 
    {/* Cards */}
-<div className="flex-1 overflow-y-auto">
+{/* Mobile: the whole page scrolls (cards always visible). Desktop: only this area scrolls. */}
+<div className="md:flex-1 md:min-h-0 md:overflow-y-auto">
   <div
     className="
     grid
@@ -737,6 +836,16 @@ return (
                       🗓 {item.date || "—"}
                     </p>
 
+                    {item.reporterName && (
+                      <p
+                        className={`text-xs flex items-center gap-1 mt-1 truncate ${
+                          darkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                      >
+                        👤 {item.reporterName}
+                      </p>
+                    )}
+
               {item.category && (
                 <div className="mt-2">
                   <span
@@ -812,6 +921,32 @@ return (
                     </button>
                   ))}
                 </div>
+              </div>
+
+              {/* Reported By */}
+              <div style={S.field}>
+                <label style={S.label}>Reported By *</label>
+                <input
+                    name="reporterName"
+                    placeholder="Full name of the person reporting"
+                    value={form.reporterName}
+                    maxLength={50}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(NAME_STRIP_REGEX, "");
+
+                      setForm((prev) => ({
+                        ...prev,
+                        reporterName: value,
+                      }));
+                    }}
+                      style={{
+                        ...S.input,
+                        background: darkMode ? "#1F2937" : "#FFFFFF",
+                        color: darkMode ? "#F9FAFB" : "#111827",
+                        borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+                      }}
+                  />
+                {errors.reporterName && <p style={S.errorText}>{errors.reporterName}</p>}
               </div>
 
               {/* Item Name */}
@@ -904,7 +1039,7 @@ return (
               </div>
 
               {/* Location & Date */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                 <div style={S.field}>
                   <label style={S.label}>Location *</label>
                     <input
@@ -954,7 +1089,7 @@ return (
               </div>
 
               {/* Contact & Status */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                 <div style={S.field}>
                   <label style={S.label}>Contact Number (optional) </label>
 
@@ -981,6 +1116,9 @@ return (
                       borderColor: darkMode ? "#4B5563" : "#E5E7EB",
                     }}
                   />
+                  {errors.contactNumber && (
+                    <p style={S.errorText}>{errors.contactNumber}</p>
+                  )}
                 </div>
                 <div style={S.field}>
                   <label style={S.label}>Status</label>
@@ -1102,28 +1240,84 @@ return (
               </button>
             </div>
 
-            {/* IMAGE */}
-            {viewItem.imageUrl ? (
-              <img
-                src={viewItem.imageUrl}
-                alt={viewItem.itemName}
+            {/* IMAGE (click to preview, button to change photo) */}
+            <div style={{ position: "relative" }}>
+              {viewItem.imageUrl ? (
+                <img
+                  src={viewItem.imageUrl}
+                  alt={viewItem.itemName}
+                  onClick={() => setPreviewImage(viewItem.imageUrl)}
+                  title="Click to preview"
+                  style={{
+                    width: "100%",
+                    maxHeight: 220,
+                    objectFit: "cover",
+                    display: "block",
+                    cursor: "zoom-in",
+                    opacity: imageUpdating ? 0.4 : 1,
+                    transition: "opacity .15s",
+                  }}
+                />
+              ) : (
+                <div
+                  style={{
+                    ...S.cardImgPlaceholder,
+                    height: 100,
+                    fontSize: 48,
+                  }}
+                >
+                  {EMOJI[viewItem.category] || "📦"}
+                </div>
+              )}
+
+              {imageUpdating && (
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(0,0,0,.35)",
+                    color: "#fff",
+                    fontWeight: 700,
+                    fontSize: 14,
+                  }}
+                >
+                  Updating photo…
+                </div>
+              )}
+
+              <button
+                type="button"
+                disabled={imageUpdating}
+                onClick={() => changeImageRef.current?.click()}
                 style={{
-                  width: "100%",
-                  maxHeight: 220,
-                  objectFit: "cover",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  ...S.cardImgPlaceholder,
-                  height: 100,
-                  fontSize: 48,
+                  position: "absolute",
+                  right: 10,
+                  bottom: 10,
+                  padding: "6px 12px",
+                  borderRadius: 999,
+                  border: "none",
+                  fontSize: 12,
+                  fontWeight: 700,
+                  cursor: imageUpdating ? "not-allowed" : "pointer",
+                  background: "rgba(17,24,39,.8)",
+                  color: "#fff",
+                  opacity: imageUpdating ? 0.6 : 1,
                 }}
               >
-                {EMOJI[viewItem.category] || "📦"}
-              </div>
-            )}
+                📷 {viewItem.imageUrl ? "Change Photo" : "Add Photo"}
+              </button>
+
+              <input
+                type="file"
+                accept="image/*"
+                ref={changeImageRef}
+                onChange={handleChangeImage}
+                style={{ display: "none" }}
+              />
+            </div>
 
             {/* BODY */}
             <div style={S.modalBody}>
@@ -1535,6 +1729,87 @@ return (
         }}
       >
 
+        {/* Reported By */}
+        <div>
+          <span style={{ color: darkMode ? "#ffffff" : "#000000", fontSize: 14 }}>
+            👤 {viewItem.reportType === "Found" ? "Found / Returned By" : "Reported By"}
+          </span>
+
+          {editing.reporterName ? (
+            <input
+              value={editValue.reporterName}
+              maxLength={50}
+              onChange={(e) =>
+                setEditValue((p) => ({
+                  ...p,
+                  reporterName: e.target.value.replace(NAME_STRIP_REGEX, ""),
+                }))
+              }
+              onBlur={async () => {
+                const newName = editValue.reporterName.trim();
+
+                // empty or unchanged: just close the editor, don't save
+                if (!newName || newName === (viewItem.reporterName || "")) {
+                  setEditValue((p) => ({
+                    ...p,
+                    reporterName: viewItem.reporterName || "",
+                  }));
+                  setEditing((p) => ({ ...p, reporterName: false }));
+                  return;
+                }
+
+                await updateDoc(doc(db, "lost_found", viewItem.id), {
+                  reporterName: newName,
+                });
+
+                await logAudit({
+                  action: "Edited Lost & Found Item",
+                  module: "Lost & Found",
+                  documentId: viewItem.id,
+                  documentTitle: viewItem.itemName || "",
+                  performedBy: getCurrentUser(isSDO),
+                  oldData: { reporterName: viewItem.reporterName || "" },
+                  newData: { reporterName: newName },
+                  description: `Reporter name of "${viewItem.itemName}" was updated.`,
+                });
+
+                setViewItem((p) => ({
+                  ...p,
+                  reporterName: newName,
+                }));
+
+                setEditing((p) => ({
+                  ...p,
+                  reporterName: false,
+                }));
+              }}
+              autoFocus
+              style={{
+                ...S.input,
+                background: darkMode ? "#1F2937" : "#FFFFFF",
+                color: darkMode ? "#F9FAFB" : "#111827",
+                borderColor: darkMode ? "#4B5563" : "#E5E7EB",
+              }}
+            />
+          ) : (
+            <div
+              onClick={() =>
+                setEditing((p) => ({
+                  ...p,
+                  reporterName: true,
+                }))
+              }
+              style={{
+                color: darkMode ? "#E5E7EB" : "#111827",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {viewItem.reporterName || "—"}
+            </div>
+          )}
+        </div>
+
         {/* Location */}
         <div>
           <span style={{ color: darkMode ? "#ffffff" : "#000000", fontSize: 14 }}>📍 Location</span>
@@ -1780,6 +2055,45 @@ return (
           </div>
         </div>
       )}
+
+            {/* ── Image Preview (Lightbox) ─────────────────────────────────────────── */}
+            {previewImage && (
+              <div
+                style={{
+                  ...S.overlay,
+                  zIndex: 70,
+                  background: "rgba(0,0,0,.9)",
+                  cursor: "zoom-out",
+                }}
+                onClick={() => setPreviewImage(null)}
+              >
+                <button
+                  style={{
+                    ...S.closeBtn,
+                    position: "absolute",
+                    top: 16,
+                    right: 20,
+                    fontSize: 28,
+                    color: "#fff",
+                  }}
+                  onClick={() => setPreviewImage(null)}
+                >
+                  ✕
+                </button>
+                <img
+                  src={previewImage}
+                  alt="Preview"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    maxWidth: "100%",
+                    maxHeight: "100%",
+                    objectFit: "contain",
+                    borderRadius: 8,
+                    cursor: "default",
+                  }}
+                />
+              </div>
+            )}
 
             {/* ── Delete Confirm Modal ──────────────────────────────────────────────── */}
             {deleteTarget && (
