@@ -5,6 +5,7 @@ export default function SDOLayout({
   setActivePage,
   activePage,
   handleLogout,
+  forcePasswordChange = false, // NEW
 }) {
   const navItems = [
     {
@@ -21,6 +22,11 @@ export default function SDOLayout({
       key: "lostfound",
       label: "Lost & found",
       icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
+    },
+    {
+      key: "attendance",
+      label: "Scan attendance",
+      icon: "M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z",
     },
     {
       key: "profile",
@@ -58,6 +64,10 @@ export default function SDOLayout({
 
   return (
     <div
+      // 100dvh = the real visible height on mobile browsers (100vh is taller than
+      // the screen there, which pushed the bottom of every page out of view).
+      // h-screen stays as a fallback for browsers without dvh support.
+      style={{ height: "100dvh" }}
       className={`h-screen overflow-hidden flex transition-colors duration-300 ${
         darkMode ? "bg-slate-950" : "bg-slate-50"
       }`}
@@ -73,7 +83,7 @@ export default function SDOLayout({
       {/* SIDEBAR */}
       <aside
         className={`fixed lg:static inset-y-0 left-0 z-40 flex-shrink-0 transform transition-all duration-300 ease-in-out
-          w-64 ${collapsed ? "lg:w-20" : "lg:w-64"}
+          w-64 max-w-[85vw] ${collapsed ? "lg:w-20" : "lg:w-64"}
           ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} lg:translate-x-0
           border-r flex flex-col
           ${
@@ -114,16 +124,21 @@ export default function SDOLayout({
           </p>
           {navItems.map((item) => {
             const active = activePage === item.key;
+            // NEW: while a password change is required, everything except Profile is locked
+            const locked = forcePasswordChange && item.key !== "profile";
             return (
               <button
                 key={item.key}
+                disabled={locked} // NEW
                 onClick={() => {
+                  if (locked) return; // NEW
                   setActivePage(item.key);
                   setSidebarOpen(false);
                 }}
-                title={collapsed ? item.label : undefined}
+                title={locked ? "Change your password first" : collapsed ? item.label : undefined}
                 className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-150
                   ${collapsed ? "lg:justify-center lg:px-0" : ""}
+                  ${locked ? "opacity-40 cursor-not-allowed" : ""}
                   ${
                     active
                       ? "bg-pink-500 text-white shadow-sm shadow-pink-500/30"
@@ -245,9 +260,11 @@ export default function SDOLayout({
           </button>
         </header>
 
-        {/* CONTENT — fixed page, no outer scrollbar. Each page manages its own
-            internal scrolling (e.g. DisciplinaryPage's inner overflow-y-auto div). */}
-        <main className="flex-1 min-h-0 overflow-hidden">{pageContent}</main>
+        {/* CONTENT — this is the ONE scroll area of the whole app. It used to be
+            `overflow-hidden`, which cut off (putol) anything taller than the
+            screen, so pages could not be scrolled to their bottom. Now every
+            page simply scrolls inside here, on any screen size. */}
+        <main className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">{pageContent}</main>
       </div>
     </div>
   );

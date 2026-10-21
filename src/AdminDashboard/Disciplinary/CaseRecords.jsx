@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { collection, addDoc, serverTimestamp, doc, updateDoc, deleteDoc, getDocs } from "firebase/firestore";
 import { db } from "../../firebase/firebase";
-import { FaEye, FaTrash, FaArrowLeft } from "react-icons/fa";
+import { FaEye, FaTrash } from "react-icons/fa";
 import { logAudit } from "../../utils/auditTrail";
+import useDropdownOptions from "../../hooks/useDropdownOptions";
+import { DEFAULT_PROGRAMS } from "../../constants/dropdownDefaults";
 
-// AUDIT TRAIL: reads the currently logged-in user (saved by Login.jsx) so
-// every audit log entry records who actually performed the action.
-// `isSDO` (passed down from the parent page) overrides the role so SDO
-// users are never mis-logged as "Administrator" in the audit trail.
 const getCurrentUser = (isSDO) => {
   try {
     const stored = JSON.parse(localStorage.getItem("userData") || "{}");
@@ -41,6 +39,10 @@ const getCurrentUser = (isSDO) => {
 const emptyStudent = {
   studentId: "",
   name: "",
+  lastName: "",
+  firstName: "",
+  middleName: "",
+  suffix: "",
   program: "",
   yearLevel: "",
   section: "",
@@ -54,6 +56,46 @@ const emptyStudent = {
   sanctions: "",
   decision: "",
 };
+
+// ---- NAME HELPERS ----
+// The full `name` string ("Lastname, Firstname Middlename Suffix") is still
+// saved in Firestore so search, autofill, audit trail and old records keep
+// working exactly the same. The separate parts are saved on top of it.
+const composeName = ({ lastName = "", firstName = "", middleName = "", suffix = "" }) => {
+  const rest = [firstName.trim(), middleName.trim(), suffix.trim()].filter(Boolean).join(" ");
+  return [lastName.trim(), rest].filter(Boolean).join(", ");
+};
+
+// For OLD records that only have a single `name` string.
+const parseName = (fullName = "") => {
+  const [last, ...rest] = fullName.split(",");
+  return {
+    lastName: (last || "").trim(),
+    firstName: rest.join(",").trim(),
+    middleName: "",
+    suffix: "",
+  };
+};
+
+const getNameParts = (c) =>
+  c.lastName || c.firstName ? {
+    lastName: c.lastName || "",
+    firstName: c.firstName || "",
+    middleName: c.middleName || "",
+    suffix: c.suffix || "",
+  } : parseName(c.name);
+
+// letters, spaces and periods only (no digits / special characters)
+const cleanNamePart = (value) => value.replace(/[^A-Za-z\s.]/g, "");
+
+// SECTION: only ONE letter allowed (A-Z), automatically uppercase
+const cleanSection = (value) => value.replace(/[^A-Za-z]/g, "").slice(0, 1).toUpperCase();
+
+// "in-progress" (new cases) and "In Progress" (edited cases) are the same status
+const normalizeStatus = (s) => (s || "").toLowerCase().replace(/[\s_-]+/g, "-");
+const isClosedStatus = (s) => normalizeStatus(s) === "closed";
+
+const ITEMS_PER_PAGE = 5;
 
 // ---- Reusable style helpers (dark-mode aware) ----
 function fieldClass(darkMode, editable = true) {
@@ -71,11 +113,25 @@ function labelClass(darkMode) {
   return `text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-700"}`;
 }
 
+function filterSelectClass(darkMode) {
+  return `rounded-xl px-4 py-2 border outline-none focus:ring-2 ${
+    darkMode
+      ? "bg-gray-800 border-gray-700 text-white focus:ring-pink-500"
+      : "border-gray-300 bg-white text-gray-700 focus:ring-[#ff6699]"
+  }`;
+}
+
 export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, darkMode }) {
+  const { options: programs } = useDropdownOptions("programs", DEFAULT_PROGRAMS);
   const [showModal, setShowModal] = useState(false);
   const [localCases, setLocalCases] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [isEditing, setIsEditing] = useState(false);
+
+  // FILTERS + PAGINATION
+  const [offenseFilter, setOffenseFilter] = useState("All");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const [selectedCase, setSelectedCase] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -85,6 +141,10 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
   // still in flight.
   const [isSaving, setIsSaving] = useState(false);
 
+  // ANTI-SPAM: same idea for "Save Changes" (edit modal) and delete.
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
   // Use the parent-supplied realtime `cases` prop when available (e.g. from
   // sdoHomepage.jsx's onSnapshot listener); otherwise fetch once ourselves
   // so this component still works standalone.
@@ -92,18 +152,22 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
   const cases = usingOwnCases ? localCases : casesProp;
 
   const handleView = (item) => {
-    setSelectedCase(item);
+    // Fill in the separate name parts (also for old records that only have `name`)
+    setSelectedCase({ ...item, ...getNameParts(item) });
     setIsEditing(false);
     setShowViewModal(true);
   };
 
   const handleDelete = async (id) => {
+    if (isDeleting) return;
+
     const confirmDelete = window.confirm("Are you sure you want to delete this case?");
     if (!confirmDelete) return;
 
     // AUDIT TRAIL: capture the case data before it's removed from Firestore
     const caseToDelete = cases.find((c) => c.id === id);
 
+    setIsDeleting(true);
     try {
       await deleteDoc(doc(db, "cases", id));
 
@@ -123,10 +187,22 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
     } catch (error) {
       console.error(error);
       alert("Failed to delete case.");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   const handleUpdate = async () => {
+    // Guard against double-submit: ignore extra clicks while an update is
+    // already in progress.
+    if (isUpdating) return;
+
+    if (!selectedCase.lastName?.trim() || !selectedCase.firstName?.trim()) {
+      alert("Last Name and First Name are required.");
+      return;
+    }
+
+    setIsUpdating(true);
     try {
       const caseRef = doc(db, "cases", selectedCase.id);
 
@@ -136,7 +212,11 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
 
       const updatedFields = {
         studentId: selectedCase.studentId,
-        name: selectedCase.name,
+        name: composeName(selectedCase),
+        lastName: selectedCase.lastName.trim(),
+        firstName: selectedCase.firstName.trim(),
+        middleName: (selectedCase.middleName || "").trim(),
+        suffix: (selectedCase.suffix || "").trim(),
         program: selectedCase.program,
         yearLevel: selectedCase.yearLevel,
         section: selectedCase.section,
@@ -159,7 +239,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
         documentTitle: selectedCase.caseNumber || "",
         performedBy: getCurrentUser(isSDO),
         oldData: oldCaseData,
-        newData: selectedCase,
+        newData: { ...selectedCase, ...updatedFields },
         description: `Disciplinary case ${selectedCase.caseNumber} was updated.`,
       });
 
@@ -174,6 +254,8 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
     } catch (error) {
       console.error("Update Error:", error);
       alert(error.message);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -196,6 +278,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
   const [student, setStudent] = useState(emptyStudent);
 
   const handleCloseModal = () => {
+    if (isSaving) return;
     setStudent(emptyStudent);
     setShowModal(false);
   };
@@ -226,6 +309,16 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
     setStudent({ ...student, [e.target.name]: e.target.value });
   };
 
+  // Name parts (Last / First / Middle / Suffix) in the Add Case form
+  const handleNamePartChange = (e) => {
+    const value = cleanNamePart(e.target.value);
+    setStudent((prev) => {
+      const updated = { ...prev, [e.target.name]: value };
+      updated.name = composeName(updated);
+      return updated;
+    });
+  };
+
   const handleSave = async () => {
     // Guard against double-submit: ignore extra clicks while a save is
     // already in progress.
@@ -234,7 +327,9 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
     // Required fields
     if (
       !student.studentId.trim() ||
-      !student.name.trim() ||
+      !student.lastName.trim() ||
+      !student.firstName.trim() ||
+      !student.middleName.trim() ||
       !student.program ||
       !student.yearLevel ||
       !student.section.trim() ||
@@ -254,8 +349,13 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
       return;
     }
 
-    if (!/^[A-Za-z\s,.]+$/.test(student.name)) {
-      alert("Student Name can only contain letters, spaces, commas, and periods.");
+    if (
+      !/^[A-Za-z\s.]+$/.test(student.lastName) ||
+      !/^[A-Za-z\s.]+$/.test(student.firstName) ||
+      !/^[A-Za-z\s.]+$/.test(student.middleName) ||
+      (student.suffix && !/^[A-Za-z\s.]+$/.test(student.suffix))
+    ) {
+      alert("Name fields can only contain letters, spaces, and periods.");
       return;
     }
 
@@ -279,6 +379,8 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
     try {
       const newCase = {
         ...student,
+        // full name string kept for search / autofill / audit trail
+        name: composeName(student),
         caseNumber,
         status: "in-progress",
         createdAt: serverTimestamp(),
@@ -327,38 +429,61 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Go back to page 1 whenever the search / filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, offenseFilter, statusFilter]);
+
   const filteredCases = cases.filter((item) => {
     const term = searchTerm.toLowerCase();
-    return (
+    const matchesSearch =
       item.name?.toLowerCase().includes(term) ||
-      item.studentId?.toLowerCase().includes(term)
-    );
+      item.studentId?.toLowerCase().includes(term);
+
+    const matchesOffense = offenseFilter === "All" || getOffenseLevel(item) === offenseFilter;
+
+    const matchesStatus =
+      statusFilter === "All" || normalizeStatus(item.status) === normalizeStatus(statusFilter);
+
+    return matchesSearch && matchesOffense && matchesStatus;
   });
 
+  // PAGINATION (5 cases per page, newest first like before)
+  const orderedCases = [...filteredCases].reverse();
+  const totalPages = Math.max(1, Math.ceil(orderedCases.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * ITEMS_PER_PAGE;
+  const paginatedCases = orderedCases.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  // Show at most 5 page numbers around the current page so the bar never overflows
+  const pageWindowStart = Math.max(1, Math.min(safePage - 2, totalPages - 4));
+  const pageWindowEnd = Math.min(totalPages, pageWindowStart + 4);
+  const visiblePages = Array.from(
+    { length: pageWindowEnd - pageWindowStart + 1 },
+    (_, i) => pageWindowStart + i
+  );
+
+  const pageBtnClass = (active, disabled) =>
+    `px-3.5 py-2 rounded-xl text-sm font-semibold transition ${
+      active
+        ? "bg-[#ff6699] text-white shadow-md"
+        : darkMode
+        ? "bg-gray-800 text-gray-200 hover:bg-gray-700"
+        : "bg-gray-100 text-gray-700 hover:bg-pink-50"
+    } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`;
+
   return (
-    <div className={`h-screen overflow-hidden flex flex-col space-y-6 p-6 ${darkMode ? "bg-gray-950" : "bg-pink-50/60"}`}>
+    <div className={`min-h-full w-full flex flex-col space-y-4 sm:space-y-6 p-3 sm:p-6 ${darkMode ? "bg-gray-950" : "bg-pink-50/60"}`}>
       {/* HEADER */}
       <div
-        className={`backdrop-blur-xl rounded-3xl p-8 shadow-md border ${
+        className={`backdrop-blur-xl rounded-3xl p-5 sm:p-8 shadow-md border ${
           darkMode ? "bg-gray-900 border-gray-700" : "bg-white/70 border-white"
         }`}
       >
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
           {/* LEFT */}
           <div>
-            {isSDO && setActivePage && (
-              <button
-                onClick={() => setActivePage("dashboard")}
-                className={`inline-flex items-center gap-2 text-sm font-medium mb-3 transition ${
-                  darkMode ? "text-gray-400 hover:text-pink-400" : "text-gray-500 hover:text-pink-600"
-                }`}
-              >
-                <FaArrowLeft size={12} />
-                Back to dashboard
-              </button>
-            )}
-
-            <h1 className={`text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
+            <h1 className={`text-2xl sm:text-3xl font-bold ${darkMode ? "text-white" : "text-gray-800"}`}>
               Disciplinary Case Management
             </h1>
 
@@ -371,59 +496,121 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
           <div className="flex flex-wrap justify-start lg:justify-end gap-3">
             <button
               onClick={() => setShowModal(true)}
-              className="bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold"
+              disabled={showModal}
+              className={`bg-pink-500 hover:bg-pink-600 transition text-white px-5 py-3 rounded-xl shadow-md font-semibold ${
+                showModal ? "opacity-50 cursor-not-allowed" : ""
+              }`}
             >
-              + Add Case
+              + Add New Case
             </button>
           </div>
         </div>
       </div>
 
       {/* TABLE */}
-      <div className={`rounded-3xl shadow-md p-4 sm:p-6 overflow-x-auto ${darkMode ? "bg-gray-900 border border-gray-700" : "bg-white"}`}>
-        <div className="min-w-[1100px]">
-          {/* HEADER */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-            <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-700"}`}>Case Records</h2>
+      <div
+        className={`rounded-3xl shadow-md p-4 sm:p-6 ${
+          darkMode ? "bg-gray-900 border border-gray-700" : "bg-white"
+        }`}
+      >
+        <div>
+          {/* HEADER + SEARCH + FILTERS */}
+          <div className="flex flex-col gap-3 mb-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <h2 className={`text-xl font-bold ${darkMode ? "text-white" : "text-gray-700"}`}>Case Records</h2>
 
-            <input
-              type="text"
-              placeholder="Search by Last Name or Student ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full sm:w-96 rounded-xl px-4 py-2 border ${
-                darkMode
-                  ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:ring-pink-500"
-                  : "border-gray-300 focus:ring-[#ff6699]"
-              }`}
-            />
+              <input
+                type="text"
+                placeholder="Search by Last Name or Student ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full sm:w-96 rounded-xl px-4 py-2 border ${
+                  darkMode
+                    ? "bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:ring-pink-500"
+                    : "border-gray-300 focus:ring-[#ff6699]"
+                }`}
+              />
+            </div>
+
+            {/* FILTERS */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2">
+                <label className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  Offense Level
+                </label>
+                <select
+                  value={offenseFilter}
+                  onChange={(e) => setOffenseFilter(e.target.value)}
+                  className={filterSelectClass(darkMode)}
+                >
+                  <option value="All">All</option>
+                  <option value="WARNING">Warning</option>
+                  <option value="1ST OFFENSE">1st Offense</option>
+                  <option value="2ND OFFENSE">2nd Offense</option>
+                  <option value="3RD OFFENSE">3rd Offense</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className={`text-sm font-semibold ${darkMode ? "text-gray-300" : "text-gray-600"}`}>
+                  Status
+                </label>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className={filterSelectClass(darkMode)}
+                >
+                  <option value="All">All</option>
+                  <option value="In Progress">In Progress</option>
+                  <option value="Closed">Closed</option>
+                </select>
+              </div>
+
+              {(offenseFilter !== "All" || statusFilter !== "All") && (
+                <button
+                  onClick={() => {
+                    setOffenseFilter("All");
+                    setStatusFilter("All");
+                  }}
+                  className={`text-sm font-medium underline ${
+                    darkMode ? "text-pink-400 hover:text-pink-300" : "text-pink-600 hover:text-pink-700"
+                  }`}
+                >
+                  Clear filters
+                </button>
+              )}
+            </div>
           </div>
 
-          <table className="w-full text-left border-collapse">
+          {/* Only the table scrolls sideways on small screens — filters and pagination stay visible */}
+          <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left border-collapse">
             <thead>
               <tr className={darkMode ? "bg-gray-800 text-gray-200" : "bg-gray-100 text-gray-700"}>
                 <th className="p-4 rounded-l-xl">Case Number</th>
                 <th className="p-4">Student ID</th>
-                <th className="p-4">Name</th>
-                <th className="p-4">Program</th>
                 <th className="p-4">Year & Section</th>
                 <th className="p-4">Incident Type</th>
-                <th className="p-4">Contact</th>
                 <th className="p-4">Status</th>
-                <th className="p-4">Offense Level</th>
-                
+                <th className="p-4 rounded-r-xl">Offense Level</th>
               </tr>
             </thead>
 
             <tbody>
               {cases.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className={`text-center p-6 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                  <td colSpan="6" className={`text-center p-6 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
                     No disciplinary records yet.
                   </td>
                 </tr>
+              ) : paginatedCases.length === 0 ? (
+                <tr>
+                  <td colSpan="6" className={`text-center p-6 ${darkMode ? "text-gray-500" : "text-gray-400"}`}>
+                    No cases match your search or filters.
+                  </td>
+                </tr>
               ) : (
-                [...filteredCases].reverse().map((item) => (
+                paginatedCases.map((item) => (
                   <tr
                     key={item.id}
                     onClick={() => handleView(item)}
@@ -433,19 +620,22 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                   >
                     <td className="p-4 font-semibold text-pink-500">{item.caseNumber}</td>
                     <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>{item.studentId}</td>
-                    <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>{item.name}</td>
-                    <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>{item.program}</td>
                     <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
                       {item.yearLevel} - {item.section}
                     </td>
                     <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>
                       {item.incidentType === "Other" ? item.otherIncident : item.incidentType}
                     </td>
-                    <td className={`p-4 ${darkMode ? "text-gray-200" : ""}`}>{item.contactNumber || "N/A"}</td>
                     <td className="p-4">
                       <span
                         className={`px-3 py-1 rounded-full text-sm font-medium ${
-                          darkMode ? "bg-yellow-900 text-yellow-300" : "bg-yellow-100 text-yellow-700"
+                          isClosedStatus(item.status)
+                            ? darkMode
+                              ? "bg-green-900 text-green-300"
+                              : "bg-green-100 text-green-700"
+                            : darkMode
+                            ? "bg-yellow-900 text-yellow-300"
+                            : "bg-yellow-100 text-yellow-700"
                         }`}
                       >
                         {item.status}
@@ -474,12 +664,51 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                         {getOffenseLevel(item)}
                       </span>
                     </td>
-  
                   </tr>
                 ))
               )}
             </tbody>
           </table>
+          </div>
+
+          {/* PAGINATION */}
+          {orderedCases.length > 0 && (
+            <div className="flex flex-col items-center sm:flex-row sm:justify-between gap-3 mt-5">
+              <p className={`text-sm text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                Showing {startIndex + 1}–{Math.min(startIndex + ITEMS_PER_PAGE, orderedCases.length)} of{" "}
+                {orderedCases.length} case{orderedCases.length > 1 ? "s" : ""}
+              </p>
+
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(safePage - 1)}
+                  disabled={safePage === 1}
+                  className={pageBtnClass(false, safePage === 1)}
+                >
+                  Previous
+                </button>
+
+                {visiblePages.map((page) => (
+                  <button
+                    key={page}
+                    onClick={() => setCurrentPage(page)}
+                    disabled={page === safePage}
+                    className={pageBtnClass(page === safePage, false)}
+                  >
+                    {page}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage(safePage + 1)}
+                  disabled={safePage === totalPages}
+                  className={pageBtnClass(false, safePage === totalPages)}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -487,7 +716,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
       {showModal && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
           <div
-            className={`rounded-3xl shadow-2xl w-full w-[95%] sm:max-w-4xl p-8 overflow-y-auto max-h-[95vh] ${
+            className={`rounded-3xl shadow-2xl w-full w-[95%] sm:max-w-4xl p-4 sm:p-8 overflow-y-auto max-h-[95vh] ${
               darkMode ? "bg-gray-900 border border-gray-700" : "bg-white"
             }`}
           >
@@ -502,9 +731,10 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
 
               <button
                 onClick={handleCloseModal}
+                disabled={isSaving}
                 className={`text-3xl transition ${
                   darkMode ? "text-gray-500 hover:text-red-400" : "text-gray-400 hover:text-red-500"
-                }`}
+                } ${isSaving ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 ✕
               </button>
@@ -536,7 +766,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
               </h3>
 
               <div className="grid md:grid-cols-2 gap-5">
-                <div>
+                <div className="md:col-span-2">
                   <label className={labelClass(darkMode)}>Student ID *</label>
                   <input
                     type="text"
@@ -556,7 +786,12 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                           const existing = cases.find((c) => c.studentId === value);
 
                           if (existing) {
-                            updated.name = existing.name || prev.name;
+                            const parts = getNameParts(existing);
+                            updated.lastName = parts.lastName || prev.lastName;
+                            updated.firstName = parts.firstName || prev.firstName;
+                            updated.middleName = parts.middleName || prev.middleName;
+                            updated.suffix = parts.suffix || prev.suffix;
+                            updated.name = existing.name || composeName(updated);
                             updated.program = existing.program || prev.program;
                           }
                         }
@@ -579,17 +814,52 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                 </div>
 
                 <div>
-                  <label className={labelClass(darkMode)}>Student Name *</label>
+                  <label className={labelClass(darkMode)}>Last Name *</label>
                   <input
                     type="text"
-                    name="name"
+                    name="lastName"
                     required
-                    value={student.name}
-                    onChange={(e) => {
-                      const value = e.target.value.replace(/[^a-zA-Z,\s]/g, "");
-                      setStudent({ ...student, name: value });
-                    }}
-                    placeholder="Lastname, Firstname M.I"
+                    value={student.lastName}
+                    onChange={handleNamePartChange}
+                    placeholder="Last Name"
+                    className={fieldClass(darkMode)}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass(darkMode)}>First Name *</label>
+                  <input
+                    type="text"
+                    name="firstName"
+                    required
+                    value={student.firstName}
+                    onChange={handleNamePartChange}
+                    placeholder="First Name"
+                    className={fieldClass(darkMode)}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass(darkMode)}>Middle Name *</label>
+                  <input
+                    type="text"
+                    name="middleName"
+                    required
+                    value={student.middleName}
+                    onChange={handleNamePartChange}
+                    placeholder="Middle Name"
+                    className={fieldClass(darkMode)}
+                  />
+                </div>
+
+                <div>
+                  <label className={labelClass(darkMode)}>Suffix (optional)</label>
+                  <input
+                    type="text"
+                    name="suffix"
+                    value={student.suffix}
+                    onChange={handleNamePartChange}
+                    placeholder="Ex: Jr., III"
                     className={fieldClass(darkMode)}
                   />
                 </div>
@@ -598,16 +868,13 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                   <label className={labelClass(darkMode)}>Program *</label>
                   <select name="program" required value={student.program} onChange={handleChange} className={fieldClass(darkMode)}>
                     <option value="">Select Program</option>
-                    <option>Bachelor of Arts in Political Science (B.A. Pol. Sci)</option>
-                    <option>Bachelor of Elementary Education (BEED)</option>
-                    <option>Bachelor of Secondary Education (BSED) English</option>
-                    <option>Bachelor of Secondary Education (BSED) Mathematics</option>
-                    <option>Bachelor of Science in Tourism Management (BSTM)</option>
-                    <option>Bachelor of Science in Hospitality Management (BSHM)</option>
-                    <option>Bachelor of Science in Information Technology (BSIT)</option>
-                    <option>Bachelor of Science in Business Administration (BSBA)</option>
-                    <option>Bachelor of Science in Accountancy (BSA)</option>
-                    <option>Bachelor of Science in Criminology (B.S. Crim.)</option>
+                    {/* Keep an autofilled value visible even if it is no longer in the list */}
+                    {student.program && !programs.includes(student.program) && (
+                      <option value={student.program}>{student.program}</option>
+                    )}
+                    {programs.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -628,9 +895,12 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                     type="text"
                     name="section"
                     required
+                    maxLength={1}
                     value={student.section}
-                    onChange={handleChange}
-                    placeholder="Ex: BSIT-3A"
+                    onChange={(e) =>
+                      setStudent((prev) => ({ ...prev, section: cleanSection(e.target.value) }))
+                    }
+                    placeholder="Ex: A"
                     className={fieldClass(darkMode)}
                   />
                 </div>
@@ -800,7 +1070,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
             }`}
           >
             {/* HEADER */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-[#ff6699]">Case Details</h2>
                 <p className={darkMode ? "text-gray-400 text-sm" : "text-gray-500 text-sm"}>
@@ -808,7 +1078,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                 </p>
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 {!isEditing ? (
                   <button
                     onClick={() => setIsEditing(true)}
@@ -820,26 +1090,38 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                   <>
                     <button
                       onClick={() => setIsEditing(false)}
-                      className={`px-4 py-2 rounded-xl ${darkMode ? "bg-gray-800 text-gray-200" : "bg-gray-300"}`}
+                      disabled={isUpdating}
+                      className={`px-4 py-2 rounded-xl ${darkMode ? "bg-gray-800 text-gray-200" : "bg-gray-300"} ${
+                        isUpdating ? "opacity-50 cursor-not-allowed" : ""
+                      }`}
                     >
                       Cancel Edit
                     </button>
 
                     <button
                       onClick={handleUpdate}
-                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl"
+                      disabled={isUpdating}
+                      className={`text-white px-4 py-2 rounded-xl ${
+                        isUpdating
+                          ? "bg-green-400 cursor-not-allowed"
+                          : "bg-green-600 hover:bg-green-700"
+                      }`}
                     >
-                      Save Changes
+                      {isUpdating ? "Saving..." : "Save Changes"}
                     </button>
                   </>
                 )}
 
                 <button
                   onClick={() => {
+                    if (isUpdating) return;
                     setShowViewModal(false);
                     setIsEditing(false);
                   }}
-                  className={`text-2xl ${darkMode ? "text-gray-400 hover:text-white" : "text-gray-500"}`}
+                  disabled={isUpdating}
+                  className={`text-2xl ${darkMode ? "text-gray-400 hover:text-white" : "text-gray-500"} ${
+                    isUpdating ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
                 >
                   ✕
                 </button>
@@ -862,7 +1144,7 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                 />
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <label className={labelClass(darkMode)}>Student ID</label>
                 <input
                   type="text"
@@ -878,37 +1160,69 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
               </div>
 
               <div>
-                <label className={labelClass(darkMode)}>Student Name</label>
+                <label className={labelClass(darkMode)}>Last Name</label>
                 <input
-                  value={selectedCase.name}
+                  value={selectedCase.lastName || ""}
                   disabled={!isEditing}
-                  onChange={(e) => {
-                    const value = e.target.value.replace(/[^A-Za-z\s,.]/g, "");
-                    setSelectedCase({ ...selectedCase, name: value });
-                  }}
+                  onChange={(e) =>
+                    setSelectedCase({ ...selectedCase, lastName: cleanNamePart(e.target.value) })
+                  }
+                  className={fieldClass(darkMode, isEditing)}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass(darkMode)}>First Name</label>
+                <input
+                  value={selectedCase.firstName || ""}
+                  disabled={!isEditing}
+                  onChange={(e) =>
+                    setSelectedCase({ ...selectedCase, firstName: cleanNamePart(e.target.value) })
+                  }
+                  className={fieldClass(darkMode, isEditing)}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass(darkMode)}>Middle Name</label>
+                <input
+                  value={selectedCase.middleName || ""}
+                  disabled={!isEditing}
+                  onChange={(e) =>
+                    setSelectedCase({ ...selectedCase, middleName: cleanNamePart(e.target.value) })
+                  }
+                  className={fieldClass(darkMode, isEditing)}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass(darkMode)}>Suffix (optional)</label>
+                <input
+                  value={selectedCase.suffix || ""}
+                  disabled={!isEditing}
+                  onChange={(e) =>
+                    setSelectedCase({ ...selectedCase, suffix: cleanNamePart(e.target.value) })
+                  }
                   className={fieldClass(darkMode, isEditing)}
                 />
               </div>
 
               <div>
                 <label className={labelClass(darkMode)}>Program</label>
-                <select
-                  disabled={!isEditing}
-                  value={selectedCase.program}
-                  onChange={(e) => setSelectedCase({ ...selectedCase, program: e.target.value })}
-                  className={fieldClass(darkMode, isEditing)}
-                >
-                  <option>Bachelor of Arts in Political Science (B.A. Pol. Sci)</option>
-                  <option>Bachelor of Elementary Education (BEED)</option>
-                  <option>Bachelor of Secondary Education (BSED) English</option>
-                  <option>Bachelor of Secondary Education (BSED) Mathematics</option>
-                  <option>Bachelor of Science in Tourism Management (BSTM)</option>
-                  <option>Bachelor of Science in Hospitality Management (BSHM)</option>
-                  <option>Bachelor of Science in Information Technology (BSIT)</option>
-                  <option>Bachelor of Science in Business Administration (BSBA)</option>
-                  <option>Bachelor of Science in Accountancy (BSA)</option>
-                  <option>Bachelor of Science in Criminology (B.S. Crim.)</option>
-                </select>
+                  <select
+                    disabled={!isEditing}
+                    value={selectedCase.program}
+                    onChange={(e) => setSelectedCase({ ...selectedCase, program: e.target.value })}
+                    className={fieldClass(darkMode, isEditing)}
+                  >
+                    {/* Keep the saved value visible even if it was renamed or removed from the list */}
+                    {selectedCase.program && !programs.includes(selectedCase.program) && (
+                      <option value={selectedCase.program}>{selectedCase.program}</option>
+                    )}
+                    {programs.map((p) => (
+                      <option key={p} value={p}>{p}</option>
+                    ))}
+                  </select>
               </div>
 
               <div>
@@ -931,7 +1245,11 @@ export default function CaseRecords({ cases: casesProp, setActivePage, isSDO, da
                 <input
                   value={selectedCase.section}
                   disabled={!isEditing}
-                  onChange={(e) => setSelectedCase({ ...selectedCase, section: e.target.value })}
+                  maxLength={1}
+                  onChange={(e) =>
+                    setSelectedCase({ ...selectedCase, section: cleanSection(e.target.value) })
+                  }
+                  placeholder="Ex: A"
                   className={fieldClass(darkMode, isEditing)}
                 />
               </div>

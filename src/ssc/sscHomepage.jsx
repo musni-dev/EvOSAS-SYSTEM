@@ -601,7 +601,7 @@ function PasswordField({ label, value, onChange, show, onToggle, error, inputCla
 /* RECORDS MODAL (view logged-in user's own attendance records)            */
 /* ---------------------------------------------------------------------- */
 
-function RecordsModal({ isOpen, onClose, darkMode }) {
+export function RecordsModal({ isOpen, onClose, darkMode }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
@@ -813,7 +813,7 @@ function RecordsModal({ isOpen, onClose, darkMode }) {
 /* SCAN VIEW (camera + jsQR)                                               */
 /* ---------------------------------------------------------------------- */
 
-function ScanView({ onBack, onDecoded }) {
+export function ScanView({ onBack, onDecoded }) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -1040,7 +1040,7 @@ const handleDecodedRaw = useCallback(
 /* CONFIRM VIEW (Firestore write + result)                                 */
 /* ---------------------------------------------------------------------- */
 
-function ConfirmView({ payload, onScanAgain, onDone }) {
+export function ConfirmView({ payload, onScanAgain, onDone }) {
   const [status, setStatus] = useState("processing"); // processing | success | error | already
   const [message, setMessage] = useState("");
   const [record, setRecord] = useState(null);

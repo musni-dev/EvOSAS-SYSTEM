@@ -3,18 +3,8 @@ import { db } from "../firebase/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
 import bcrypt from "bcryptjs";
 
-/*
-  This account (SDO) does NOT log in through Firebase Auth — per Login.jsx,
-  only Administrator uses signInWithEmailAndPassword. SSC Officer / SDO / SOC
-  accounts log in through the Firestore "users" collection + bcrypt password
-  check, and the session is kept in sessionStorage ("uid", "role", "userData")
-  so it clears automatically when the tab/browser is closed.
-
-  So this page reads the logged-in user the same way UsersPage.jsx's
-  getCurrentUser() does, and changes the password by bcrypt-comparing /
-  re-hashing directly against the Firestore "users/{uid}" document — not
-  Firebase Auth's updatePassword/reauthenticateWithCredential.
-*/
+// NEW: must match the default password used in UsersPage (getNextDefaultPassword)
+const DEFAULT_PASSWORD = "EvOSAS-2026";
 
 function getSessionUser() {
   try {
@@ -78,7 +68,7 @@ const strengthMeta = [
   { label: "Very strong", color: "bg-emerald-500" },
 ];
 
-export default function SDOProfile({ darkMode }) {
+export default function SDOProfile({ darkMode, forcePasswordChange = false }) { // NEW: forcePasswordChange
   const [uid, setUid] = useState("");
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -135,6 +125,15 @@ export default function SDOProfile({ darkMode }) {
       setPwStatus({ type: "error", message: "Choose a stronger password (mix upper/lowercase, numbers, symbols)." });
       return;
     }
+    // NEW: the new password can't be the default password or the same as the current one
+    if (pwForm.next.trim() === DEFAULT_PASSWORD) {
+      setPwStatus({ type: "error", message: "You can't use the default password. Please choose a different one." });
+      return;
+    }
+    if (pwForm.next.trim() === pwForm.current.trim()) {
+      setPwStatus({ type: "error", message: "Your new password must be different from your current password." });
+      return;
+    }
 
     setPwSubmitting(true);
     try {
@@ -147,9 +146,10 @@ export default function SDOProfile({ darkMode }) {
       }
 
       const newHash = await bcrypt.hash(pwForm.next.trim(), 10);
-      await updateDoc(doc(db, "users", uid), { password: newHash });
+      // NEW: also clears the mustChangePassword flag, which unlocks the account
+      await updateDoc(doc(db, "users", uid), { password: newHash, mustChangePassword: false });
 
-      setProfile((p) => ({ ...(p || {}), password: newHash }));
+      setProfile((p) => ({ ...(p || {}), password: newHash, mustChangePassword: false }));
       setPwStatus({ type: "success", message: "Password updated successfully." });
       setPwForm({ current: "", next: "", confirm: "" });
     } catch (err) {
@@ -186,6 +186,28 @@ export default function SDOProfile({ darkMode }) {
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 pb-10 sm:pb-12">
+        {/* NEW: required-password-change banner */}
+        {forcePasswordChange && (
+          <div
+            role="alert"
+            className={`mb-5 sm:mb-6 flex items-start gap-3 rounded-2xl border px-4 py-3.5 ${
+              darkMode
+                ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                : "bg-amber-50 border-amber-200 text-amber-800"
+            }`}
+          >
+            <svg className="w-5 h-5 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+            <div>
+              <p className="text-sm font-semibold">Password change required</p>
+              <p className="text-xs mt-0.5">
+                Your account is using a default password. Please set a new password below before you can use the other features.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="mb-5 sm:mb-6">
           <h1 className={`text-lg sm:text-xl font-semibold ${darkMode ? "text-white" : "text-pink-600"}`}>Profile</h1>
           <p className={`text-xs sm:text-sm mt-0.5 ${darkMode ? "text-slate-400" : "text-gray-500"}`}>

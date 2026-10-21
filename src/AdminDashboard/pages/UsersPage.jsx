@@ -54,7 +54,6 @@ const emptyForm = {
 // Full role list — still used for filtering/badges so existing Administrator
 // accounts remain visible/searchable in the table.
 const roles = [
-  "Administrator",
   "SSC Officer",
   "Student Disciplinary Officer",
   "Student Organization Coordinator",
@@ -157,6 +156,7 @@ function normalizeUser(snapshotDoc) {
     createdAt: data.createdAt || null,
     updatedAt: data.updatedAt || null,
     authUid: data.authUid || "",
+    mustChangePassword: data.mustChangePassword === true, // NEW
   };
 }
 
@@ -435,6 +435,7 @@ export default function UsersPage({ darkMode }) {
           ...payload,
           createdAt: serverTimestamp(),
           lastLoginAt: null,
+          mustChangePassword: true, // NEW: new accounts must change the default password first
         });
 
         await logAudit({
@@ -565,6 +566,7 @@ function generateUniqueUsername(firstName, lastName, users) {
       const hashedPassword = await bcrypt.hash(defaultPassword.trim(), 10);
       await updateDoc(doc(db, USERS_COLLECTION, user.id), {
         password: hashedPassword,
+        mustChangePassword: true, // NEW: force the user to set a new password on next use
         updatedAt: serverTimestamp(),
       });
       setNotice(`${formatName(user)}'s password was reset to the default password.`);
@@ -1144,6 +1146,13 @@ function generateUniqueUsername(firstName, lastName, users) {
                 <p className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Last Updated</p>
                 <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-slate-900"}`}>
                   {formatDate(viewUser.updatedAt)}
+                </p>
+              </div>
+              {/* NEW: shows whether the user still has to change their password */}
+              <div>
+                <p className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Password</p>
+                <p className={`text-sm font-medium ${darkMode ? "text-white" : "text-slate-900"}`}>
+                  {viewUser.mustChangePassword ? "Must change on next login" : "Changed by user"}
                 </p>
               </div>
             </div>
