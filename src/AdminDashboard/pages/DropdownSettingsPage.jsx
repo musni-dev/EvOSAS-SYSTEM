@@ -7,15 +7,10 @@ import {
   DEFAULT_PROGRAMS,
   DEFAULT_LOST_FOUND_CATEGORIES,
   DEFAULT_SESSION_TITLES,
+  DEFAULT_POSITIONS,
 } from "../../constants/dropdownDefaults";
 
-/**
- * Every dropdown managed from this page is listed here.
- * - key: must match the key passed to useDropdownOptions("<key>", defaults)
- * - defaults: initial values / fallback when Firestore has no data yet
- * - reserved: (optional) values the page adds by itself; they cannot be added here
- * To manage another dropdown, add a new object to this array.
- */
+
 export const DROPDOWN_CATEGORIES = [
   {
     key: "programs",
@@ -35,6 +30,12 @@ export const DROPDOWN_CATEGORIES = [
     label: "Attendance Session Titles",
     hint: "Used when creating or editing an attendance session",
     defaults: DEFAULT_SESSION_TITLES,
+  },
+  {
+    key: "positions",
+    label: "SSC Positions",
+    hint: "Used in the Position field of User Management",
+    defaults: DEFAULT_POSITIONS,
   },
 ];
 

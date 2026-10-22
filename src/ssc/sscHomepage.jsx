@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import jsQR from "jsqr";
 import {
   collection, query, where, getDocs, addDoc, updateDoc, getDoc, doc,
-  serverTimestamp, Timestamp, runTransaction,
+  serverTimestamp, Timestamp, runTransaction, onSnapshot, // NEW: onSnapshot
 } from "firebase/firestore";
 import { ScanLine, Camera, AlertCircle, ArrowLeft, RefreshCw, CheckCircle2, XCircle, Clock, Calendar, Home, QrCode, MoreVertical,} from "lucide-react";
 import { db, auth } from "../firebase/firebase"; // adjust path to your firebase config
@@ -12,11 +12,71 @@ import {
   FiUser, FiLock, FiEye, FiEyeOff, FiMail, FiShield, FiHash, FiX, FiBriefcase, FiAward, FiLogOut,
 } from "react-icons/fi";
 
+// NEW: must match the default password used in UsersPage (getNextDefaultPassword)
+const DEFAULT_PASSWORD = "EvOSAS-2026";
 
+// NEW: reads the logged-in user's uid from the session
+function getSessionUid() {
+  const directUid = sessionStorage.getItem("uid");
+  if (directUid) return directUid;
+
+  try {
+    const userData = JSON.parse(sessionStorage.getItem("userData"));
+    if (userData?.uid) return userData.uid;
+    if (userData?.id) return userData.id;
+  } catch {
+    // ignore parse errors, fall through
+  }
+
+  return auth.currentUser?.uid || "";
+}
 
 export default function sscHomepage({ darkMode = false }) {
   const [view, setView] = useState("home"); // "home" | "scan" | "confirm"
   const [scanResult, setScanResult] = useState(null); // decoded payload passed to confirm view
+
+  // NEW: force-change-password state (set by admin on create / reset password)
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [securityChecked, setSecurityChecked] = useState(false);
+
+  // NEW: live-watch the user's own document for the mustChangePassword flag.
+  // If the admin resets the password while the user is online, they get locked too.
+  useEffect(() => {
+    const uid = getSessionUid();
+    if (!uid) {
+      setSecurityChecked(true);
+      return;
+    }
+
+    const unsub = onSnapshot(
+      doc(db, "users", uid),
+      (snap) => {
+        setMustChangePassword(snap.exists() && snap.data().mustChangePassword === true);
+        setSecurityChecked(true);
+      },
+      () => {
+        setSecurityChecked(true);
+      }
+    );
+    return () => unsub();
+  }, []);
+
+  // NEW: while a password change is required, always bring the user back to the home view
+  useEffect(() => {
+    if (mustChangePassword && view !== "home") {
+      setScanResult(null);
+      setView("home");
+    }
+  }, [mustChangePassword, view]);
+
+  // NEW: don't show any feature until we know if a password change is required
+  if (!securityChecked) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-gradient-to-br from-pink-50 via-white to-pink-100">
+        <p className="text-sm text-gray-500">Loading…</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-pink-50 via-white to-pink-100">
@@ -24,6 +84,7 @@ export default function sscHomepage({ darkMode = false }) {
         <HomeView
           onScanPress={() => setView("scan")}
           darkMode={darkMode}
+          forcePasswordChange={mustChangePassword} // NEW
         />
       )}
 
@@ -58,7 +119,7 @@ export default function sscHomepage({ darkMode = false }) {
 /* HOME VIEW                                                               */
 /* ---------------------------------------------------------------------- */
 
-function HomeView({ onScanPress, darkMode }) {
+function HomeView({ onScanPress, darkMode, forcePasswordChange = false }) { // NEW: forcePasswordChange
   const getOfficerName = () => {
     try {
       const userData = JSON.parse(sessionStorage.getItem("userData"));
@@ -89,6 +150,15 @@ const handleLogout = async () => {
     console.error("Logout error:", err);
   }
 };
+
+  // NEW: while a password change is required, keep the (non-closable) profile modal open
+  useEffect(() => {
+    if (forcePasswordChange) {
+      setShowMenu(false);
+      setShowRecords(false);
+      setShowProfile(true);
+    }
+  }, [forcePasswordChange]);
 
   useEffect(() => {
     if (!showMenu) return;
@@ -168,6 +238,7 @@ const handleLogout = async () => {
         <div className="flex-1 flex flex-col items-center justify-center">
           <button
             onClick={onScanPress}
+            disabled={forcePasswordChange} // NEW
             className="group relative w-44 h-44 sm:w-52 sm:h-52 rounded-full bg-pink-600
                        hover:bg-pink-700 active:bg-pink-800 shadow-xl shadow-pink-300/50
                        flex flex-col items-center justify-center gap-3 transition
@@ -189,6 +260,8 @@ const handleLogout = async () => {
         isOpen={showProfile}
         onClose={() => setShowProfile(false)}
         darkMode={darkMode}
+        forcePasswordChange={forcePasswordChange} // NEW
+        onLogout={handleLogout} // NEW
       />
 
       <RecordsModal
@@ -222,7 +295,7 @@ const handleLogout = async () => {
 /* PROFILE MODAL                                                           */
 /* ---------------------------------------------------------------------- */
 
-function ProfileModal({ isOpen, onClose, darkMode }) {
+function ProfileModal({ isOpen, onClose, darkMode, forcePasswordChange = false, onLogout }) { // NEW: forcePasswordChange, onLogout
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
@@ -303,6 +376,12 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
 
   if (!isOpen) return null;
 
+  // NEW: closing is blocked while a password change is required
+  const handleClose = () => {
+    if (forcePasswordChange) return;
+    onClose();
+  };
+
   const getInitials = () => {
     if (!profile) return "?";
     const first = profile.firstName?.trim()?.[0] || "";
@@ -333,6 +412,12 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
       errors.new = "New password must contain a lowercase letter.";
     } else if (!/[0-9]/.test(newPassword)) {
       errors.new = "New password must contain a number.";
+    } else if (newPassword.trim() === DEFAULT_PASSWORD) {
+      // NEW: can't reuse the default password
+      errors.new = "You can't use the default password. Please choose a different one.";
+    } else if (currentPassword && newPassword.trim() === currentPassword.trim()) {
+      // NEW: must be different from the current password
+      errors.new = "Your new password must be different from your current password.";
     }
     if (!confirmPassword) {
       errors.confirm = "Please confirm your new password.";
@@ -367,10 +452,11 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
 
       await updateDoc(doc(db, "users", profile.id), {
         password: hashedPassword,
+        mustChangePassword: false, // NEW: clears the flag, which unlocks the account
         updatedAt: serverTimestamp(),
       });
 
-      setProfile((p) => ({ ...p, password: hashedPassword }));
+      setProfile((p) => ({ ...p, password: hashedPassword, mustChangePassword: false }));
       setPasswordMessage({ type: "success", text: "Password updated successfully." });
       setCurrentPassword("");
       setNewPassword("");
@@ -396,7 +482,7 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6 bg-black/50 backdrop-blur-sm transition-opacity duration-200 animate-fade-in"
-      onClick={onClose}
+      onClick={handleClose} // NEW: was onClose
     >
       <div
         className={`w-full max-w-[500px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl border ${borderColor} ${cardBg} transition-all duration-200 animate-scale-in`}
@@ -407,16 +493,39 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
             <FiUser className="text-pink-500" />
             My Profile
           </h2>
-          <button
-            onClick={onClose}
-            className={`p-2 rounded-full transition ${darkMode ? "hover:bg-gray-800" : "hover:bg-pink-50"}`}
-            aria-label="Close"
-          >
-            <FiX className={textPrimary} />
-          </button>
+          {/* NEW: close button is hidden while a password change is required */}
+          {!forcePasswordChange && (
+            <button
+              onClick={onClose}
+              className={`p-2 rounded-full transition ${darkMode ? "hover:bg-gray-800" : "hover:bg-pink-50"}`}
+              aria-label="Close"
+            >
+              <FiX className={textPrimary} />
+            </button>
+          )}
         </div>
 
         <div className="px-5 sm:px-6 py-5 space-y-6">
+          {/* NEW: required-password-change banner */}
+          {forcePasswordChange && (
+            <div
+              role="alert"
+              className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${
+                darkMode
+                  ? "bg-amber-500/10 border-amber-500/30 text-amber-300"
+                  : "bg-amber-50 border-amber-200 text-amber-800"
+              }`}
+            >
+              <FiShield className="w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold">Password change required</p>
+                <p className="text-xs mt-0.5">
+                  Your account is using a default password. Please set a new password below before you can use the other features.
+                </p>
+              </div>
+            </div>
+          )}
+
           {loading && (
             <div className="flex flex-col items-center justify-center py-10 gap-3">
               <div className="w-8 h-8 border-4 border-pink-200 border-t-pink-600 rounded-full animate-spin" />
@@ -528,6 +637,22 @@ function ProfileModal({ isOpen, onClose, darkMode }) {
                   >
                     {updating ? "Updating Password..." : "Update Password"}
                   </button>
+
+                  {/* NEW: so the user isn't trapped in the locked modal */}
+                  {forcePasswordChange && (
+                    <button
+                      type="button"
+                      onClick={onLogout}
+                      className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border font-semibold text-sm transition ${
+                        darkMode
+                          ? "border-gray-700 text-gray-200 hover:bg-gray-800"
+                          : "border-pink-200 text-gray-600 hover:bg-pink-50"
+                      }`}
+                    >
+                      <FiLogOut className="w-4 h-4" />
+                      Log out
+                    </button>
+                  )}
                 </form>
               </div>
             </>

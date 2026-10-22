@@ -4,6 +4,8 @@ import { Check, ChevronLeft, ChevronRight, Edit3, KeyRound, Plus, Search, Toggle
 import { db } from "../../firebase/firebase";
 import bcrypt from "bcryptjs";
 import { logAudit } from "../../utils/auditTrail";
+import useDropdownOptions from "../../hooks/useDropdownOptions";
+import { DEFAULT_POSITIONS } from "../../constants/dropdownDefaults";
 
 // AUDIT TRAIL: reads the currently logged-in user (saved by Login.jsx) so
 // every audit log entry records who actually performed the action.
@@ -62,26 +64,6 @@ const roles = [
 // Roles that can be assigned when creating/editing a user from this page.
 // "Administrator" is intentionally excluded from here only.
 const assignableRoles = roles.filter((role) => role !== "Administrator");
-
-const positions = [
-  "President",
-  "Consultant",
-  "Vice President - Internal",
-  "Vice President - External",
-  "Secretary-General",
-  "Senator on Finance",
-  "Senator on Public Information",
-  "Senator on Student Welfare",
-  "Executive Internal Associate",
-  "Executive External Associate",
-  "Executive Associate on Communications",
-  "Executive Associate on Documentations",
-  "Executive Associate on Documentations",
-  "Executive Associate on Technical Support",
-  "Executive Associate on Student Affairs",
-  "Executive Associate on Student Discipline",
-  "Executive Associate on Culture & Arts",
-];
 
 const roleStyles = {
   Administrator: "bg-pink-100 text-pink-700 border-pink-200",
@@ -218,6 +200,7 @@ function Field({ label, children, darkMode }) {
 }
 
 export default function UsersPage({ darkMode }) {
+  const { options: positions } = useDropdownOptions("positions", DEFAULT_POSITIONS);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -965,20 +948,24 @@ function generateUniqueUsername(firstName, lastName, users) {
                 </Field>
             </div>
 
-            <Field label="Position (Only For SSC, optional)" darkMode={darkMode}>
-              <select
-                value={form.position}
-                onChange={(event) => updateForm("position", event.target.value)}
-                className={formInputClass}
-              >
-                <option value="">Select position...</option>
-                {positions.map((position) => (
-                  <option key={position} value={position}>
-                    {position}
-                  </option>
-                ))}
-              </select>
-            </Field>
+              <Field label="Position" darkMode={darkMode}>
+                <select
+                  value={form.position}
+                  onChange={(event) => updateForm("position", event.target.value)}
+                  className={formInputClass}
+                >
+                  <option value="">Select position...</option>
+                  {/* Keep the saved position visible even if it was renamed or removed from the list */}
+                  {form.position && !positions.includes(form.position) && (
+                    <option value={form.position}>{form.position}</option>
+                  )}
+                  {positions.map((position) => (
+                    <option key={position} value={position}>
+                      {position}
+                    </option>
+                  ))}
+                </select>
+              </Field>
           </div>
 
           <div className={`my-5 border-t pt-4 ${darkMode ? "border-slate-700" : "border-pink-100"}`}>

@@ -29,3 +29,6 @@ server/.env
 *.njsproj
 *.sln
 *.sw?
+
+firestore.rules
+.firebase/

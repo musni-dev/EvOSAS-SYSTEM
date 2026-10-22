@@ -32,3 +32,22 @@ export const DEFAULT_SESSION_TITLES = [
   "Community Outreach",
   "Special Event",
 ];
+
+export const DEFAULT_POSITIONS = [
+  "President",
+  "Consultant",
+  "Vice President - Internal",
+  "Vice President - External",
+  "Secretary-General",
+  "Senator on Finance",
+  "Senator on Public Information",
+  "Senator on Student Welfare",
+  "Executive Internal Associate",
+  "Executive External Associate",
+  "Executive Associate on Communications",
+  "Executive Associate on Documentations",
+  "Executive Associate on Technical Support",
+  "Executive Associate on Student Affairs",
+  "Executive Associate on Student Discipline",
+  "Executive Associate on Culture & Arts",
+];
