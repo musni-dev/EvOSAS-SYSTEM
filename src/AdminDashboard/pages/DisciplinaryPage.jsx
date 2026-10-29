@@ -748,6 +748,13 @@ const summaryRows = (() => {
     return darkMode ? "bg-red-900 text-red-300" : "bg-red-100 text-red-700";
   };
 
+  // STATUS BADGE (display only): green when Closed, yellow otherwise.
+  const statusBadgeClasses = (status) => {
+    if (status === "Closed")
+      return darkMode ? "bg-emerald-900 text-emerald-300" : "bg-emerald-100 text-emerald-700";
+    return darkMode ? "bg-yellow-900 text-yellow-300" : "bg-yellow-100 text-yellow-700";
+  };
+
 const inputBase = `w-full mt-1.5 border-2 rounded-xl p-3 text-sm outline-none transition-all duration-150 focus:ring-2 focus:ring-pink-400 focus:border-pink-500 ${
   darkMode
     ? "bg-slate-800 border-slate-500 text-white placeholder-slate-400"
@@ -883,7 +890,7 @@ const filterInput = `w-full border rounded-xl px-3 py-2.5 text-sm outline-none f
         >
           <div className="flex items-center justify-between">
             <p className={`text-[11px] sm:text-xs font-medium uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-400"}`}>
-              Closed
+              Case Closed
             </p>
             <FaCheckCircle className="text-emerald-500" />
           </div>
@@ -1060,7 +1067,6 @@ const filterInput = `w-full border rounded-xl px-3 py-2.5 text-sm outline-none f
                           <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Incident Type</th>
                           <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Status</th>
                           <th className={`p-3 text-xs font-semibold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Offense Level</th>
-                          <th className={`p-3 text-xs font-semibold uppercase tracking-wider text-center ${darkMode ? "text-slate-400" : "text-gray-500"}`}>Actions</th>
                         </tr>
                       </thead>
 
@@ -1098,38 +1104,18 @@ const filterInput = `w-full border rounded-xl px-3 py-2.5 text-sm outline-none f
 
                               <td className="p-3.5">
                                 <span
-                                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
-                                    darkMode
-                                      ? "bg-yellow-900 text-yellow-300"
-                                      : "bg-yellow-100 text-yellow-700"
-                                  }`}
+                                  className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${statusBadgeClasses(item.status)}`}
                                 >
                                   {item.status}
                                 </span>
                               </td>
 
-                              <td className="p-3.5">
+                              <td className="p-3.5 rounded-r-xl">
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${offenseBadgeClasses(level)}`}
                                 >
                                   {level}
                                 </span>
-                              </td>
-
-                              <td className="p-3.5 rounded-r-xl">
-                                <div
-                                  className="flex items-center justify-center gap-2"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-
-                                  <button
-                                    onClick={() => requestDelete(item)}
-                                    className="px-3 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium transition shadow-sm"
-                                    title="Delete"
-                                  >
-                                    <FaTrash />
-                                  </button>
-                                </div>
                               </td>
                             </tr>
                           );
@@ -1162,17 +1148,6 @@ const filterInput = `w-full border rounded-xl px-3 py-2.5 text-sm outline-none f
                               {item.caseNumber}
                             </p>
                           </div>
-
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              requestDelete(item);
-                            }}
-                            className="shrink-0 p-2.5 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm transition shadow-sm"
-                            title="Delete"
-                          >
-                            <FaTrash />
-                          </button>
                         </div>
 
                         <div className={`mt-3 grid grid-cols-2 gap-x-3 gap-y-2 text-xs ${darkMode ? "text-slate-300" : "text-gray-600"}`}>
@@ -1192,11 +1167,7 @@ const filterInput = `w-full border rounded-xl px-3 py-2.5 text-sm outline-none f
 
                         <div className="mt-3 flex items-center gap-2 flex-wrap">
                           <span
-                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${
-                              darkMode
-                                ? "bg-yellow-900 text-yellow-300"
-                                : "bg-yellow-100 text-yellow-700"
-                            }`}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold ${statusBadgeClasses(item.status)}`}
                           >
                             {item.status}
                           </span>

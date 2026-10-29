@@ -196,6 +196,9 @@ export default function LostFoundPage({ darkMode, isSDO }) {
   const [imageUpdating, setImageUpdating] = useState(false);
   const changeImageRef = useRef(null);
 
+  // Save button state for the View modal (prevents spam-clicking)
+  const [savingEdits, setSavingEdits] = useState(false);
+
 
 const [editing, setEditing] = useState({
   reportType: false,
@@ -222,6 +225,8 @@ const [editValue, setEditValue] = useState({
   reporterName: "",
 });
 
+// Only re-sync the edit fields when a DIFFERENT report is opened
+// (so changing the photo does not wipe unsaved edits).
 useEffect(() => {
   if (viewItem) {
     const isCustomCategory =
@@ -252,7 +257,8 @@ useEffect(() => {
       reporterName: false,
     });
   }
-}, [viewItem]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [viewItem?.id]);
 
 
   // ── Firestore: real-time listener ─────────────────────────────────────────
@@ -289,6 +295,55 @@ useEffect(() => {
     found: items.filter((i) => i.reportType === "Found").length,
     claimed: items.filter((i) => i.status === "Claimed").length,
   };
+
+  // ── View modal: which fields were actually changed? ───────────────────────
+  // Compares the edit fields against the saved report. Only fields that
+  // really differ are returned (Firestore field names as keys).
+  const getChanges = () => {
+    if (!viewItem) return {};
+
+    const finalCategory =
+      editValue.category === "Others"
+        ? editValue.categoryOther.trim()
+        : editValue.category;
+
+    const changes = {};
+
+    if (editValue.reportType !== (viewItem.reportType || "Lost"))
+      changes.reportType = editValue.reportType;
+
+    if (editValue.status !== (viewItem.status || "Pending"))
+      changes.status = editValue.status;
+
+    if (editValue.name !== (viewItem.itemName || ""))
+      changes.itemName = editValue.name;
+
+    if (editValue.description !== (viewItem.description || ""))
+      changes.description = editValue.description;
+
+    // empty category (e.g. "Others" with no text yet) is not a valid change
+    if (finalCategory && finalCategory !== (viewItem.category || ""))
+      changes.category = finalCategory;
+
+    if (editValue.location !== (viewItem.location || ""))
+      changes.location = editValue.location;
+
+    if (editValue.date !== (viewItem.date || ""))
+      changes.date = editValue.date;
+
+    if (editValue.contact !== (viewItem.contactNumber || ""))
+      changes.contactNumber = editValue.contact;
+
+    // empty reporter name is not saved
+    const trimmedReporter = editValue.reporterName.trim();
+    if (trimmedReporter && trimmedReporter !== (viewItem.reporterName || ""))
+      changes.reporterName = trimmedReporter;
+
+    return changes;
+  };
+
+  const pendingChanges = getChanges();
+  const hasChanges = Object.keys(pendingChanges).length > 0;
 
   // ── Handlers ──────────────────────────────────────────────────────────────
   const handleChange = (e) =>
@@ -381,6 +436,67 @@ const handleChangeImage = async (e) => {
   } finally {
     setImageUpdating(false);
     input.value = "";
+  }
+};
+
+// Save ALL edited fields of the View modal at once (only when something changed).
+const handleSaveChanges = async () => {
+  if (!viewItem || savingEdits) return;
+
+  const changes = getChanges();
+  const changedKeys = Object.keys(changes);
+  if (changedKeys.length === 0) return;
+
+  setSavingEdits(true);
+
+  try {
+    await updateDoc(doc(db, "lost_found", viewItem.id), changes);
+
+    const itemTitle = viewItem.itemName || "";
+
+    const describe = {
+      reportType: () => `Report type of "${itemTitle}" changed to ${changes.reportType}.`,
+      status: () => `Status of "${itemTitle}" changed to ${changes.status}.`,
+      category: () => `Category of "${itemTitle}" changed to ${changes.category}.`,
+      itemName: () => `Item name changed from "${viewItem.itemName}" to "${changes.itemName}".`,
+      description: () => `Description of "${itemTitle}" was updated.`,
+      reporterName: () => `Reporter name of "${itemTitle}" was updated.`,
+      location: () => `Location of "${itemTitle}" was updated.`,
+      date: () => `Date of "${itemTitle}" was updated.`,
+      contactNumber: () => `Contact number of "${itemTitle}" was updated.`,
+    };
+
+    for (const key of changedKeys) {
+      await logAudit({
+        action: "Edited Lost & Found Item",
+        module: "Lost & Found",
+        documentId: viewItem.id,
+        documentTitle: changes.itemName || itemTitle,
+        performedBy: getCurrentUser(isSDO),
+        oldData: { [key]: viewItem[key] ?? "" },
+        newData: { [key]: changes[key] },
+        description: describe[key](),
+      });
+    }
+
+    setViewItem((prev) => ({ ...prev, ...changes }));
+
+    setEditing({
+      reportType: false,
+      status: false,
+      name: false,
+      description: false,
+      category: false,
+      location: false,
+      date: false,
+      contact: false,
+      reporterName: false,
+    });
+  } catch (err) {
+    console.error("Error saving changes:", err);
+    alert("Failed to save changes. Please try again.");
+  } finally {
+    setSavingEdits(false);
   }
 };
 
@@ -1332,43 +1448,25 @@ return (
                   alignItems: "center",
                 }}
               >
-                {/* REPORT TYPE (EDITABLE) */}
+                {/* REPORT TYPE (EDITABLE — saved with the Save Changes button) */}
                 {editing.reportType ? (
                   <select
+                    autoFocus
                     value={editValue.reportType}
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const value = e.target.value;
 
                       setEditValue((prev) => ({
                         ...prev,
                         reportType: value,
                       }));
-
-                      await updateDoc(doc(db, "lost_found", viewItem.id), {
-                        reportType: value,
-                      });
-
-                      await logAudit({
-                        action: "Edited Lost & Found Item",
-                        module: "Lost & Found",
-                        documentId: viewItem.id,
-                        documentTitle: viewItem.itemName || "",
-                        performedBy: getCurrentUser(isSDO),
-                        oldData: { reportType: viewItem.reportType },
-                        newData: { reportType: value },
-                        description: `Report type of "${viewItem.itemName}" changed to ${value}.`,
-                      });
-
-                      setViewItem((prev) => ({
-                        ...prev,
-                        reportType: value,
-                      }));
-
+                    }}
+                    onBlur={() =>
                       setEditing((prev) => ({
                         ...prev,
                         reportType: false,
-                      }));
-                    }}
+                      }))
+                    }
                     style={{
                       fontSize: 11,
                       fontWeight: 600,
@@ -1397,43 +1495,31 @@ return (
                     style={{ cursor: "pointer" }}
                   >
                     <Badge
-                      label={viewItem.reportType}
-                      config={TYPE_CONFIG[viewItem.reportType]}
+                      label={editValue.reportType}
+                      config={TYPE_CONFIG[editValue.reportType] || TYPE_CONFIG.Lost}
                     />
                   </span>
                 )}
 
-                {/* STATUS (EDITABLE) */}
-                {editingStatus ? (
+                {/* STATUS (EDITABLE — saved with the Save Changes button) */}
+                {editing.status ? (
                   <select
-                    value={newStatus}
-                    onChange={async (e) => {
+                    autoFocus
+                    value={editValue.status}
+                    onChange={(e) => {
                       const value = e.target.value;
-                      setNewStatus(value);
 
-                      await updateDoc(
-                        doc(db, "lost_found", viewItem.id),
-                        { status: value }
-                      );
-
-                      await logAudit({
-                        action: "Edited Lost & Found Item",
-                        module: "Lost & Found",
-                        documentId: viewItem.id,
-                        documentTitle: viewItem.itemName || "",
-                        performedBy: getCurrentUser(isSDO),
-                        oldData: { status: viewItem.status },
-                        newData: { status: value },
-                        description: `Status of "${viewItem.itemName}" changed to ${value}.`,
-                      });
-
-                      setViewItem((prev) => ({
+                      setEditValue((prev) => ({
                         ...prev,
                         status: value,
                       }));
-
-                      setEditingStatus(false);
                     }}
+                    onBlur={() =>
+                      setEditing((prev) => ({
+                        ...prev,
+                        status: false,
+                      }))
+                    }
                     style={{
                       fontSize: 11,
                       fontWeight: 600,
@@ -1454,49 +1540,41 @@ return (
                   </select>
                 ) : (
                   <span
-                    onClick={() => setEditingStatus(true)}
+                    onClick={() =>
+                      setEditing((prev) => ({ ...prev, status: true }))
+                    }
                     style={{ cursor: "pointer" }}
                   >
                     <Badge
-                      label={viewItem.status}
+                      label={editValue.status}
                       config={
-                        STATUS_CONFIG[viewItem.status] ||
+                        STATUS_CONFIG[editValue.status] ||
                         STATUS_CONFIG.Pending
                       }
                     />
                   </span>
                 )}
 
-            {/* CATEGORY (EDITABLE) */}
+            {/* CATEGORY (EDITABLE — saved with the Save Changes button) */}
               {editing.category ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   <select
+                    autoFocus
                     value={editValue.category}
-                    onChange={async (e) => {
+                    onChange={(e) => {
                       const value = e.target.value;
 
                       if (value === "Others") {
-                        // wait for the custom text instead of saving immediately
+                        // wait for the custom text
                         setEditValue((prev) => ({ ...prev, category: value }));
                         return;
                       }
 
                       setEditValue((prev) => ({ ...prev, category: value, categoryOther: "" }));
-
-                      await updateDoc(doc(db, "lost_found", viewItem.id), { category: value });
-
-                      await logAudit({
-                        action: "Edited Lost & Found Item",
-                        module: "Lost & Found",
-                        documentId: viewItem.id,
-                        documentTitle: viewItem.itemName || "",
-                        performedBy: getCurrentUser(isSDO),
-                        oldData: { category: viewItem.category },
-                        newData: { category: value },
-                        description: `Category of "${viewItem.itemName}" changed to ${value}.`,
-                      });
-
-                      setViewItem((prev) => ({ ...prev, category: value }));
+                    }}
+                    onBlur={() => {
+                      // keep the editor open while the "Specify category" input is needed
+                      if (editValue.category === "Others") return;
                       setEditing((prev) => ({ ...prev, category: false }));
                     }}
                     style={{
@@ -1524,26 +1602,9 @@ return (
                         const value = e.target.value.replace(/[^A-Za-z\s]/g, "");
                         setEditValue((prev) => ({ ...prev, categoryOther: value }));
                       }}
-                      onBlur={async () => {
-                        const custom = editValue.categoryOther.trim();
-                        if (!custom) return;
-
-                        await updateDoc(doc(db, "lost_found", viewItem.id), { category: custom });
-
-                        await logAudit({
-                          action: "Edited Lost & Found Item",
-                          module: "Lost & Found",
-                          documentId: viewItem.id,
-                          documentTitle: viewItem.itemName || "",
-                          performedBy: getCurrentUser(isSDO),
-                          oldData: { category: viewItem.category },
-                          newData: { category: custom },
-                          description: `Category of "${viewItem.itemName}" changed to ${custom}.`,
-                        });
-
-                        setViewItem((prev) => ({ ...prev, category: custom }));
-                        setEditing((prev) => ({ ...prev, category: false }));
-                      }}
+                      onBlur={() =>
+                        setEditing((prev) => ({ ...prev, category: false }))
+                      }
                       style={{
                         fontSize: 12,
                         padding: "5px 10px",
@@ -1572,7 +1633,9 @@ return (
                     color: darkMode ? "#F9FAFB" : "#111827",
                   }}
                 >
-                  {viewItem.category}
+                  {editValue.category === "Others"
+                    ? (editValue.categoryOther.trim() || "Others")
+                    : editValue.category}
                 </span>
               )}
               </div>
@@ -1587,32 +1650,12 @@ return (
                         name: e.target.value,
                       }))
                     }
-                    onBlur={async () => {
-                      await updateDoc(doc(db, "lost_found", viewItem.id), {
-                        itemName: editValue.name,
-                      });
-
-                      await logAudit({
-                        action: "Edited Lost & Found Item",
-                        module: "Lost & Found",
-                        documentId: viewItem.id,
-                        documentTitle: editValue.name || viewItem.itemName || "",
-                        performedBy: getCurrentUser(isSDO),
-                        oldData: { itemName: viewItem.itemName },
-                        newData: { itemName: editValue.name },
-                        description: `Item name changed from "${viewItem.itemName}" to "${editValue.name}".`,
-                      });
-
-                      setViewItem((prev) => ({
-                        ...prev,
-                        itemName: editValue.name,
-                      }));
-
+                    onBlur={() =>
                       setEditing((prev) => ({
                         ...prev,
                         name: false,
-                      }));
-                    }}
+                      }))
+                    }
                     autoFocus
                     style={{
                       width: "100%",
@@ -1643,7 +1686,7 @@ return (
                       color: darkMode ? "#F9FAFB" : "#111827",
                     }}
                   >
-                    {viewItem.itemName}
+                    {editValue.name}
                   </h3>
                 )}
 
@@ -1657,32 +1700,12 @@ return (
                         description: e.target.value,
                       }))
                     }
-                    onBlur={async () => {
-                      await updateDoc(doc(db, "lost_found", viewItem.id), {
-                        description: editValue.description,
-                      });
-
-                      await logAudit({
-                        action: "Edited Lost & Found Item",
-                        module: "Lost & Found",
-                        documentId: viewItem.id,
-                        documentTitle: viewItem.itemName || "",
-                        performedBy: getCurrentUser(isSDO),
-                        oldData: { description: viewItem.description },
-                        newData: { description: editValue.description },
-                        description: `Description of "${viewItem.itemName}" was updated.`,
-                      });
-
-                      setViewItem((prev) => ({
-                        ...prev,
-                        description: editValue.description,
-                      }));
-
+                    onBlur={() =>
                       setEditing((prev) => ({
                         ...prev,
                         description: false,
-                      }));
-                    }}
+                      }))
+                    }
                     autoFocus
                       style={{
                         width:"100%",
@@ -1712,7 +1735,7 @@ return (
                       color: darkMode ? "#D1D5DB" : "#374151",
                     }}
                   >
-                    {viewItem.description || "No description"}
+                    {editValue.description || "No description"}
                   </p>
                 )}
 
@@ -1732,7 +1755,7 @@ return (
         {/* Reported By */}
         <div>
           <span style={{ color: darkMode ? "#ffffff" : "#000000", fontSize: 14 }}>
-            👤 {viewItem.reportType === "Found" ? "Found / Returned By" : "Reported By"}
+            👤 {editValue.reportType === "Found" ? "Found / Returned By" : "Reported By"}
           </span>
 
           {editing.reporterName ? (
@@ -1745,43 +1768,15 @@ return (
                   reporterName: e.target.value.replace(NAME_STRIP_REGEX, ""),
                 }))
               }
-              onBlur={async () => {
-                const newName = editValue.reporterName.trim();
-
-                // empty or unchanged: just close the editor, don't save
-                if (!newName || newName === (viewItem.reporterName || "")) {
+              onBlur={() => {
+                // empty: go back to the saved name
+                if (!editValue.reporterName.trim()) {
                   setEditValue((p) => ({
                     ...p,
                     reporterName: viewItem.reporterName || "",
                   }));
-                  setEditing((p) => ({ ...p, reporterName: false }));
-                  return;
                 }
-
-                await updateDoc(doc(db, "lost_found", viewItem.id), {
-                  reporterName: newName,
-                });
-
-                await logAudit({
-                  action: "Edited Lost & Found Item",
-                  module: "Lost & Found",
-                  documentId: viewItem.id,
-                  documentTitle: viewItem.itemName || "",
-                  performedBy: getCurrentUser(isSDO),
-                  oldData: { reporterName: viewItem.reporterName || "" },
-                  newData: { reporterName: newName },
-                  description: `Reporter name of "${viewItem.itemName}" was updated.`,
-                });
-
-                setViewItem((p) => ({
-                  ...p,
-                  reporterName: newName,
-                }));
-
-                setEditing((p) => ({
-                  ...p,
-                  reporterName: false,
-                }));
+                setEditing((p) => ({ ...p, reporterName: false }));
               }}
               autoFocus
               style={{
@@ -1805,7 +1800,7 @@ return (
                 cursor: "pointer",
               }}
             >
-              {viewItem.reporterName || "—"}
+              {editValue.reporterName || "—"}
             </div>
           )}
         </div>
@@ -1823,32 +1818,12 @@ return (
                   location: e.target.value,
                 }))
               }
-              onBlur={async () => {
-                await updateDoc(doc(db, "lost_found", viewItem.id), {
-                  location: editValue.location,
-                });
-
-                await logAudit({
-                  action: "Edited Lost & Found Item",
-                  module: "Lost & Found",
-                  documentId: viewItem.id,
-                  documentTitle: viewItem.itemName || "",
-                  performedBy: getCurrentUser(isSDO),
-                  oldData: { location: viewItem.location },
-                  newData: { location: editValue.location },
-                  description: `Location of "${viewItem.itemName}" was updated.`,
-                });
-
-                setViewItem((p) => ({
-                  ...p,
-                  location: editValue.location,
-                }));
-
+              onBlur={() =>
                 setEditing((p) => ({
                   ...p,
                   location: false,
-                }));
-              }}
+                }))
+              }
               autoFocus
               style={{
                 ...S.input,
@@ -1871,7 +1846,7 @@ return (
                 cursor: "pointer",
               }}
             >
-              {viewItem.location}
+              {editValue.location}
             </div>
           )}
         </div>
@@ -1890,32 +1865,12 @@ return (
                   date: e.target.value,
                 }))
               }
-              onBlur={async () => {
-                await updateDoc(doc(db, "lost_found", viewItem.id), {
-                  date: editValue.date,
-                });
-
-                await logAudit({
-                  action: "Edited Lost & Found Item",
-                  module: "Lost & Found",
-                  documentId: viewItem.id,
-                  documentTitle: viewItem.itemName || "",
-                  performedBy: getCurrentUser(isSDO),
-                  oldData: { date: viewItem.date },
-                  newData: { date: editValue.date },
-                  description: `Date of "${viewItem.itemName}" was updated.`,
-                });
-
-                setViewItem((p) => ({
-                  ...p,
-                  date: editValue.date,
-                }));
-
+              onBlur={() =>
                 setEditing((p) => ({
                   ...p,
                   date: false,
-                }));
-              }}
+                }))
+              }
               autoFocus
               style={{
                 ...S.input,
@@ -1938,7 +1893,7 @@ return (
                 cursor: "pointer",
               }}
             >
-              {viewItem.date}
+              {editValue.date}
             </div>
           )}
         </div>
@@ -1956,32 +1911,12 @@ return (
                   contact: e.target.value,
                 }))
               }
-              onBlur={async () => {
-                await updateDoc(doc(db, "lost_found", viewItem.id), {
-                  contactNumber: editValue.contact,
-                });
-
-                await logAudit({
-                  action: "Edited Lost & Found Item",
-                  module: "Lost & Found",
-                  documentId: viewItem.id,
-                  documentTitle: viewItem.itemName || "",
-                  performedBy: getCurrentUser(isSDO),
-                  oldData: { contactNumber: viewItem.contactNumber },
-                  newData: { contactNumber: editValue.contact },
-                  description: `Contact number of "${viewItem.itemName}" was updated.`,
-                });
-
-                setViewItem((p) => ({
-                  ...p,
-                  contactNumber: editValue.contact,
-                }));
-
+              onBlur={() =>
                 setEditing((p) => ({
                   ...p,
                   contact: false,
-                }));
-              }}
+                }))
+              }
               autoFocus
               style={{
                   ...S.input,
@@ -2004,7 +1939,7 @@ return (
                 cursor: "pointer",
               }}
             >
-              {viewItem.contactNumber}
+              {editValue.contact}
             </div>
           )}
         </div>
@@ -2017,27 +1952,42 @@ return (
                   style={{
                     ...S.modalFooter,
                         justifyContent: "flex-end",
+                        alignItems: "center",
                         gap: 8,
                     borderTop:`1px solid ${
                       darkMode ? "#374151" : "#E5E7EB"
                     }`,
                   }}
                 >
-   
+
+              {hasChanges && !savingEdits && (
+                <span
+                  style={{
+                    marginRight: "auto",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: darkMode ? "#FBBF24" : "#B45309",
+                  }}
+                >
+                  Unsaved changes
+                </span>
+              )}
 
               {/* RIGHT: ACTIONS */}
               <div style={{ display: "flex", gap: 8 }}>
                 <button
-                 style={{
-                    ...S.btn("danger"),
-                    border: darkMode ? "1px solid #7F1D1D" : undefined,
-                  }}
-                  onClick={() => {
-                    setDeleteTarget(viewItem);
-                    setViewItem(null);
+                  type="button"
+                  // keeps the open input from blurring (and shifting the layout) before the click registers
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={handleSaveChanges}
+                  disabled={!hasChanges || savingEdits}
+                  style={{
+                    ...S.btn("primary"),
+                    opacity: !hasChanges || savingEdits ? 0.5 : 1,
+                    cursor: !hasChanges || savingEdits ? "not-allowed" : "pointer",
                   }}
                 >
-                  🗑 Delete
+                  {savingEdits ? "Saving…" : "💾 Save Changes"}
                 </button>
 
                 <button
